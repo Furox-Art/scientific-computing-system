@@ -1,5 +1,11 @@
-"""Ordinary differential equation solvers — Euler, RK4, RK45, leapfrog."""
+"""Ordinary differential equation solvers — Euler, RK4, RK45, implicit methods."""
 
+from cds.diffeq._implicit import (
+    backward_euler,
+    backward_euler_system,
+    trapezoid_method,
+    trapezoid_method_system,
+)
 from cds.diffeq.solvers import (
     ODESolution,
     euler_method,
@@ -11,9 +17,13 @@ from cds.diffeq.solvers import (
 
 __all__ = [
     "ODESolution",
+    "backward_euler",
+    "backward_euler_system",
     "euler_method",
+    "midpoint_method",
     "rk4",
     "rk45",
-    "midpoint_method",
     "solve_system",
+    "trapezoid_method",
+    "trapezoid_method_system",
 ]

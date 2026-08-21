@@ -1,5 +1,17 @@
 """Probability distributions and sampling."""
 
+from cds.probability._advanced import (
+    beta_pdf,
+    chi2_cdf,
+    chi2_pdf,
+    chi2_ppf,
+    gamma_pdf,
+    sample_beta,
+    sample_gamma,
+    t_cdf,
+    t_pdf,
+    t_ppf,
+)
 from cds.probability.distributions import (
     binomial_pmf,
     exponential_cdf,
@@ -17,17 +29,27 @@ from cds.probability.distributions import (
 )
 
 __all__ = [
-    "gaussian_pdf",
-    "gaussian_cdf",
-    "gaussian_sample",
-    "uniform_pdf",
-    "uniform_cdf",
-    "uniform_sample",
-    "exponential_pdf",
-    "exponential_cdf",
-    "exponential_sample",
+    "beta_pdf",
     "binomial_pmf",
+    "chi2_cdf",
+    "chi2_pdf",
+    "chi2_ppf",
+    "exponential_cdf",
+    "exponential_pdf",
+    "exponential_sample",
+    "gaussian_cdf",
+    "gaussian_pdf",
+    "gaussian_sample",
+    "gamma_pdf",
+    "geometric_pmf",
     "poisson_pmf",
     "poisson_sample",
-    "geometric_pmf",
+    "sample_beta",
+    "sample_gamma",
+    "t_cdf",
+    "t_pdf",
+    "t_ppf",
+    "uniform_cdf",
+    "uniform_pdf",
+    "uniform_sample",
 ]

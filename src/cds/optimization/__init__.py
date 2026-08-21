@@ -1,5 +1,6 @@
 """Numerical optimization algorithms."""
 
+from cds.optimization._metaheuristics import nelder_mead, simulated_annealing
 from cds.optimization.minimize import (
     adam,
     gradient_descent,
@@ -9,7 +10,9 @@ from cds.optimization.minimize import (
 
 __all__ = [
     "gradient_descent",
-    "newton_method",
-    "adam",
     "line_search",
+    "nelder_mead",
+    "newton_method",
+    "simulated_annealing",
+    "adam",
 ]

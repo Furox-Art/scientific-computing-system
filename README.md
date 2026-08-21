@@ -76,7 +76,7 @@ simulation, statistics, signal processing, optimization, numerical methods,
 symbolic modeling, and structured hypothesis generation, and you can step
 through any of it line by line.
 
-**The pitch in numbers:** 19 modules · **1,500+ tests** on Linux/Windows/macOS
+**The pitch in numbers:** 19 modules · **1,600+ tests** on Linux/Windows/macOS
 (Python 3.10–3.13) · **100% coverage** (statement *and* branch) enforced as a
 CI gate · `mypy --strict` clean across source and tests · **zero runtime
 dependencies**.
@@ -158,10 +158,10 @@ If CDS is useful in your research or publications, please cite it using the info
 |--------|-------------|
 | `cds.core` | Shared data model — `Domain`, `Hypothesis`, `HypothesisStatus` types used across modules |
 | `cds.quantum` | Single & multi-qubit simulation — Hadamard, Pauli, CNOT, SWAP, Toffoli, Bell/GHZ states, entanglement detection |
-| `cds.optimization` | Gradient descent, Newton's method, Adam optimizer, golden section search |
-| `cds.ml` | Pure Python Neural Networks — MLP, dense layers, Adam-based training |
+| `cds.optimization` | Gradient descent, Newton's method, Adam optimizer, golden section search, **Nelder–Mead simplex**, **simulated annealing** (box bounds, seeded) |
+| `cds.ml` | Pure Python Neural Networks — MLP, dense layers, Adam-based training — plus **k-NN classifier/regressor**, **k-means clustering** (k-means++), **CART decision tree** (Gini), **logistic regression** |
 | `cds.signals` | DFT, radix-2 FFT/IFFT (O(N log N)), 2D FFT/IFFT, convolution, power spectrum, **Butterworth IIR filter design** (low/high/band), moving-median denoiser |
-| `cds.probability` | Gaussian, uniform, exponential, binomial, Poisson distributions |
+| `cds.probability` | Gaussian, uniform, exponential, binomial, Poisson distributions — plus **chi-square / Student-t (pdf·cdf·ppf)** and **gamma / beta densities with seeded samplers** (Marsaglia–Tsang) |
 | `cds.stats` | Descriptive stats, Pearson correlation, linear regression, t-test, chi-square, ANOVA, effect-size measures (Cohen's d, η², Cramér's V), Bonferroni correction, **time-series analysis** (ACF/PACF, KPSS, Ljung-Box, exponential smoothing, seasonal decomposition) |
 | `cds.math_utils` | Numerical calculus, O(N³) LU / QR / Cholesky, eigenvalue (power iteration), Gram-Schmidt, matrix inverse |
 | `cds.data_analysis` | Mini-Pandas `DataSet` for filtering/grouping, CSV loading, ASCII visualization, optional pandas interop (`to_dataframe` / `from_dataframe` via `cds[pandas]`) |
@@ -170,7 +170,7 @@ If CDS is useful in your research or publications, please cite it using the info
 | `cds.modeling` | Symbolic algebra — expressions, symbolic differentiation, simplification, LaTeX export, `MathModel` equation systems, root-finding & parameter fitting |
 | `cds.knowledge` | Knowledge organization — concept graph with typed relations, research notes notebook, ranked structured retrieval (JSON persistence) |
 | `cds.montecarlo` | Monte Carlo integration, π estimation, Buffon's needle, random walks (1D/2D) |
-| `cds.diffeq` | Euler method, RK4, midpoint method, ODE system solver |
+| `cds.diffeq` | Euler method, RK4, midpoint method, ODE system solver — plus **implicit stiff solvers**: backward Euler & Crank–Nicolson (scalar + systems, analytic or finite-difference Jacobian) |
 | `cds.numerical_integration` | Deterministic quadrature — trapezoid, Simpson 1/3 & 3/8, Romberg, Gauss-Legendre, adaptive Simpson, **2-D tensor-product quadrature** (Simpson + Gauss-Legendre) |
 | `cds.nlp` | Educational NLP from scratch — BPE tokenizer, sinusoidal embeddings, multi-head attention, Transformer block, scalar autograd (SGD/Adam), MiniGPT demo |
 | `cds.hypothesis` | Structured hypothesis generation with prompt templates for custom research workflows |
