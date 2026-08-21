@@ -41,7 +41,7 @@
 > **If CDS saves you time, a star helps others find it — and keeps the project maintained.** Thank you!
 
 ---
-**Latest Update (v1.5.0):** algorithms wave — graph **Bellman–Ford / Floyd–Warshall / Prim / components**, Monte Carlo **expectation + hit-or-miss**, matrix **norms/trace**, CLI **`cds integrate`**. Builds on v1.4 probability/stats and v1.3 `cds[plot]`. Install: `pip install -U "cognitive-discovery-system[plot]"`.
+**Latest Update (v1.6.0):** scikit-learn-flavored deepening — **PCA**, **k-NN / k-means / decision tree / logistic & linear regression**, **StandardScaler + train/test split**, chi-square/Student-t/gamma/beta distributions with seeded samplers, **implicit stiff ODE solvers** (backward Euler, Crank–Nicolson), **Nelder–Mead** and **simulated annealing**, plus Mann–Whitney U and Wilcoxon tests. Install: `pip install -U "cognitive-discovery-system[plot]"`.
 ---
 
 ## Contents

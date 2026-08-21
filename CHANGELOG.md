@@ -7,8 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes yet. See [v1.5.0](#v150---2026-07-20) below for the
+No unreleased changes yet. See [v1.6.0](#v160---2026-08-21) below for the
 latest release.
+
+## [v1.6.0] - 2026-08-21
+
+A **minor** release deepening the ML, probability, ODE, and optimization
+toolkits toward scikit-learn / SciPy teaching parity — still zero runtime
+dependencies, still 100% blended coverage.
+
+### Added
+
+- **`cds.ml`**: `KNeighborsClassifier` / `KNeighborsRegressor` (brute-force,
+  deterministic tie-breaking), `KMeans` (k-means++ seeding, seeded),
+  `DecisionTreeClassifier` (CART + Gini), `LogisticRegression` (stable-BCE
+  gradient descent, optional L2), `LinearRegression` (closed-form vector OLS
+  via normal equations), `PCA` (cyclic Jacobi eigen-solver, transform /
+  inverse_transform), `StandardScaler`, `train_test_split` (seeded)
+- **`cds.probability`**: chi-square and Student-t distributions
+  (`chi2_pdf/cdf/ppf`, `t_pdf/cdf/ppf`), `gamma_pdf` + `sample_gamma`
+  (Marsaglia–Tsang with shape<1 boost), `beta_pdf` + `sample_beta`
+  (exact gamma-ratio identity)
+- **`cds.diffeq`**: implicit stiff solvers — `backward_euler`,
+  `trapezoid_method` (Crank–Nicolson) and their `_system` variants; unified
+  θ-method core with Newton iteration over analytic or central-difference
+  Jacobians via the shared PLU solver
+- **`cds.optimization`**: `nelder_mead` simplex (degenerate-simplex and
+  symmetric false-convergence guards), `simulated_annealing` (Metropolis rule,
+  box bounds, seeded)
+- **`cds.stats`**: nonparametric tests — `mann_whitney_u` and
+  `wilcoxon_signed_rank` with tie/zero corrections (normal approximation)
+
+### Fixed
+
+- Test-suite pyplot figures are now closed per test, silencing matplotlib's
+  "more than 20 figures" memory warning in long sessions
+
+### Changed
+
+- README "Why CDS?" pitch strengthened with proof numbers and a cross-domain
+  snippet; stale counts/versions synced across metadata (19 modules)
 
 ## [v1.5.0] - 2026-07-20
 
