@@ -177,7 +177,7 @@ src/cds/
 ├── nlp/                 # BPE tokenizer, attention, autograd, MiniGPT
 ├── hypothesis/          # Hypothesis generation
 ├── core/                # Shared models, config
-└── cli.py               # Command-line interface (argparse, zero-dependency)
+└── cli/                 # Command-line interface (argparse, zero-dependency)
 
 examples/                # Runnable demo scripts
 tests/                   # 1441 tests (see CI)

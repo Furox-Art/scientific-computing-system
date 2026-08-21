@@ -100,7 +100,7 @@ def correlation(x: list[float], y: list[float]) -> float:
     return num / den if den > NEAR_ZERO else 0.0
 
 
-def _average_ranks(values: list[float]) -> list[float]:
+def average_ranks(values: list[float]) -> list[float]:
     """Return average ranks (1-based) with midranks for ties."""
     n = len(values)
     order = sorted(range(n), key=lambda i: values[i])
@@ -116,6 +116,10 @@ def _average_ranks(values: list[float]) -> list[float]:
             ranks[order[k]] = mid
         i = j + 1
     return ranks
+
+
+# Historical private name kept as an alias for backwards compatibility.
+_average_ranks = average_ranks
 
 
 def spearman_correlation(x: list[float], y: list[float]) -> float:

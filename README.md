@@ -554,7 +554,7 @@ src/cds/
 ├── nlp/            # Educational NLP (BPE, embeddings, attention, autograd, MiniGPT)
 ├── hypothesis/     # Hypothesis generation
 ├── core/           # Shared models, config
-└── cli.py          # Command-line interface
+└── cli/           # Command-line interface package
 
 examples/           # Runnable demo scripts
 tests/              # full test suite (see CI badge for the live count)

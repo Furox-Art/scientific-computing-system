@@ -216,7 +216,7 @@ of section 2 ever crosses the optional-dependency line.
 ```
 src/cds/
 ├── __init__.py            # top-level convenience re-exports
-├── cli.py                 # command-line entry point (cds command)
+├── cli/                    # command-line entry point (cds command)
 ├── _version.py
 ├── core/                  # ← primitives layer
 ├── math_utils/

@@ -15,7 +15,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from cds.stats.descriptive import _average_ranks
+from cds.stats.descriptive import average_ranks
 
 
 @dataclass(frozen=True)
@@ -54,7 +54,7 @@ def mann_whitney_u(a: list[float], b: list[float]) -> RankTestResult:
     if not a or not b:
         raise ValueError("both samples must be non-empty")
     pooled = [*a, *b]
-    ranks = _average_ranks(pooled)
+    ranks = average_ranks(pooled)
     n1 = float(len(a))
     n2 = len(b)
     r1 = sum(ranks[: len(a)])
@@ -103,7 +103,7 @@ def wilcoxon_signed_rank(differences: list[float]) -> RankTestResult:
     if not nonzero:
         raise ValueError("all differences are zero; nothing to test")
 
-    abs_ranks = _average_ranks([abs(d) for d in nonzero])
+    abs_ranks = average_ranks([abs(d) for d in nonzero])
     w_plus = sum(rank for rank, d in zip(abs_ranks, nonzero) if d > 0)
     n = float(len(nonzero))
     mu = n * (n + 1.0) / 4.0

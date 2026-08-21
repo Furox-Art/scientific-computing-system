@@ -3,10 +3,7 @@
 Complements :mod:`cds.probability.distributions` with the two sampling
 distributions every hypothesis-testing curriculum needs plus the gamma/beta
 family behind them. The heavy special-function lifting (regularized
-incomplete gamma/beta) is reused from the proven Numerical-Recipes engines in
-``cds.stats._distributions`` rather than duplicated — the same internal-
-helper sharing pattern already used by ``cds.ml`` importing ``AdamState``
-from ``cds.optimization``.
+incomplete gamma/beta) live in their single home, ``cds.math_utils.special``, so no lower-level package depends on a higher-level one.
 """
 
 from __future__ import annotations
@@ -14,7 +11,7 @@ from __future__ import annotations
 import math
 import random
 
-from cds.stats._distributions import _betai, _gammln, _gammp
+from cds.math_utils.special import betai, gammln, gammp
 
 _BISECT_ITERS = 200
 _BISECT_TOL = 1e-12
@@ -56,7 +53,7 @@ def chi2_cdf(x: float, df: float) -> float:
         raise ValueError("df must be positive")
     if x <= 0:
         return 0.0
-    return _gammp(df / 2, x / 2)
+    return gammp(df / 2, x / 2)
 
 
 def chi2_ppf(p: float, df: float) -> float:
@@ -114,7 +111,7 @@ def t_cdf(x: float, df: float) -> float:
     """
     if df <= 0:
         raise ValueError("df must be positive")
-    half_tail = 0.5 * _betai(df / 2, 0.5, df / (df + x * x))
+    half_tail = 0.5 * betai(df / 2, 0.5, df / (df + x * x))
     if x <= 0:
         return half_tail
     return 1.0 - half_tail
@@ -243,7 +240,7 @@ def beta_pdf(x: float, a: float, b: float) -> float:
         raise ValueError("b must be positive")
     if x <= 0 or x >= 1:
         return 0.0
-    log_norm = _gammln(a + b) - _gammln(a) - _gammln(b)
+    log_norm = gammln(a + b) - gammln(a) - gammln(b)
     return math.exp(log_norm + (a - 1) * math.log(x) + (b - 1) * math.log(1 - x))
 
 

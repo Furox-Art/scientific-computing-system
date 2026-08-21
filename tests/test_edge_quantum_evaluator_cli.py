@@ -611,6 +611,11 @@ def test_import_main() -> None:
     import cds.__main__  # noqa: F401
 
 
+def test_import_cli_main_module() -> None:
+    """Ensure cds.cli.__main__ (the ``python -m cds.cli`` entry) imports cleanly."""
+    import cds.cli.__main__  # noqa: F401
+
+
 # ---------------------------------------------------------------------------
 # Monte Carlo: _pi_worker (parallel worker) and edge cases
 # ---------------------------------------------------------------------------

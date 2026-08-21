@@ -1,14 +1,8 @@
-"""System command-line interface.
+"""Implementations of the ``cds`` subcommands.
 
-Pure-stdlib CLI built on :mod:`argparse`. It replaces the previous
-``typer``/``rich`` implementation so the whole ``cds`` package stays
-zero-dependency at runtime. Rich-style colour is reproduced with small ANSI
-escape helpers; the textual output (help text, table contents, prompts) is
-preserved verbatim where the test suite asserts on it.
-
-The entry point :func:`main` accepts an optional ``argv`` so tests can drive a
-specific command without spawning a subprocess, and returns the integer exit
-code instead of calling :func:`sys.exit` directly when ``argv`` is given.
+Every handler takes the parsed :class:`argparse.Namespace` and returns an
+integer exit code. Heavy imports stay function-local so ``cds --help`` (and
+the whole parser build) never pays for modules a command does not use.
 """
 
 from __future__ import annotations
@@ -18,139 +12,14 @@ import json
 import os
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from pathlib import Path
 
+from cds.cli._style import _format_table, _print, _render
 from cds.core.models import Domain
 from cds.hypothesis.generator import PromptTemplate, generate_hypotheses
 
-# --------------------------------------------------------------------------- #
-# ANSI colour helpers — minimal stand-in for ``rich`` markup tags.
-# Each maps a rich style to an SGR escape sequence; ``_wrap`` returns the text
-# wrapped so it renders coloured on a terminal and plain (stripped) elsewhere.
-# --------------------------------------------------------------------------- #
-_RESET = "\033[0m"
-_STYLES: dict[str, str] = {
-    "bold": "\033[1m",
-    "dim": "\033[2m",
-    "italic": "\033[3m",
-    "red": "\033[31m",
-    "green": "\033[32m",
-    "yellow": "\033[33m",
-    "blue": "\033[34m",
-    "magenta": "\033[35m",
-    "cyan": "\033[36m",
-    "bold green": "\033[1;32m",
-    "bold blue": "\033[1;34m",
-    "bold cyan": "\033[1;36m",
-    "bold magenta": "\033[1;35m",
-    "bold red": "\033[1;31m",
-    "bold yellow": "\033[1;33m",
-}
 
-
-def _supports_color() -> bool:
-    """Return True when stdout looks like an interactive colour terminal."""
-    return sys.stdout.isatty()
-
-
-def _wrap(style: str, text: str) -> str:
-    """Wrap ``text`` in the ANSI codes for ``style`` if stdout is a TTY."""
-    if not _supports_color():
-        return text
-    code = _STYLES.get(style, "")
-    if not code:
-        return text
-    return f"{code}{text}{_RESET}"
-
-
-def _print(*args: object) -> None:
-    """Print helper routed through stdout (so tests can capture via capsys)."""
-    print(*args)
-
-
-# Mapping from rich-style markup tags to plain-text + colour pairs. Each entry
-# is (style, plain_text). Used by ``_render`` to expand the minimal markup the
-# commands embed in their strings.
-def _render(markup: str) -> str:
-    """Render rich-style ``[style]...[/]`` markup into ANSI-coloured text.
-
-    Only the tag shapes actually used by this CLI are supported:
-    ``[bold]``, ``[italic]``, ``[dim]``, ``[red]``, ``[green]``, ``[yellow]``,
-    ``[blue]``, ``[cyan]``, ``[magenta]`` and a few combined ``[bold green]``
-    variants. Unknown tags are stripped to their inner text. Nesting is not
-    supported (the CLI never nests them).
-    """
-    out: list[str] = []
-    i = 0
-    n = len(markup)
-    while i < n:
-        open_idx = markup.find("[", i)
-        if open_idx == -1:
-            out.append(markup[i:])
-            break
-        out.append(markup[i:open_idx])
-        close_idx = markup.find("]", open_idx)
-        if close_idx == -1:
-            out.append(markup[open_idx:])
-            break
-        tag = markup[open_idx + 1 : close_idx]
-        # Closing tag [/] ends the current styled run.
-        if tag.startswith("/"):
-            out.append(_RESET if _supports_color() else "")
-            i = close_idx + 1
-            continue
-        # Combined forms like "bold green" are looked up directly.
-        code = _STYLES.get(tag)
-        if code is None and " " in tag:
-            # ``[bold green]`` style — already in the table; fall back to first word.
-            code = _STYLES.get(tag.split()[0], "")
-        out.append(code if (_supports_color() and code is not None) else "")
-        i = close_idx + 1
-    return "".join(out)
-
-
-# --------------------------------------------------------------------------- #
-# Table rendering — minimal fixed-width formatter standing in for ``rich.Table``.
-# --------------------------------------------------------------------------- #
-def _format_table(title: str, headers: list[str], rows: list[list[str]]) -> str:
-    """Render ``headers``/``rows`` as a bordered ASCII table with a title.
-
-    A tiny reimplementation of the ``rich.Table`` output the CLI used to
-    produce: top/bottom title rule, a header row underlined with ``-``, and
-    each data row on its own line. Columns are sized to the widest cell.
-    """
-    cols = len(headers)
-    widths = [len(h) for h in headers]
-    for row in rows:
-        for c, cell in enumerate(row[:cols]):
-            widths[c] = max(widths[c], len(cell))
-
-    def _border(left: str, fill: str, right: str) -> str:
-        return left + fill + right
-
-    sep = _border("+", "+".join("-" * (w + 2) for w in widths), "+")
-
-    lines: list[str] = []
-    if title:
-        lines.append(_wrap("bold", title))
-    lines.append(sep)
-    header_cells = " | ".join(h.ljust(widths[c]) for c, h in enumerate(headers))
-    lines.append(f"| {header_cells} |")
-    lines.append(sep)
-    for row in rows:
-        cells = " | ".join(
-            str(row[c]).ljust(widths[c]) if c < len(row) else "".ljust(widths[c])
-            for c in range(cols)
-        )
-        lines.append(f"| {cells} |")
-    lines.append(sep)
-    return "\n".join(lines)
-
-
-# --------------------------------------------------------------------------- #
-# Command implementations
-# --------------------------------------------------------------------------- #
 def _cmd_version(args: argparse.Namespace) -> int:
     """Show the installed System version."""
     from cds import __version__
@@ -339,7 +208,7 @@ def _cmd_sample(args: argparse.Namespace) -> int:
 
 def _cmd_dashboard(args: argparse.Namespace) -> int:
     """Launch the interactive System dashboard."""
-    root_dir = Path(__file__).parent.parent.parent
+    root_dir = Path(__file__).parent.parent.parent.parent
     dashboard_path = root_dir / "dashboard" / "app.py"
     if not dashboard_path.exists():
         _print(_render("[red]Error:[/] Dashboard file not found at " + str(dashboard_path)))
@@ -489,18 +358,18 @@ def _cmd_modules(args: argparse.Namespace) -> int:
         ("cds.quantum", "Single & multi-qubit circuits, Bell/GHZ states, entanglement"),
         ("cds.signals", "DFT, radix-2 FFT, 2D FFT, convolution, filtering"),
         ("cds.math_utils", "LU/QR/Cholesky, power iteration, Gram-Schmidt, calculus"),
-        ("cds.optimization", "Gradient descent, Newton, Adam, golden section search"),
-        ("cds.stats", "Descriptive stats, regression, t-tests, chi-square, ANOVA"),
-        ("cds.probability", "Gaussian, binomial, Poisson and other distributions"),
+        ("cds.optimization", "Gradient descent, Newton, Adam, golden section, Nelder-Mead, simulated annealing"),
+        ("cds.stats", "Descriptive stats, regression, t-tests, ANOVA, time-series, Mann-Whitney U, Wilcoxon"),
+        ("cds.probability", "Gaussian/binomial/Poisson plus chi-square/t quantiles, gamma/beta samplers"),
         ("cds.montecarlo", "π estimation, integration, random walks"),
-        ("cds.diffeq", "Euler, RK4, midpoint, ODE system solvers"),
+        ("cds.diffeq", "Euler, RK4, RK45 + implicit stiff solvers (backward Euler, Crank-Nicolson)"),
         ("cds.graph", "BFS/DFS, Dijkstra, Kruskal MST, topological sort"),
         (
             "cds.modeling",
             "Symbolic math: expressions, MathModel, equation solving, parameter fitting",
         ),
         ("cds.knowledge", "Knowledge graph, concept mapping, research notes, structured retrieval"),
-        ("cds.ml", "Neural networks (MLP), backpropagation, activation functions"),
+        ("cds.ml", "MLP, k-NN, k-means, decision tree, logistic/linear regression, PCA, scaler"),
         ("cds.scientific", "Physical constants + common formulas"),
         ("cds.data_analysis", "CSV loading, normalization, z-score, moving average"),
         ("cds.nlp", "Educational NLP: BPE tokenizer, embeddings, attention, autograd, MiniGPT"),
@@ -522,171 +391,3 @@ def _cmd_modules(args: argparse.Namespace) -> int:
     _print(_render("\n[dim]All modules are pure Python with no heavy dependencies.[/]"))
     _print(_render("[dim]See examples/ for runnable demos of each module.[/]\n"))
     return 0
-
-
-# --------------------------------------------------------------------------- #
-# Argument parser construction
-# --------------------------------------------------------------------------- #
-_DOMAIN_CHOICES = ["physics", "cosmology", "mathematics", "biology", "chemistry", "general_science"]
-
-
-def _build_parser() -> argparse.ArgumentParser:
-    """Construct the top-level ``cds`` argument parser and its subcommands."""
-    parser = argparse.ArgumentParser(
-        prog="cds",
-        description="Cognitive Discovery System — computational science platform.",
-    )
-    parser.add_argument("--version", "-v", action="store_true", help="Show System version and exit")
-
-    sub = parser.add_subparsers(dest="command")
-
-    p_version = sub.add_parser("version", help="Show System version.")
-    p_version.set_defaults(func=_cmd_version)
-
-    p_hyp = sub.add_parser(
-        "hypothesis", help="Generate scientific hypotheses for a research question."
-    )
-    p_hyp.add_argument("question", help="The core research question or problem")
-    p_hyp.add_argument(
-        "--domain",
-        "-d",
-        default="general_science",
-        choices=_DOMAIN_CHOICES,
-        help="Scientific domain focus",
-    )
-    p_hyp.add_argument("--num", "-n", type=int, default=3, help="Number of hypotheses to propose")
-    p_hyp.add_argument("--output", "-o", help="Save results as JSON")
-    p_hyp.add_argument("--show-prompt", action="store_true", help="Print the exact prompt template")
-    p_hyp.add_argument("--dry-run", action="store_true", help="Do not run generation logic")
-    p_hyp.set_defaults(func=_cmd_hypothesis)
-
-    p_prompt = sub.add_parser("prompt", help="Print a ready-to-use prompt for a custom generator.")
-    p_prompt.add_argument("question", help="Research question")
-    p_prompt.add_argument(
-        "--domain",
-        "-d",
-        default="general_science",
-        choices=_DOMAIN_CHOICES,
-        help="Scientific domain focus",
-    )
-    p_prompt.add_argument(
-        "--num", "-n", type=int, default=3, help="Number of hypotheses to propose"
-    )
-    p_prompt.set_defaults(func=_cmd_prompt)
-
-    p_info = sub.add_parser("info", help="Show System info, module status, and System health.")
-    p_info.set_defaults(func=_cmd_info)
-
-    sub.add_parser("dashboard", help="Launch the interactive System dashboard.").set_defaults(
-        func=_cmd_dashboard
-    )
-    sub.add_parser("benchmark", help="Run built-in benchmarks to verify performance.").set_defaults(
-        func=_cmd_benchmark
-    )
-    sub.add_parser("constants", help="List available physical constants.").set_defaults(
-        func=_cmd_constants
-    )
-
-    p_plot = sub.add_parser(
-        "plot",
-        help="Plot a series of numbers (ASCII terminal, or PNG with --file if cds[plot] installed).",
-    )
-    p_plot.add_argument("values", help="Comma-separated list of numbers (e.g. '1,5,3,8')")
-    p_plot.add_argument("--title", "-t", default="CLI Plot", help="Title of the plot")
-    p_plot.add_argument(
-        "--file",
-        "-f",
-        default=None,
-        help="Save a PNG via optional matplotlib (requires cds[plot]); omit for ASCII",
-    )
-    p_plot.add_argument(
-        "--kind",
-        "-k",
-        default="series",
-        choices=["series", "hist", "acf"],
-        help="Chart type when using --file (default: series)",
-    )
-    p_plot.set_defaults(func=_cmd_plot)
-
-    p_calc = sub.add_parser("calc", help="Quick physics calculations.")
-    p_calc.add_argument("formula", help="Formula: ke, gravity, wave, gas")
-    p_calc.set_defaults(func=_cmd_calc)
-
-    p_stats = sub.add_parser(
-        "stats", help="Descriptive statistics for a comma-separated number list."
-    )
-    p_stats.add_argument("values", help="Comma-separated numbers (e.g. '1,2,3,4')")
-    p_stats.set_defaults(func=_cmd_stats)
-
-    p_sample = sub.add_parser("sample", help="Draw samples from a probability distribution.")
-    p_sample.add_argument(
-        "dist",
-        choices=["uniform", "gaussian", "exponential", "poisson"],
-        help="Distribution name",
-    )
-    p_sample.add_argument("-n", type=int, default=5, help="Number of samples (default 5)")
-    p_sample.add_argument("--seed", type=int, default=None, help="RNG seed")
-    p_sample.add_argument("--a", type=float, default=0.0, help="uniform lower bound")
-    p_sample.add_argument("--b", type=float, default=1.0, help="uniform upper bound")
-    p_sample.add_argument("--mu", type=float, default=0.0, help="gaussian mean")
-    p_sample.add_argument("--sigma", type=float, default=1.0, help="gaussian stdev")
-    p_sample.add_argument("--lam", type=float, default=1.0, help="rate λ for exponential/poisson")
-    p_sample.set_defaults(func=_cmd_sample)
-
-    p_int = sub.add_parser(
-        "integrate", help="Numerically integrate a built-in function over [a, b]."
-    )
-    p_int.add_argument(
-        "integrand",
-        choices=["sin", "cos", "exp", "x2", "unit"],
-        help="Integrand name",
-    )
-    p_int.add_argument("--a", type=float, default=0.0, help="Lower limit (default 0)")
-    p_int.add_argument("--b", type=float, default=1.0, help="Upper limit (default 1)")
-    p_int.add_argument("-n", type=int, default=1000, help="Number of panels (default 1000)")
-    p_int.add_argument(
-        "--method",
-        choices=["simpson", "trap"],
-        default="simpson",
-        help="Quadrature rule (default simpson)",
-    )
-    p_int.set_defaults(func=_cmd_integrate)
-
-    sub.add_parser(
-        "modules", help="List all scientific modules available in the System."
-    ).set_defaults(func=_cmd_modules)
-
-    return parser
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    """CLI entry point. Returns the process exit code.
-
-    When ``argv`` is ``None`` (the normal ``cds`` invocation) it reads
-    :data:`sys.argv`; tests pass an explicit list so no subprocess is needed.
-
-    argparse raises :class:`SystemExit` for ``--help`` and usage errors. We
-    catch it here and surface its code as the return value so callers (tests
-    and ``__main__``) never see an exception — only an integer exit code.
-    """
-    parser = _build_parser()
-    try:
-        args = parser.parse_args(argv)
-    except SystemExit as exc:
-        return int(exc.code) if isinstance(exc.code, int) else 0
-
-    if args.version:
-        from cds import __version__
-
-        _print(_render(f"[bold]System[/] version [cyan]{__version__}[/]"))
-        return 0
-
-    func = getattr(args, "func", None)
-    if func is None:
-        parser.print_help()
-        return 0
-    return int(func(args))
-
-
-if __name__ == "__main__":  # pragma: no cover
-    sys.exit(main())
