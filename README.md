@@ -76,6 +76,25 @@ simulation, statistics, signal processing, optimization, numerical methods,
 symbolic modeling, and structured hypothesis generation, and you can step
 through any of it line by line.
 
+**The pitch in numbers:** 18 modules · **1,500+ tests** on Linux/Windows/macOS
+(Python 3.10–3.13) · **100% coverage** (statement *and* branch) enforced as a
+CI gate · `mypy --strict` clean across source and tests · **zero runtime
+dependencies**.
+
+And because every domain lives under one namespace, crossing them costs you
+nothing:
+
+```python
+from cds.quantum import bell_state         # quantum simulation
+from cds.signals import fft_radix2         # signal processing
+from cds.stats import linear_regression    # statistics
+
+reg = bell_state(0)
+spec = fft_radix2([complex(i) for i in range(8)])
+fit = linear_regression([1, 2, 3], [2.1, 3.9, 6.2])
+# …no NumPy, no SciPy, no compiler — this *is* the whole install.
+```
+
 That positioning makes CDS a good fit when one of these matters more than raw
 throughput:
 
