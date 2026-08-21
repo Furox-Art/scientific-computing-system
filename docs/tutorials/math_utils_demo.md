@@ -8,9 +8,9 @@
 import math
 from cds.math_utils import derivative, integral, gradient
 
-print(derivative(lambda x: x**2, x=3.0))                # ≈ 6
-print(integral(lambda x: math.sin(x), a=0.0, b=math.pi)) # ≈ 2
-print(gradient(lambda v: v[0]**2 + v[1]**2, point=[1.0, 2.0]))  # [2, 4]
+print(derivative(lambda x: x**2, x=3.0))  # ≈ 6
+print(integral(lambda x: math.sin(x), a=0.0, b=math.pi))  # ≈ 2
+print(gradient(lambda v: v[0] ** 2 + v[1] ** 2, point=[1.0, 2.0]))  # [2, 4]
 ```
 
 ## 2. Linear Algebra Basics
@@ -19,9 +19,9 @@ print(gradient(lambda v: v[0]**2 + v[1]**2, point=[1.0, 2.0]))  # [2, 4]
 from cds.math_utils import mat_mul, transpose, determinant, solve_linear
 
 A = [[2.0, 1.0], [1.0, 3.0]]
-print(mat_mul(A, [[1,0],[0,1]]))   # back to A
-print(transpose(A))                 # [[2,1],[1,3]]
-print(determinant(A))               # 5.0
+print(mat_mul(A, [[1, 0], [0, 1]]))  # back to A
+print(transpose(A))  # [[2,1],[1,3]]
+print(determinant(A))  # 5.0
 print(solve_linear(A, [3.0, 4.0]))  # solution of A·x = b
 ```
 
@@ -30,8 +30,8 @@ print(solve_linear(A, [3.0, 4.0]))  # solution of A·x = b
 ```python
 from cds.math_utils import lu_decomposition, qr_decomposition, power_iteration
 
-L, U, P = lu_decomposition(A)   # PLU factorisation
-Q, R = qr_decomposition(A)      # QR factorisation
+L, U, P = lu_decomposition(A)  # PLU factorisation
+Q, R = qr_decomposition(A)  # QR factorisation
 eigval, eigvec = power_iteration(A)  # dominant eigenpair via power iteration
 ```
 

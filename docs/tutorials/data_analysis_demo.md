@@ -17,8 +17,8 @@ print(table.columns, len(table.rows))
 from cds.data_analysis import normalize, z_score, moving_average
 
 temps = [18.0, 19.5, 22.0, 21.5, 23.0]
-print(normalize(temps))            # min-max to [0,1]
-print(z_score(temps))              # zero mean, unit variance
+print(normalize(temps))  # min-max to [0,1]
+print(z_score(temps))  # zero mean, unit variance
 print(moving_average(temps, window=2))
 ```
 

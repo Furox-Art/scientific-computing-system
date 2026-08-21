@@ -38,20 +38,24 @@ cds hypothesize "Hubble gerilimine ne sebep olur?" --domain cosmology
 ```python
 # Kuantum simülasyonu
 from cds.quantum import bell_state, is_entangled, ghz_state
+
 reg = bell_state(0)
 print(is_entangled(reg))  # True
 
 # İstatistik ve hipotez testi
 from cds.stats import chi_square_independence, one_way_anova
+
 sonuc = chi_square_independence([[10, 20], [30, 40]])
 print(sonuc.p_value)
 
 # Monte Carlo
 from cds.montecarlo import estimate_pi
+
 pi_tahmin = estimate_pi(samples=100_000, seed=42)
 
 # Sinyal işleme
 from cds.signals import fft, ifft
+
 frekans = fft([1.0, 0.0, -1.0, 0.0])
 ```
 

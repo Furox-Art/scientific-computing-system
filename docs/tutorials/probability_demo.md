@@ -7,8 +7,8 @@
 ```python
 from cds.probability import gaussian_pdf, uniform_pdf, exponential_pdf
 
-print(gaussian_pdf(0.0, mu=0.0, sigma=1.0))   # peak ≈ 0.399
-print(uniform_pdf(0.5, a=0.0, b=1.0))          # 1.0 on support
+print(gaussian_pdf(0.0, mu=0.0, sigma=1.0))  # peak ≈ 0.399
+print(uniform_pdf(0.5, a=0.0, b=1.0))  # 1.0 on support
 print(exponential_pdf(1.0, lambda_=2.0))
 ```
 
@@ -18,7 +18,7 @@ print(exponential_pdf(1.0, lambda_=2.0))
 from cds.probability import binomial_pmf, poisson_pmf
 
 for k in range(11):
-    print(k, binomial_pmf(k, n=10, p=0.5))   # symmetric around 5
+    print(k, binomial_pmf(k, n=10, p=0.5))  # symmetric around 5
 
 for k in range(6):
     print(k, poisson_pmf(k, lambda_=3.0))

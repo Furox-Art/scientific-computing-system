@@ -29,8 +29,8 @@ autocorrelation; an alternating series shows strong negative autocorrelation.
 ```python
 # A linear ramp: each point is close to its predecessor -> r_1 near 1.
 trend = [float(i) for i in range(20)]
-print(f"r_1 = {autocorrelation(trend, lag=1):.3f}")    # ~0.95
-print(f"r_5 = {autocorrelation(trend, lag=5):.3f}")    # still high
+print(f"r_1 = {autocorrelation(trend, lag=1):.3f}")  # ~0.95
+print(f"r_5 = {autocorrelation(trend, lag=5):.3f}")  # still high
 
 # Full ACF for lags 0..4 (r_0 is always 1.0).
 acf = autocorrelation_function(trend, max_lag=4)
@@ -64,10 +64,10 @@ observations more heavily via `alpha ∈ (0, 1]`.
 ```python
 noisy = [10.0, 0.0, 10.0, 0.0, 10.0, 0.0, 10.0, 0.0]
 
-ma = moving_average(noisy, window=2)        # centered SMA
+ma = moving_average(noisy, window=2)  # centered SMA
 ses = exponential_smoothing(noisy, alpha=0.3)  # weight recent points
-print(f"SMA variance  = {sum((x-5)**2 for x in ma)/len(ma):.2f}")
-print(f"SES variance  = {sum((x-5)**2 for x in ses)/len(ses):.2f}")
+print(f"SMA variance  = {sum((x - 5) ** 2 for x in ma) / len(ma):.2f}")
+print(f"SES variance  = {sum((x - 5) ** 2 for x in ses) / len(ses):.2f}")
 ```
 
 ## 4. Differencing
@@ -77,11 +77,11 @@ preprocessing step before fitting ARIMA models. `order=k` applies the
 difference repeatedly.
 
 ```python
-ramp = [1.0, 3.0, 5.0, 7.0, 9.0]       # y = 2t + 1
+ramp = [1.0, 3.0, 5.0, 7.0, 9.0]  # y = 2t + 1
 print(difference(ramp, lag=1, order=1))  # [2.0, 2.0, 2.0, 2.0]  (constant)
 
-quad = [float(i*i) for i in range(6)]   # 0,1,4,9,16,25
-print(difference(quad, lag=1, order=2)) # [2.0, 2.0, 2.0, 2.0]  (2nd diff constant)
+quad = [float(i * i) for i in range(6)]  # 0,1,4,9,16,25
+print(difference(quad, lag=1, order=2))  # [2.0, 2.0, 2.0, 2.0]  (2nd diff constant)
 
 seasonal = [1.0, 2.0, 3.0, 1.0, 2.0, 3.0]  # period 3
 print(difference(seasonal, lag=3, order=1))  # [0.0, 0.0, 0.0]
@@ -116,8 +116,8 @@ residual**. Pass the seasonal `period` (e.g. 12 for monthly data with annual
 cycle). The seasonal component is normalized to sum to zero over one period.
 
 ```python
-base = [10.0, 20.0, 30.0, 40.0]   # one seasonal period
-data = base * 5                     # 5 full periods
+base = [10.0, 20.0, 30.0, 40.0]  # one seasonal period
+data = base * 5  # 5 full periods
 trend, seasonal, residual = seasonal_decompose(data, period=4)
 
 print(f"seasonal sums to ~0: {sum(seasonal[:4]):.2f}")  # 0.00

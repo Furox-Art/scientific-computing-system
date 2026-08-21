@@ -27,7 +27,7 @@ Because every module exposes simple functions and classes, they compose naturall
 ```python
 from cds.hypothesis import generate_hypotheses
 from cds.stats import one_sample_ttest
-from cds.montecarlo import estimate_pi   # or your own simulation
+from cds.montecarlo import estimate_pi  # or your own simulation
 
 hypos = generate_hypotheses("What causes the observed tension?", domain="cosmology", n=3)
 
@@ -45,10 +45,14 @@ The `HypothesisGenerator` Protocol is the main extension point for the hypothesi
 ```python
 from cds.hypothesis import HypothesisGenerator, Domain, Hypothesis, generate_hypotheses
 
+
 class MyDomainGenerator:
-    def generate(self, research_question: str, domain: Domain = Domain.GENERAL_SCIENCE, n: int = 3, **kwargs) -> list[Hypothesis]:
+    def generate(
+        self, research_question: str, domain: Domain = Domain.GENERAL_SCIENCE, n: int = 3, **kwargs
+    ) -> list[Hypothesis]:
         ...
         return hypos
+
 
 custom_hypos = generate_hypotheses(question, generator=MyDomainGenerator(), n=5)
 ```

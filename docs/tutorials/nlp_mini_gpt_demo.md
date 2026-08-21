@@ -26,8 +26,12 @@ ids = encode(TEXT)
 print(f"corpus: {len(ids)} chars, vocab_size={vocab_size}")
 
 model = MiniGPT(
-    vocab_size=vocab_size, d_model=32, n_heads=2,
-    d_ff=64, max_len=32, seed=42,
+    vocab_size=vocab_size,
+    d_model=32,
+    n_heads=2,
+    d_ff=64,
+    max_len=32,
+    seed=42,
 )
 ```
 
@@ -44,11 +48,12 @@ The loop is explicit so you can see exactly what each step does:
 
 ```python
 T = 24
-params: list[Tensor] = model.parameters()   # type: ignore[assignment]
+params: list[Tensor] = model.parameters()  # type: ignore[assignment]
 optimiser = Adam(params=params, lr=0.005)
 n_steps = 200
 
 import random
+
 losses: list[float] = []
 for step in range(n_steps):
     start = random.randint(0, max(0, len(ids) - T - 1))

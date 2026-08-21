@@ -14,10 +14,12 @@ activations are `relu`, `sigmoid`, and `tanh`. Stack them into an `MLP`.
 from cds.ml import MLP, Layer
 
 # 2 inputs -> 4 hidden (ReLU) -> 1 output (Sigmoid)
-net = MLP([
-    Layer(2, 4, activation="relu"),
-    Layer(4, 1, activation="sigmoid"),
-])
+net = MLP(
+    [
+        Layer(2, 4, activation="relu"),
+        Layer(4, 1, activation="sigmoid"),
+    ]
+)
 ```
 
 ## 2. Predict before training

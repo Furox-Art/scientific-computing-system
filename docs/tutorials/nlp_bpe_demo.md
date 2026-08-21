@@ -20,7 +20,7 @@ corpus = (
     "she sells seashells by the seashore "
 )
 tokenizer = train_bpe(corpus, vocab_size=80, min_frequency=2)
-print(f"vocab size: {tokenizer.vocab_size}")   # 78
+print(f"vocab size: {tokenizer.vocab_size}")  # 78
 print(f"merges learned: {len(tokenizer.merges)}")
 ```
 
@@ -40,10 +40,10 @@ first three merges:
 ```python
 text = "the quick brown fox"
 ids = tokenizer.encode(text)
-print(f"ids:    {ids}")          # [33, 45, 50, 53]
+print(f"ids:    {ids}")  # [33, 45, 50, 53]
 print(f"tokens: {[tokenizer.id_to_token[i] for i in ids]}")
 #   ['the</w>', 'quick</w>', 'brown</w>', 'fox</w>']
-print(f"decoded: {tokenizer.decode(ids)!r}")   # 'the quick brown fox'
+print(f"decoded: {tokenizer.decode(ids)!r}")  # 'the quick brown fox'
 ```
 
 `decode` is a clean round-trip — verify with an assertion in your own code.
@@ -65,9 +65,9 @@ d_model = 16
 table = TokenEmbedding(vocab_size=tokenizer.vocab_size, d_model=d_model)
 pe = PositionalEncoding(max_len=len(ids) + 4, d_model=d_model)
 
-tokens = table.forward(ids)            # (seq_len, d_model)
+tokens = table.forward(ids)  # (seq_len, d_model)
 combined = add_positional(tokens, pe)  # token + position
-print(f"embedding shape: {len(combined)} x {len(combined[0])}")   # 4 x 16
+print(f"embedding shape: {len(combined)} x {len(combined[0])}")  # 4 x 16
 ```
 
 The first position's vector is the literal sum of its token and position rows:

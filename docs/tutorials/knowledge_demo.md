@@ -31,15 +31,15 @@ Relations are **directed** — `"A depends-on B"` is not symmetric — but the t
 print(kg.neighbors("Hubble Constant"))
 # ['Dark Energy', 'Cosmic Microwave Background']  (undirected)
 
-print(kg.neighbors_out("Dark Energy"))   # ['Hubble Constant']   (outgoing only)
+print(kg.neighbors_out("Dark Energy"))  # ['Hubble Constant']   (outgoing only)
 print(kg.neighbors_in("Cosmic Microwave Background"))
 # ['Hubble Constant']  (incoming only)
 
 print(kg.find_path("Dark Energy", "Cosmic Microwave Background"))
 # ['Dark Energy', 'Hubble Constant', 'Cosmic Microwave Background']
 
-print(sorted(kg.reachable("Dark Energy")))   # transitive closure (undirected)
-print(kg.find_cycles())                       # directed cycles, normalized
+print(sorted(kg.reachable("Dark Energy")))  # transitive closure (undirected)
+print(kg.find_cycles())  # directed cycles, normalized
 ```
 
 `find_path` and `reachable` use BFS and traverse edges in either direction, so a path may run against a relation's direction. `find_cycles` works on the *directed* structure and reports each cycle once, normalized to start at its smallest member — deep graphs are safe because it uses an explicit stack rather than recursion.
@@ -69,7 +69,7 @@ nb.add_note(
 )
 
 print([n.id for n in nb.notes_for_concept("Hubble Constant")])  # ['n1']
-print([n.id for n in nb.notes_by_tag("experiment")])            # ['n1']
+print([n.id for n in nb.notes_by_tag("experiment")])  # ['n1']
 ```
 
 ## 4. Ranked Retrieval
@@ -106,8 +106,8 @@ Both `KnowledgeGraph` and `Notebook` validate their input on load and raise `Val
 For quick inspection or for pasting into a report, both collections render to Markdown:
 
 ```python
-print(kg.to_markdown())      # structured list of concepts + relations
-print(nb.to_markdown())      # compact index of notes
+print(kg.to_markdown())  # structured list of concepts + relations
+print(nb.to_markdown())  # compact index of notes
 print(nb.get_note("n1").to_markdown())  # a single self-contained note
 ```
 

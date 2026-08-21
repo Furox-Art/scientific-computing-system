@@ -48,11 +48,7 @@ image is machine-precision:
 from cds.signals import ifft2
 
 recovered = ifft2(spectrum)
-max_err = max(
-    abs(recovered[i][j].real - image[i][j])
-    for i in range(4)
-    for j in range(4)
-)
+max_err = max(abs(recovered[i][j].real - image[i][j]) for i in range(4) for j in range(4))
 print(f"Max reconstruction error: {max_err:.2e}")
 #   Max reconstruction error: 0.00e+00
 ```

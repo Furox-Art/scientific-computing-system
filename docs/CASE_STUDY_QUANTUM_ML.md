@@ -10,12 +10,14 @@ The first step involves creating a quantum circuit that prepares a state based o
 ```python
 from cds.quantum import QuantumCircuit, phase_gate, hadamard
 
+
 def create_quantum_feature_circuit(theta: float):
     """Creates a quantum circuit with a phase rotation."""
     circuit = QuantumCircuit()
-    circuit.add(hadamard())         # Put qubit in superposition
+    circuit.add(hadamard())  # Put qubit in superposition
     circuit.add(phase_gate(theta))  # Apply parameter-dependent rotation
     return circuit
+
 
 # Example: Encode an angle of 0.75 radians
 circuit = create_quantum_feature_circuit(0.75)
@@ -28,6 +30,7 @@ Quantum states are probabilistic. To use them in classical ML, we must "measure"
 ```python
 from cds.quantum import simulate
 
+
 def get_quantum_features(theta: float, shots: int = 1000):
     """Generates features from quantum simulation."""
     circuit = create_quantum_feature_circuit(theta)
@@ -37,9 +40,10 @@ def get_quantum_features(theta: float, shots: int = 1000):
     prob_1 = counts.get(1, 0) / shots
     return [prob_1]
 
+
 # Collect features for a range of angles
-X = [get_quantum_features(a/10.0) for a in range(10)]
-y = [[(a/10.0)**2] for a in range(10)] # Target: predict theta^2
+X = [get_quantum_features(a / 10.0) for a in range(10)]
+y = [[(a / 10.0) ** 2] for a in range(10)]  # Target: predict theta^2
 ```
 
 ## 3. Training a `cds.ml` Neural Network
@@ -50,10 +54,7 @@ With our quantum-derived features, we can now train a classical neural network t
 from cds.ml import MLP, Layer
 
 # Define a simple MLP: 1 Input (Quantum Feature) -> 5 Hidden -> 1 Output
-mlp = MLP([
-    Layer(1, 5, activation="relu"),
-    Layer(5, 1, activation="identity")
-])
+mlp = MLP([Layer(1, 5, activation="relu"), Layer(5, 1, activation="identity")])
 
 # Train the network
 history = mlp.train(X, y, epochs=200, lr=0.05)

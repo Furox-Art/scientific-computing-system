@@ -16,10 +16,12 @@ from cds.ml import MLP, Layer
 X = [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]]
 y = [[0.0], [1.0], [1.0], [1.0]]
 
-net = MLP([
-    Layer(2, 4, activation="relu"),
-    Layer(4, 1, activation="sigmoid"),
-])
+net = MLP(
+    [
+        Layer(2, 4, activation="relu"),
+        Layer(4, 1, activation="sigmoid"),
+    ]
+)
 ```
 
 Before training the outputs sit near 0.5 (random init):

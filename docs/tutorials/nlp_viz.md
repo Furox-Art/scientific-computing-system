@@ -25,9 +25,7 @@ than raising a format error.
 ```python
 from cds.nlp import render_attention_heatmap
 
-attn = [[0.7, 0.2, 0.1],
-        [0.1, 0.8, 0.1],
-        [0.05, 0.15, 0.8]]
+attn = [[0.7, 0.2, 0.1], [0.1, 0.8, 0.1], [0.05, 0.15, 0.8]]
 tokens = ["the", "cat", "sat"]
 print(render_attention_heatmap(attn, tokens, tokens))
 ```
@@ -44,8 +42,7 @@ raise a labelled `ValueError` so a wrong call is easy to spot.
 from cds.nlp import render_embedding_projection
 
 # Six 3-D embedding vectors; imagine six vocabulary entries.
-emb = [[1, 0, 0], [0, 1, 0], [0, 0, 1],
-       [1, 1, 0], [0, 1, 1], [1, 0, 1]]
+emb = [[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [0, 1, 1], [1, 0, 1]]
 labels = ["a", "b", "c", "ab", "bc", "ac"]
 print(render_embedding_projection(emb, labels=labels, top_n=6))
 ```

@@ -8,6 +8,7 @@ First, let's make sure the platform is installed and check the version:
 
 ```python
 import cds
+
 print(f"CDS Version: {cds.__version__}")
 ```
 
@@ -18,7 +19,7 @@ CDS provides high-precision physical constants and standard formulas:
 ```python
 from cds.scientific import get_constant, kinetic_energy
 
-c = get_constant('c')
+c = get_constant("c")
 print(f"Speed of light: {c} m/s")
 
 ke = kinetic_energy(mass=10, velocity=5)

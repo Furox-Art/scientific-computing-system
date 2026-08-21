@@ -85,9 +85,9 @@ And because every domain lives under one namespace, crossing them costs you
 nothing:
 
 ```python
-from cds.quantum import bell_state         # quantum simulation
-from cds.signals import fft_radix2         # signal processing
-from cds.stats import linear_regression    # statistics
+from cds.quantum import bell_state  # quantum simulation
+from cds.signals import fft_radix2  # signal processing
+from cds.stats import linear_regression  # statistics
 
 reg = bell_state(0)
 spec = fft_radix2([complex(i) for i in range(8)])
@@ -314,8 +314,12 @@ print(counts)  # {0: ~500, 1: ~500}
 ### Multi-Qubit & Entanglement
 ```python
 from cds.quantum import (
-    QuantumRegister, h_gate, cnot, bell_state,
-    ghz_state, is_entangled,
+    QuantumRegister,
+    h_gate,
+    cnot,
+    bell_state,
+    ghz_state,
+    is_entangled,
 )
 
 # Bell state (|00⟩ + |11⟩) / √2
@@ -338,7 +342,7 @@ result = gradient_descent(lambda x: (x - 3) ** 2, x0=10.0, lr=0.1)
 print(f"x = {result.x:.6f}")  # ~3.0
 
 # Find √2 using Newton's method
-result = newton_method(lambda x: x ** 2 - 2, x0=1.5)
+result = newton_method(lambda x: x**2 - 2, x0=1.5)
 print(f"√2 = {result.x:.10f}")  # 1.4142135624
 ```
 
@@ -387,10 +391,7 @@ print(f"y = {reg.slope:.2f}x + {reg.intercept:.2f}, R²={reg.r_squared:.3f}")
 from cds.ml import Layer, MLP
 
 # Simple XOR-like Neural Network
-net = MLP([
-    Layer(2, 4, activation="relu"),
-    Layer(4, 1, activation="sigmoid")
-])
+net = MLP([Layer(2, 4, activation="relu"), Layer(4, 1, activation="sigmoid")])
 X, y = [[0, 0], [0, 1], [1, 0], [1, 1]], [[0], [1], [1], [0]]
 
 # Train with built-in Adam optimizer
@@ -417,8 +418,8 @@ print(plot_bar(scores, title="Scores"))
 ```python
 from cds.scientific import kinetic_energy, escape_velocity, get_constant
 
-print(get_constant("c"))          # speed of light
-print(kinetic_energy(10, 5))      # 125.0 J
+print(get_constant("c"))  # speed of light
+print(kinetic_energy(10, 5))  # 125.0 J
 print(escape_velocity(5.972e24, 6.371e6))  # ~11186 m/s
 ```
 
@@ -444,15 +445,15 @@ print(f"MST weight: {total}")  # 6.0
 from cds.modeling import Variable, Sin, Exp, solve_equation
 
 x = Variable("x")
-expr = Sin(x) * Exp(x)        # sin(x) * e^x
+expr = Sin(x) * Exp(x)  # sin(x) * e^x
 
 # Symbolic derivative (chain + product rules)
 print(expr.diff("x").to_str())
 
 # Solve x^2 - 2 = 0  =>  x = sqrt(2)
 root = solve_equation(Variable("x") ** 2 - 2, variable="x", x0=1.0)
-print(root.x)                 # ~1.4142
-print(root.converged)         # True
+print(root.x)  # ~1.4142
+print(root.converged)  # True
 ```
 
 ### Knowledge Organization
@@ -468,8 +469,13 @@ print(kg.find_path("Dark Energy", "CMB"))
 # ['Dark Energy', 'Hubble Constant', 'CMB']
 
 nb = Notebook(name="Lab Book")
-nb.add_note("n1", "Hubble Tension", "Local vs CMB H0 disagree.",
-            tags=["experiment"], linked_concepts=["Hubble Constant"])
+nb.add_note(
+    "n1",
+    "Hubble Tension",
+    "Local vs CMB H0 disagree.",
+    tags=["experiment"],
+    linked_concepts=["Hubble Constant"],
+)
 
 # Ranked retrieval across both concepts and notes
 for hit in search(kg, nb, query="hubble"):
@@ -500,9 +506,12 @@ import math
 sol = rk4(lambda t, y: -y, t0=0, y0=1.0, t_end=2.0)
 print(f"y(2) = {sol.y[-1]:.6f}")  # ~0.135335 (e^-2)
 
+
 # Harmonic oscillator: x'' = -x
 def harmonic(t, y):
     return [y[1], -y[0]]
+
+
 t_vals, y_vals = solve_system(harmonic, 0, [1.0, 0.0], math.pi)
 print(f"x(π) = {y_vals[-1][0]:.4f}")  # ~-1.0
 ```

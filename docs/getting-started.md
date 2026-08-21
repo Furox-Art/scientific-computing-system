@@ -36,39 +36,47 @@ cds hypothesize "what causes the Hubble tension?" --domain cosmology
 ```python
 # Quantum simulation
 from cds.quantum import bell_state, is_entangled, ghz_state
+
 reg = bell_state(0)
 print(is_entangled(reg))  # True
 
 # Optimization
 from cds.optimization import gradient_descent
+
 result = gradient_descent(lambda x: (x - 3) ** 2, x0=10.0, lr=0.1)
 print(result.x)  # ~3.0
 
 # Signal processing
 from cds.signals import fft_radix2
+
 spectrum = fft_radix2([complex(i) for i in range(8)])
 
 # Probability
 from cds.probability import gaussian_pdf, binomial_pmf
+
 print(gaussian_pdf(0.0))  # 0.3989...
 print(binomial_pmf(3, 5, 0.5))  # 0.3125
 
 # Statistics
 from cds.stats import mean, linear_regression
+
 print(mean([1, 2, 3, 4, 5]))  # 3.0
 
 # Effect-size measures (companion to the significance tests above)
 from cds.stats import cohens_d, cramers_v
+
 print(cohens_d([20.0, 22.0, 19.0], [28.0, 31.0, 26.0]))  # standardized mean difference
 print(cramers_v([[10.0, 20.0], [30.0, 40.0]]))  # association strength for a contingency table
 
 # Scientific computing
 from cds.scientific import kinetic_energy, get_constant
+
 print(get_constant("c"))  # 299792458.0
 print(kinetic_energy(10, 5))  # 125.0
 
 # Graph theory
 from cds.graph import Graph, dijkstra
+
 g = Graph(n_vertices=3, directed=False)
 g.add_edge(0, 1, 1.0)
 g.add_edge(1, 2, 2.0)
@@ -77,17 +85,20 @@ print(dist)  # {0: 0.0, 1: 1.0, 2: 3.0}
 
 # Monte Carlo
 from cds.montecarlo import estimate_pi
+
 result = estimate_pi(n_samples=50_000, seed=42)
 print(f"π ≈ {result.estimate:.4f}")
 
 # Differential equations
 from cds.diffeq import rk4
 import math
+
 sol = rk4(lambda t, y: -y, 0, 1.0, 1.0)
 print(f"e^-1 ≈ {sol.y[-1]:.6f}")  # 0.367879
 
 # Linear algebra
 from cds.math_utils import solve_linear, power_iteration
+
 x = solve_linear([[2, 1], [4, 3]], [5, 11])
 print(x)  # [2.0, 1.0]
 ```

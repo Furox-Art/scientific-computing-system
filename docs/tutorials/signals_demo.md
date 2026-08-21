@@ -132,7 +132,7 @@ bp = butter_bandpass(order=4, low=0.2, high=0.5)
 bs = butter_bandstop(order=4, low=0.2, high=0.5)
 
 band_only = apply_filter(mixed_signal, bp)
-notched   = apply_filter(mixed_signal, bs)
+notched = apply_filter(mixed_signal, bs)
 ```
 
 Each band filter has an overall order of `2 * order` (one `order`-section for

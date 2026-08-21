@@ -13,14 +13,12 @@ We use the `cds.hypothesis` module to explore theoretical extensions that could 
 from cds.hypothesis import generate_hypotheses, Domain
 
 # Formulate the research inquiry
-inquiry = "What physical mechanisms could resolve the Hubble tension between CMB and SN Ia measurements?"
+inquiry = (
+    "What physical mechanisms could resolve the Hubble tension between CMB and SN Ia measurements?"
+)
 
 # Generate falsifiable hypotheses
-hypotheses = generate_hypotheses(
-    research_question=inquiry,
-    domain=Domain.COSMOLOGY,
-    n=3
-)
+hypotheses = generate_hypotheses(research_question=inquiry, domain=Domain.COSMOLOGY, n=3)
 
 for h in hypotheses:
     print(f"Hypothesis: {h.statement}")

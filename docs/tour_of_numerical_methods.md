@@ -26,8 +26,8 @@ f, a, b = math.exp, 0.0, 1.0
 true_value = math.e - 1
 
 rules = {
-    "Trapezoid (n=100)":    trapezoid(f, a, b, n=100),
-    "Simpson 1/3 (n=100)":  simpson(f, a, b, n=100),
+    "Trapezoid (n=100)": trapezoid(f, a, b, n=100),
+    "Simpson 1/3 (n=100)": simpson(f, a, b, n=100),
     "Romberg (max_iter=64)": romberg(f, a, b, max_iter=64).value,
     "Gauss-Legendre (n=5)": gaussian_quadrature(f, a, b, n=5),
 }
@@ -76,17 +76,23 @@ The determinant via PLU decomposition factorizes a matrix into a permutation, lo
 import time
 from cds.math_utils import determinant
 
+
 def make_matrix(n):
     # diagonally dominant so it stays well-conditioned at any n
-    return [[1.0/(i+j+1) if i != j else float(n) for j in range(n)] for i in range(n)]
+    return [[1.0 / (i + j + 1) if i != j else float(n) for j in range(n)] for i in range(n)]
 
-t50  = sum(determinant(make_matrix(50))  or 0 for _ in range(1))  # warm-up shape
+
+t50 = sum(determinant(make_matrix(50)) or 0 for _ in range(1))  # warm-up shape
 ```
 
 ```python
-t0 = time.perf_counter(); determinant(make_matrix(50));  t50  = time.perf_counter() - t0
-t0 = time.perf_counter(); determinant(make_matrix(100)); t100 = time.perf_counter() - t0
-print(f"ratio (doubling N): {t100/t50:.1f}x   expected ≈ 8x for O(N³)")
+t0 = time.perf_counter()
+determinant(make_matrix(50))
+t50 = time.perf_counter() - t0
+t0 = time.perf_counter()
+determinant(make_matrix(100))
+t100 = time.perf_counter() - t0
+print(f"ratio (doubling N): {t100 / t50:.1f}x   expected ≈ 8x for O(N³)")
 ```
 
 ```
@@ -106,11 +112,17 @@ import time, math
 from cds.signals import dft, fft_radix2, power_spectrum
 
 N = 1024
-signal = [math.sin(2*math.pi*5*k/N) + 0.5*math.sin(2*math.pi*13*k/N) for k in range(N)]
+signal = [
+    math.sin(2 * math.pi * 5 * k / N) + 0.5 * math.sin(2 * math.pi * 13 * k / N) for k in range(N)
+]
 
-t0 = time.perf_counter(); dft(signal);          t_dft  = time.perf_counter() - t0
-t0 = time.perf_counter(); fft_radix2(signal);   t_fft  = time.perf_counter() - t0
-print(f"DFT {t_dft*1000:.1f}ms  vs  FFT {t_fft*1000:.1f}ms  →  {t_dft/t_fft:.0f}x faster")
+t0 = time.perf_counter()
+dft(signal)
+t_dft = time.perf_counter() - t0
+t0 = time.perf_counter()
+fft_radix2(signal)
+t_fft = time.perf_counter() - t0
+print(f"DFT {t_dft * 1000:.1f}ms  vs  FFT {t_fft * 1000:.1f}ms  →  {t_dft / t_fft:.0f}x faster")
 ```
 
 ```
@@ -128,8 +140,10 @@ Solve the harmonic oscillator $y'' + y = 0$ (true solution $\cos t$) as a first-
 ```python
 from cds.diffeq import solve_system
 
-def harmonic(t, y):          # state [position, velocity], derivative [vel, -pos]
+
+def harmonic(t, y):  # state [position, velocity], derivative [vel, -pos]
     return [y[1], -y[0]]
+
 
 ts, ys = solve_system(harmonic, t0=0.0, y0=[1.0, 0.0], t_end=6.283, dt=0.1)  # RK4, one period
 true_final = math.cos(6.283)
@@ -138,9 +152,9 @@ true_final = math.cos(6.283)
 y = [1.0, 0.0]
 for _ in range(63):
     d = harmonic(0.0, y)
-    y = [yj + dj*0.1 for yj, dj in zip(y, d)]
+    y = [yj + dj * 0.1 for yj, dj in zip(y, d)]
 print(f"RK4 error:   {ys[-1][0] - true_final:+.2e}")
-print(f"Euler error: {y[0]      - true_final:+.2e}")
+print(f"Euler error: {y[0] - true_final:+.2e}")
 ```
 
 ```
@@ -159,8 +173,8 @@ Minimize the bowl $f(x,y) = (x-3)^2 + (y+1)^2$, whose minimum sits at $(3, -1)$.
 ```python
 from cds.optimization import gradient_descent
 
-result = gradient_descent(lambda c: (c[0]-3)**2 + (c[1]+1)**2, [0.0, 0.0])
-print(result.x, result.value, result.converged)   # → [3.0, -1.0]  ~0.0  True
+result = gradient_descent(lambda c: (c[0] - 3) ** 2 + (c[1] + 1) ** 2, [0.0, 0.0])
+print(result.x, result.value, result.converged)  # → [3.0, -1.0]  ~0.0  True
 ```
 
 ```
@@ -179,8 +193,8 @@ A Hadamard gate turns the basis state $|0\rangle$ into the equal superposition $
 from cds.quantum import QuantumCircuit, hadamard, simulate
 
 circuit = QuantumCircuit().add(hadamard())
-print(circuit.run().probabilities())           # → (0.5, 0.5)
-print(simulate(circuit, shots=10000))          # → {0: 5060, 1: 4940}
+print(circuit.run().probabilities())  # → (0.5, 0.5)
+print(simulate(circuit, shots=10000))  # → {0: 5060, 1: 4940}
 ```
 
 ```
@@ -200,18 +214,23 @@ A 1-D rule extends to a rectangle by the *tensor product*: integrate in $x$ with
 import math
 from cds.numerical_integration import simpson_2d, gaussian_quadrature_2d
 
+
 # ∬_{[0,1]²} x² y² dx dy = (1/3)·(1/3) = 1/9 ≈ 0.111111 — exact for both rules.
 def poly(x, y):
     return x * x * y * y
+
+
 true_poly = 1.0 / 9.0
+
 
 # Area of the unit disk ∬_{[-1,1]²} 1_{x²+y²≤1} dx dy should be π ≈ 3.14159.
 def disk(x, y):
     return 1.0 if x * x + y * y <= 1.0 else 0.0
 
-print(f"Simpson 2-D  poly err = {simpson_2d(poly, 0,1, 0,1, 2,2)            - true_poly:+.2e}")
-print(f"Gauss-3 2-D poly err = {gaussian_quadrature_2d(poly, 0,1, 0,1, n=3) - true_poly:+.2e}")
-print(f"Simpson 2-D  disk    = {simpson_2d(disk, -1,1, -1,1, 100,100):.5f}  (π = 3.14159)")
+
+print(f"Simpson 2-D  poly err = {simpson_2d(poly, 0, 1, 0, 1, 2, 2) - true_poly:+.2e}")
+print(f"Gauss-3 2-D poly err = {gaussian_quadrature_2d(poly, 0, 1, 0, 1, n=3) - true_poly:+.2e}")
+print(f"Simpson 2-D  disk    = {simpson_2d(disk, -1, 1, -1, 1, 100, 100):.5f}  (π = 3.14159)")
 ```
 
 ```
@@ -234,9 +253,9 @@ from cds.stats import autocorrelation_function, ljung_box
 
 random.seed(0)
 N = 240
-signal = [random.gauss(0.0, 1.0) for _ in range(N)]        # white-noise base...
-for k in range(4, N):                                       # ...plus a lag-4 echo:
-    signal[k] += 0.6 * signal[k - 4]                        # each value repeats 4 steps back
+signal = [random.gauss(0.0, 1.0) for _ in range(N)]  # white-noise base...
+for k in range(4, N):  # ...plus a lag-4 echo:
+    signal[k] += 0.6 * signal[k - 4]  # each value repeats 4 steps back
 
 acf = autocorrelation_function(signal, max_lag=16)
 print(f"r[1]  = {acf[1]:+.3f}   (no lag-1 structure)")
@@ -268,23 +287,28 @@ from cds.signals import butter_lowpass, apply_filter
 # A slow 5-cycle sine plus faster 200-cycle interference, sampled at N points.
 # Normalised freq = (cycles) / (N/2): k=5 -> 0.010, k=200 -> 0.391.
 N = 1024
-clean = [math.sin(2*math.pi*5*k/N)   for k in range(N)]
-high  = [0.6*math.sin(2*math.pi*200*k/N) for k in range(N)]
+clean = [math.sin(2 * math.pi * 5 * k / N) for k in range(N)]
+high = [0.6 * math.sin(2 * math.pi * 200 * k / N) for k in range(N)]
 noisy = [a + b for a, b in zip(clean, high)]
 
-coef = butter_lowpass(order=4, cutoff=0.15)     # keep freqs below 15% of Nyquist
+coef = butter_lowpass(order=4, cutoff=0.15)  # keep freqs below 15% of Nyquist
 filtered = apply_filter(noisy, coef)
 
 # Cosine similarity in the steady-state half (phase-robust): 1.0 = perfect recovery.
 half = N // 2
-dot  = sum(clean[i]*filtered[i] for i in range(half, N))
-norm = math.sqrt(sum(c*c for c in clean[half:]) * sum(f*f for f in filtered[half:]))
-print(f"recovery (cos sim vs clean) = {dot/norm:.3f}   (1.000 = perfect)")
+dot = sum(clean[i] * filtered[i] for i in range(half, N))
+norm = math.sqrt(sum(c * c for c in clean[half:]) * sum(f * f for f in filtered[half:]))
+print(f"recovery (cos sim vs clean) = {dot / norm:.3f}   (1.000 = perfect)")
 # Attenuation of the interference alone: pass it through and compare amplitudes.
-attenuated = apply_filter([math.sin(2*math.pi*200*k/N) for k in range(N)], coef)
-a_in  = max(abs(x) for x in attenuated[:1] and [math.sin(2*math.pi*200*k/N) for k in range(N)][half:])
+attenuated = apply_filter([math.sin(2 * math.pi * 200 * k / N) for k in range(N)], coef)
+a_in = max(
+    abs(x)
+    for x in attenuated[:1] and [math.sin(2 * math.pi * 200 * k / N) for k in range(N)][half:]
+)
 a_out = max(abs(x) for x in attenuated[half:])
-print(f"interference amplitude: {a_in:.3f} -> {a_out:.4f}  ({a_in/max(a_out,1e-12):.0f}x smaller)")
+print(
+    f"interference amplitude: {a_in:.3f} -> {a_out:.4f}  ({a_in / max(a_out, 1e-12):.0f}x smaller)"
+)
 ```
 
 ```

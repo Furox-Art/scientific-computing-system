@@ -27,7 +27,7 @@ corpus = (
 tokenizer = train_bpe(corpus, vocab_size=80, min_frequency=2)
 
 text = "the quick brown fox"
-ids = tokenizer.encode(text)            # [33, 45, 50, 53]
+ids = tokenizer.encode(text)  # [33, 45, 50, 53]
 
 d_model = 16
 table = TokenEmbedding(vocab_size=tokenizer.vocab_size, d_model=d_model)

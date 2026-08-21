@@ -33,8 +33,8 @@ evaluator = HypothesisEvaluator(alpha=0.05)
 # Mock data comparison (Late Universe vs Early Universe H0)
 data = {
     "groups": [
-        [70.1, 71.2, 69.5, 70.8], # Group A
-        [67.4, 68.2, 67.8, 67.1]  # Group B
+        [70.1, 71.2, 69.5, 70.8],  # Group A
+        [67.4, 68.2, 67.8, 67.1],  # Group B
     ]
 }
 

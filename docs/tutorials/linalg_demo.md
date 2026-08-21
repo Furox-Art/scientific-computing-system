@@ -57,7 +57,7 @@ from cds.math_utils import power_iteration
 
 S = [[2.0, 1.0], [1.0, 3.0]]
 eigval, eigvec = power_iteration(S)
-print(f"Dominant eigenvalue: {eigval:.6f}")   # 3.618034 (the golden ratio + 1)
+print(f"Dominant eigenvalue: {eigval:.6f}")  # 3.618034 (the golden ratio + 1)
 print(f"Eigenvector:         [{eigvec[0]:.4f}, {eigvec[1]:.4f}]")
 ```
 
@@ -72,7 +72,7 @@ from cds.math_utils import solve_linear
 A2 = [[3.0, 2.0], [1.0, 2.0]]
 b = [12.0, 8.0]
 x = solve_linear(A2, b)
-print(f"Solution x = [{x[0]:.4f}, {x[1]:.4f}]")   # [2.0000, 3.0000]
+print(f"Solution x = [{x[0]:.4f}, {x[1]:.4f}]")  # [2.0000, 3.0000]
 ```
 
 ## 5. Matrix inverse

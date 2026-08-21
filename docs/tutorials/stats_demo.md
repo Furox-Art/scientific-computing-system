@@ -11,8 +11,8 @@ freedom.
 from cds.stats import mean, median, variance, stdev
 
 data = [23.1, 27.5, 19.8, 31.2, 25.6, 28.3, 22.0, 30.1]
-print(f"Mean={mean(data):.2f}  Median={median(data):.2f}")     # 25.95  26.55
-print(f"Var={variance(data):.2f}  StdDev={stdev(data):.2f}")   # 16.34  4.04
+print(f"Mean={mean(data):.2f}  Median={median(data):.2f}")  # 25.95  26.55
+print(f"Var={variance(data):.2f}  StdDev={stdev(data):.2f}")  # 16.34  4.04
 ```
 
 ## 2. Correlation and linear regression
@@ -31,8 +31,8 @@ print(f"r = {correlation(x, y):.4f}")  # r = 0.9991
 
 reg = linear_regression(x, y)
 print(f"y = {reg.slope:.2f}x + {reg.intercept:.2f}")  # y = 1.98x + 0.10
-print(f"R² = {reg.r_squared:.4f}")                    # R² = 0.9981
-print(f"predict(10) = {reg.predict(10):.2f}")         # 19.90
+print(f"R² = {reg.r_squared:.4f}")  # R² = 0.9981
+print(f"predict(10) = {reg.predict(10):.2f}")  # 19.90
 ```
 
 ## 3. Hypothesis tests

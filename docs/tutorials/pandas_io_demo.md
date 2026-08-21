@@ -38,11 +38,13 @@ Each row dict becomes a DataFrame row; column order follows
 `ds.columns`.
 
 ```python
-ds = DataSet([
-    {"product": "widget", "price": 9.99,  "units": 100},
-    {"product": "gadget", "price": 14.50, "units": 50},
-    {"product": "gizmo",  "price": 3.25,  "units": 200},
-])
+ds = DataSet(
+    [
+        {"product": "widget", "price": 9.99, "units": 100},
+        {"product": "gadget", "price": 14.50, "units": 50},
+        {"product": "gizmo", "price": 3.25, "units": 200},
+    ]
+)
 
 df = to_dataframe(ds)
 print(df)
@@ -66,15 +68,17 @@ name. pandas `NaN` is normalised to `None` so the result honours the
 ```python
 import pandas as pd
 
-df = pd.DataFrame({
-    "city": ["Istanbul", "Ankara", "Izmir"],
-    "temp": [28.5, 27.0, float("nan")],
-})
+df = pd.DataFrame(
+    {
+        "city": ["Istanbul", "Ankara", "Izmir"],
+        "temp": [28.5, 27.0, float("nan")],
+    }
+)
 
 ds = from_dataframe(df)
-print(ds.columns)              # ['city', 'temp']
-print(ds.column("city"))       # ['Istanbul', 'Ankara', 'Izmir']
-print(ds.column("temp"))       # [28.5, 27.0, None]  (NaN -> None)
+print(ds.columns)  # ['city', 'temp']
+print(ds.column("city"))  # ['Istanbul', 'Ankara', 'Izmir']
+print(ds.column("temp"))  # [28.5, 27.0, None]  (NaN -> None)
 ```
 
 ## 4. Round-trip fidelity
@@ -83,10 +87,12 @@ print(ds.column("temp"))       # [28.5, 27.0, None]  (NaN -> None)
 scalar types, so you can cross the boundary freely:
 
 ```python
-original = DataSet([
-    {"id": 1, "temp": 36.5, "flag": True},
-    {"id": 2, "temp": None, "flag": False},
-])
+original = DataSet(
+    [
+        {"id": 1, "temp": 36.5, "flag": True},
+        {"id": 2, "temp": None, "flag": False},
+    ]
+)
 
 restored = from_dataframe(to_dataframe(original))
 assert restored.columns == original.columns
@@ -110,12 +116,10 @@ raw = pd.read_csv("sales.csv")
 # Move into CDS for declarative grouping + aggregation.
 ds = from_dataframe(raw)
 means = ds.group_by("region").mean("revenue")
-print(means)                       # {'EMEA': 1234.5, 'APAC': 980.0, ...}
+print(means)  # {'EMEA': 1234.5, 'APAC': 980.0, ...}
 
 # Hand aggregated results back to pandas for a chart.
-summary = pd.DataFrame(
-    {"region": list(means), "avg_revenue": list(means.values())}
-)
+summary = pd.DataFrame({"region": list(means), "avg_revenue": list(means.values())})
 summary.plot.bar(x="region", y="avg_revenue")
 ```
 
@@ -126,10 +130,10 @@ Both directions handle the empty case gracefully:
 ```python
 empty = DataSet([])
 df = to_dataframe(empty)
-print(len(df))   # 0
+print(len(df))  # 0
 
 back = from_dataframe(pd.DataFrame())
-print(len(back)) # 0
+print(len(back))  # 0
 ```
 
 ## 7. When pandas is missing
@@ -140,6 +144,7 @@ trace:
 
 ```python
 from cds.data_analysis import to_dataframe
+
 to_dataframe(ds)
 # ImportError: pandas is an optional dependency. Install it with
 # `pip install cognitive-discovery-system[pandas]` ...
