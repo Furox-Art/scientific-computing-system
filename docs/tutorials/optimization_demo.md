@@ -62,6 +62,40 @@ res = line_search(lambda x: (x - 2.5) ** 4, a=0, b=5)
 print(f"min at x={res.x:.8f}")  # min at x=2.50000000
 ```
 
+## 5. Nelder–Mead Simplex (derivative-free)
+
+Derivative-free minimization for smooth or noisy vector objectives where you
+cannot supply gradients. Convergence requires both the objective spread and
+the simplex diameter to fall below tolerance.
+
+```python
+from cds.optimization import nelder_mead
+
+def rosenbrock(v):
+    x, y = v
+    return (1.0 - x) ** 2 + 100.0 * (y - x * x) ** 2
+
+res = nelder_mead(rosenbrock, [-1.2, 1.0], step=0.5)
+print(res.x)  # ≈ [1.0, 1.0], converged=True
+```
+
+## 6. Simulated Annealing (global search, seeded)
+
+Escapes local minima via Metropolis acceptance with an exponentially cooling
+temperature schedule. Deterministic given `seed`; optional per-axis box bounds.
+
+```python
+import math
+from cds.optimization import simulated_annealing
+
+def bumpy(v):
+    return math.sin(3.0 * v[0]) + 0.2 * v[0] ** 2   # two basins
+
+res = simulated_annealing(bumpy, [-1.5], t_init=2.0, cooling=0.99,
+                          sigma=0.5, max_iter=20_000, seed=42)
+print(res.value < bumpy([-1.5]) - 0.3)  # True — escaped the local basin
+```
+
 ---
 
 Run the full demo with `python examples/optimization_demo.py`.

@@ -29,7 +29,20 @@ for k in range(6):
 ```python
 from cds.probability import uniform_sample
 
-print(uniform_sample(low=0.0, high=1.0, n=5, seed=42))  # deterministic
+print(uniform_sample(0.0, 1.0, 5, seed=42))  # deterministic
+```
+
+## Advanced distributions (v1.6)
+
+Chi-square and Student-t quantiles, plus seeded gamma/beta samplers:
+
+```python
+from cds.probability import chi2_ppf, sample_beta, sample_gamma, t_cdf
+
+print(chi2_ppf(0.95, 1))            # 3.8415 — the classic χ² critical value
+print(t_cdf(1.8124611228107335, 10))  # ≈ 0.95
+means = sample_gamma(100_000, shape=3.0, scale=2.0, seed=42)
+props = sample_beta(100_000, a=2, b=5, seed=7)
 ```
 
 Run the full demo with `python examples/probability_demo.py`.

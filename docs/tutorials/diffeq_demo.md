@@ -27,9 +27,23 @@ def lotka(t, state):
     return [1.1 * x - 0.4 * x * y, 0.1 * x * y - 0.4 * y]  # Lotka-Volterra
 
 
-sol = solve_system(lotka, t0=0.0, y0=[10.0, 5.0], t_end=15.0, n=300)
-print(sol.value)  # final [prey, predator]
-print(len(sol.ts))  # trajectory points
+ts, ys = solve_system(lotka, t0=0.0, y0=[10.0, 5.0], t_end=15.0, dt=0.05)
+print(ys[-1])       # final [prey, predator]
+print(len(ts))      # trajectory points (301 with this step)
+```
+
+## 3. Stiff problems: implicit solvers
+
+When explicit methods need absurdly small steps, the implicit solvers stay
+stable. See the [Stiff ODE Solvers](stiff_ode_demo.md) tutorial for the full
+walkthrough.
+
+```python
+from cds.diffeq import backward_euler
+
+sol = backward_euler(lambda t, y: -1000.0 * (y - 1.0),
+                     t0=0.0, y0=0.0, t_end=0.05, dt=0.001)
+print(f"{sol.y[-1]:.6f}")   # ≈ 1.000000 — explicit Euler diverges here
 ```
 
 Run the full demo with `python examples/diffeq_demo.py`.

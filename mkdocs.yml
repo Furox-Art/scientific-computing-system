@@ -58,6 +58,7 @@ nav:
       - Linear Algebra: tutorials/linalg_demo.md
       - Numerical Integration: tutorials/numerical_integration_demo.md
       - Differential Equations: tutorials/diffeq_demo.md
+      - Stiff ODE Solvers: tutorials/stiff_ode_demo.md
       - Monte Carlo: tutorials/montecarlo_demo.md
       - Probability: tutorials/probability_demo.md
       - Graph Algorithms: tutorials/graph_demo.md
@@ -72,6 +73,7 @@ nav:
       - 2-D FFT: tutorials/fft2_demo.md
       - Machine Learning + Viz: tutorials/ml_and_viz_demo.md
       - Machine Learning: tutorials/ml_demo.md
+      - Advanced ML — PCA & Classic Models: tutorials/ml_advanced_demo.md
       - Statistics: tutorials/stats_demo.md
       - Time-Series Analysis: tutorials/time_series_demo.md
       - Pandas Interoperability: tutorials/pandas_io_demo.md
