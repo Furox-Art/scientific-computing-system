@@ -25,6 +25,7 @@ Steps to reproduce the behavior:
 ```python
 # Minimal reproducible example
 import cds
+
 ...
 ```
 

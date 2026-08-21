@@ -152,7 +152,7 @@ jupyter-server==2.20.0
     #   notebook-shim
 jupyter-server-terminals==0.5.4
     # via jupyter-server
-jupyterlab==4.5.9
+jupyterlab==4.6.2
     # via notebook
 jupyterlab-pygments==0.3.0
     # via nbconvert
@@ -297,7 +297,7 @@ pygments==2.20.0
     #   mkdocs-material
     #   nbconvert
     #   pytest
-pymdown-extensions==10.21.3
+pymdown-extensions==11.0.1
     # via
     #   mkdocs-material
     #   mkdocstrings
