@@ -1,18 +1,24 @@
 """Architectural layering guard.
 
 Enforces the package dependency directions with a plain AST walk — no extra
-tooling, runs anywhere pytest does. The rules encode the intended layers:
+tooling, runs anywhere pytest does. Every subpackage is constrained to its
+measured import surface; growing one requires a conscious edit here.
 
     core            → (nothing)
     math_utils      → core
     probability     → core, math_utils
-    signals/scientific/graph/quantum/data_analysis/montecarlo/...
-                    → core, math_utils, probability (leaf domains)
-    optimization    → core
+    optimization    → core, math_utils
+    signals         → core, math_utils, probability
     stats           → core, math_utils, probability
     diffeq          → core, math_utils, optimization
     ml              → core, math_utils, optimization, stats, probability
-    nlp/knowledge/modeling/hypothesis/plot/cli  → anything inside cds
+    data_analysis   → core, math_utils, probability, stats
+    hypothesis      → core, stats
+    knowledge       → (nothing)
+    modeling        → core, optimization
+    nlp             → core, math_utils
+    plot            → core, math_utils, signals, stats
+    cli             → today's orchestrator surface (pinned)
 
 The guard fails the suite if a new import ever inverts these directions —
 e.g. ``probability`` reaching back into ``stats`` was exactly the violation
@@ -42,6 +48,26 @@ _ALLOWED: dict[str, set[str]] = {
     "diffeq": {"core", "math_utils", "optimization"},
     "stats": {"core", "math_utils", "probability"},
     "ml": {"core", "math_utils", "optimization", "stats", "probability"},
+    # Orchestrator/domain packages — constrained to their measured imports.
+    "data_analysis": {"core", "math_utils", "probability", "stats"},
+    "hypothesis": {"core", "stats"},
+    "knowledge": set(),
+    "modeling": {"core", "optimization"},
+    "nlp": {"core", "math_utils"},
+    "plot": {"core", "math_utils", "signals", "stats"},
+    # The CLI is the top orchestrator; the entry pins today's surface and
+    # grows only consciously. ``<root>`` allows ``from cds import __version__``.
+    "cli": {
+        "<root>",
+        "core",
+        "data_analysis",
+        "hypothesis",
+        "numerical_integration",
+        "plot",
+        "probability",
+        "scientific",
+        "stats",
+    },
 }
 
 
