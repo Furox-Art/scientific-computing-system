@@ -71,9 +71,11 @@ the simplex diameter to fall below tolerance.
 ```python
 from cds.optimization import nelder_mead
 
+
 def rosenbrock(v):
     x, y = v
     return (1.0 - x) ** 2 + 100.0 * (y - x * x) ** 2
+
 
 res = nelder_mead(rosenbrock, [-1.2, 1.0], step=0.5)
 print(res.x)  # ≈ [1.0, 1.0], converged=True
@@ -88,11 +90,14 @@ temperature schedule. Deterministic given `seed`; optional per-axis box bounds.
 import math
 from cds.optimization import simulated_annealing
 
-def bumpy(v):
-    return math.sin(3.0 * v[0]) + 0.2 * v[0] ** 2   # two basins
 
-res = simulated_annealing(bumpy, [-1.5], t_init=2.0, cooling=0.99,
-                          sigma=0.5, max_iter=20_000, seed=42)
+def bumpy(v):
+    return math.sin(3.0 * v[0]) + 0.2 * v[0] ** 2  # two basins
+
+
+res = simulated_annealing(
+    bumpy, [-1.5], t_init=2.0, cooling=0.99, sigma=0.5, max_iter=20_000, seed=42
+)
 print(res.value < bumpy([-1.5]) - 0.3)  # True — escaped the local basin
 ```
 

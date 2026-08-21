@@ -358,11 +358,23 @@ def _cmd_modules(args: argparse.Namespace) -> int:
         ("cds.quantum", "Single & multi-qubit circuits, Bell/GHZ states, entanglement"),
         ("cds.signals", "DFT, radix-2 FFT, 2D FFT, convolution, filtering"),
         ("cds.math_utils", "LU/QR/Cholesky, power iteration, Gram-Schmidt, calculus"),
-        ("cds.optimization", "Gradient descent, Newton, Adam, golden section, Nelder-Mead, simulated annealing"),
-        ("cds.stats", "Descriptive stats, regression, t-tests, ANOVA, time-series, Mann-Whitney U, Wilcoxon"),
-        ("cds.probability", "Gaussian/binomial/Poisson plus chi-square/t quantiles, gamma/beta samplers"),
+        (
+            "cds.optimization",
+            "Gradient descent, Newton, Adam, golden section, Nelder-Mead, simulated annealing",
+        ),
+        (
+            "cds.stats",
+            "Descriptive stats, regression, t-tests, ANOVA, time-series, Mann-Whitney U, Wilcoxon",
+        ),
+        (
+            "cds.probability",
+            "Gaussian/binomial/Poisson plus chi-square/t quantiles, gamma/beta samplers",
+        ),
         ("cds.montecarlo", "π estimation, integration, random walks"),
-        ("cds.diffeq", "Euler, RK4, RK45 + implicit stiff solvers (backward Euler, Crank-Nicolson)"),
+        (
+            "cds.diffeq",
+            "Euler, RK4, RK45 + implicit stiff solvers (backward Euler, Crank-Nicolson)",
+        ),
         ("cds.graph", "BFS/DFS, Dijkstra, Kruskal MST, topological sort"),
         (
             "cds.modeling",

@@ -28,8 +28,8 @@ def lotka(t, state):
 
 
 ts, ys = solve_system(lotka, t0=0.0, y0=[10.0, 5.0], t_end=15.0, dt=0.05)
-print(ys[-1])       # final [prey, predator]
-print(len(ts))      # trajectory points (301 with this step)
+print(ys[-1])  # final [prey, predator]
+print(len(ts))  # trajectory points (301 with this step)
 ```
 
 ## 3. Stiff problems: implicit solvers
@@ -41,9 +41,8 @@ walkthrough.
 ```python
 from cds.diffeq import backward_euler
 
-sol = backward_euler(lambda t, y: -1000.0 * (y - 1.0),
-                     t0=0.0, y0=0.0, t_end=0.05, dt=0.001)
-print(f"{sol.y[-1]:.6f}")   # ≈ 1.000000 — explicit Euler diverges here
+sol = backward_euler(lambda t, y: -1000.0 * (y - 1.0), t0=0.0, y0=0.0, t_end=0.05, dt=0.001)
+print(f"{sol.y[-1]:.6f}")  # ≈ 1.000000 — explicit Euler diverges here
 ```
 
 Run the full demo with `python examples/diffeq_demo.py`.

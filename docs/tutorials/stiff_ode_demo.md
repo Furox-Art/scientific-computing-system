@@ -15,9 +15,8 @@ For `dy/dt = -1000·(y − 1)` any explicit method diverges unless
 from cds.diffeq import backward_euler
 
 k = 1000.0
-sol = backward_euler(lambda t, y: -k * (y - 1.0), t0=0.0, y0=0.0,
-                     t_end=0.05, dt=0.001)
-print(f"{sol.y[-1]:.6f}")   # ≈ 1.000000 — exact is 1 − e⁻⁵⁰ ≈ 1.0
+sol = backward_euler(lambda t, y: -k * (y - 1.0), t0=0.0, y0=0.0, t_end=0.05, dt=0.001)
+print(f"{sol.y[-1]:.6f}")  # ≈ 1.000000 — exact is 1 − e⁻⁵⁰ ≈ 1.0
 ```
 
 ## 2. Trapezoid (Crank–Nicolson): stable AND second-order
@@ -34,7 +33,7 @@ f = lambda t, y: -y
 be = backward_euler(f, 0.0, 1.0, 2.0, dt=0.05).y[-1]
 cn = trapezoid_method(f, 0.0, 1.0, 2.0, dt=0.05).y[-1]
 exact = math.exp(-2.0)
-print(abs(cn - exact) < abs(be - exact))   # True
+print(abs(cn - exact) < abs(be - exact))  # True
 ```
 
 ## 3. Systems: the harmonic oscillator
@@ -46,13 +45,14 @@ just like :func:`cds.diffeq.solve_system`.
 import math
 from cds.diffeq import trapezoid_method_system
 
-def harmonic(t, y):
-    return [y[1], -y[0]]          # x'' = -x as a system
 
-ts, ys = trapezoid_method_system(harmonic, 0.0, [1.0, 0.0],
-                                 t_end=4 * math.pi, dt=0.01)
+def harmonic(t, y):
+    return [y[1], -y[0]]  # x'' = -x as a system
+
+
+ts, ys = trapezoid_method_system(harmonic, 0.0, [1.0, 0.0], t_end=4 * math.pi, dt=0.01)
 amplitude = math.hypot(ys[-1][0], ys[-1][1])
-print(abs(amplitude - 1.0) < 0.01)   # True — energy nearly conserved
+print(abs(amplitude - 1.0) < 0.01)  # True — energy nearly conserved
 ```
 
 ## 4. Supplying an analytic Jacobian
@@ -63,10 +63,14 @@ removes the finite-difference evaluations:
 ```python
 from cds.diffeq import backward_euler_system
 
-jac = lambda t, y: [[-1000.0]]           # df/dy
+jac = lambda t, y: [[-1000.0]]  # df/dy
 ts, ys = backward_euler_system(
     lambda t, y: [-1000.0 * (y[0] - 1.0)],
-    t0=0.0, y0=[0.0], t_end=0.05, dt=0.001, jac=jac,
+    t0=0.0,
+    y0=[0.0],
+    t_end=0.05,
+    dt=0.001,
+    jac=jac,
 )
 ```
 
