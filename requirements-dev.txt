@@ -23,6 +23,11 @@ build
 ipykernel
 notebook
 
+# Type-check support (also part of the `dev` extra): stubs for the optional
+# pandas bridge, with numpy capped so mypy's py3.10 target can parse them.
+pandas-stubs>=2.0
+numpy>=2.0,<2.5
+
 # Testing (maps to the `test` + `property` extras)
 pytest>=8.0
 pytest-cov

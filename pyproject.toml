@@ -1,7 +1,7 @@
 [project]
 name = "cognitive-discovery-system"
 version = "1.5.0"
-description = "An 18-module pure-Python computational science platform — quantum circuits, ML, NLP, signal processing, optimization, statistics & time-series, probability CDFs/sampling, ODE solvers, Monte Carlo, symbolic math, knowledge graphs, hypothesis generation, plus optional matplotlib plotting (cds[plot]). Zero runtime dependencies."
+description = "A 19-module pure-Python computational science platform — quantum circuits, ML, NLP, signal processing, optimization, statistics & time-series, probability CDFs/sampling, ODE solvers, Monte Carlo, symbolic math, knowledge graphs, hypothesis generation, plus optional matplotlib plotting (cds[plot]). Zero runtime dependencies."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -30,7 +30,6 @@ dependencies = []
 # Use as: `pip install cognitive-discovery-system[all]`
 all = [
     "streamlit>=1.30.0",
-    "pandas",
     "matplotlib>=3.8.0",
     "pytest>=8.0",
     "pytest-cov",

@@ -76,7 +76,7 @@ simulation, statistics, signal processing, optimization, numerical methods,
 symbolic modeling, and structured hypothesis generation, and you can step
 through any of it line by line.
 
-**The pitch in numbers:** 18 modules · **1,500+ tests** on Linux/Windows/macOS
+**The pitch in numbers:** 19 modules · **1,500+ tests** on Linux/Windows/macOS
 (Python 3.10–3.13) · **100% coverage** (statement *and* branch) enforced as a
 CI gate · `mypy --strict` clean across source and tests · **zero runtime
 dependencies**.
@@ -270,13 +270,13 @@ Explore how CDS is used to solve real-world research problems:
 
 ## Examples
 
-CDS ships **25 runnable demo scripts** in [`examples/`](examples/) — one per module.
+CDS ships **27 runnable demo scripts** in [`examples/`](examples/) — one per module.
 Each is a self-contained `.py` you can run directly:
 
 ```bash
 python examples/quantum_demo.py       # quantum circuits & entanglement
 python examples/signals_demo.py       # FFT, convolution, power spectrum
-python examples/ml_xor_demo.py        # neural network training
+python examples/ml_and_viz_demo.py   # neural network training + plots
 python examples/montecarlo_demo.py    # π estimation & integration
 python examples/hypothesis_demo.py    # structured hypothesis generation
 ```
