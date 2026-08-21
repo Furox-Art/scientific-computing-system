@@ -47,9 +47,7 @@ plugins:
 nav:
   - Home: index.md
   - Tour of Numerical Methods: tour_of_numerical_methods.md
-  - Getting Started:
-      - English: getting-started.md
-      - Türkçe: getting-started.tr.md
+  - Getting Started: getting-started.md
   - Tutorials:
       - Quick Start: tutorials/quick_start.md
       - Core Data Models: tutorials/core_demo.md
