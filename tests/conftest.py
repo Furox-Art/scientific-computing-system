@@ -14,11 +14,32 @@ Scope rules
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import sys
+from collections.abc import Callable, Iterator
 
 import pytest
 
 from cds.core.models import Domain, Hypothesis, HypothesisStatus
+
+
+@pytest.fixture(autouse=True)
+def _close_pyplot_figures() -> Iterator[None]:
+    """Close every open pyplot figure after each test.
+
+    ``matplotlib.pyplot`` keeps a module-level registry of open figures, so a
+    suite that builds many charts (``test_plot_charts``, CLI ``--file`` tests)
+    accumulates them until matplotlib emits its ``More than 20 figures``
+    RuntimeWarning and memory grows. Closing everything per-test bounds memory
+    and keeps the suite warning-clean.
+
+    Guarded via ``sys.modules`` so environments without matplotlib (the lean
+    ``[test]`` CI cells) never trigger the optional-import machinery — the
+    fixture simply becomes a no-op there.
+    """
+    yield
+    pyplot = sys.modules.get("matplotlib.pyplot")
+    if pyplot is not None:
+        pyplot.close("all")
 
 
 @pytest.fixture
