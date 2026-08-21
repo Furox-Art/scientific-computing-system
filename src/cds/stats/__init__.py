@@ -25,6 +25,7 @@ from cds.stats.hypothesis_tests import (
     t_sf,
     two_sample_ttest,
 )
+from cds.stats.nonparametric import mann_whitney_u, wilcoxon_signed_rank
 from cds.stats.regression import RegressionResult, linear_regression
 from cds.stats.time_series import (
     LjungBoxResult,
@@ -76,4 +77,7 @@ __all__ = [
     "ljung_box",
     "LjungBoxResult",
     "StationarityResult",
+    # Nonparametric tests
+    "mann_whitney_u",
+    "wilcoxon_signed_rank",
 ]

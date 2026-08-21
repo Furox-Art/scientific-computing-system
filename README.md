@@ -159,10 +159,10 @@ If CDS is useful in your research or publications, please cite it using the info
 | `cds.core` | Shared data model — `Domain`, `Hypothesis`, `HypothesisStatus` types used across modules |
 | `cds.quantum` | Single & multi-qubit simulation — Hadamard, Pauli, CNOT, SWAP, Toffoli, Bell/GHZ states, entanglement detection |
 | `cds.optimization` | Gradient descent, Newton's method, Adam optimizer, golden section search, **Nelder–Mead simplex**, **simulated annealing** (box bounds, seeded) |
-| `cds.ml` | Pure Python Neural Networks — MLP, dense layers, Adam-based training — plus **k-NN classifier/regressor**, **k-means clustering** (k-means++), **CART decision tree** (Gini), **logistic regression** |
+| `cds.ml` | Pure Python Neural Networks — MLP, dense layers, Adam-based training — plus **k-NN classifier/regressor**, **k-means clustering** (k-means++), **CART decision tree** (Gini), **logistic regression**, **vector OLS `LinearRegression`**, **PCA** (Jacobi eigen-solver), **StandardScaler** & seeded **train/test split** |
 | `cds.signals` | DFT, radix-2 FFT/IFFT (O(N log N)), 2D FFT/IFFT, convolution, power spectrum, **Butterworth IIR filter design** (low/high/band), moving-median denoiser |
 | `cds.probability` | Gaussian, uniform, exponential, binomial, Poisson distributions — plus **chi-square / Student-t (pdf·cdf·ppf)** and **gamma / beta densities with seeded samplers** (Marsaglia–Tsang) |
-| `cds.stats` | Descriptive stats, Pearson correlation, linear regression, t-test, chi-square, ANOVA, effect-size measures (Cohen's d, η², Cramér's V), Bonferroni correction, **time-series analysis** (ACF/PACF, KPSS, Ljung-Box, exponential smoothing, seasonal decomposition) |
+| `cds.stats` | Descriptive stats, Pearson correlation, linear regression, t-test, chi-square, ANOVA, effect-size measures (Cohen's d, η², Cramér's V), Bonferroni correction, **time-series analysis** (ACF/PACF, KPSS, Ljung-Box, exponential smoothing, seasonal decomposition), **nonparametric tests** (Mann–Whitney U, Wilcoxon signed-rank with tie corrections) |
 | `cds.math_utils` | Numerical calculus, O(N³) LU / QR / Cholesky, eigenvalue (power iteration), Gram-Schmidt, matrix inverse |
 | `cds.data_analysis` | Mini-Pandas `DataSet` for filtering/grouping, CSV loading, ASCII visualization, optional pandas interop (`to_dataframe` / `from_dataframe` via `cds[pandas]`) |
 | `cds.scientific` | Physical constants, formulas (KE, gravity, gas law, Schwarzschild, de Broglie, escape velocity) |

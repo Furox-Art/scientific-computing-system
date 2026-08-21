@@ -1,15 +1,21 @@
-"""Binary logistic regression trained by full-batch gradient descent.
+"""Linear models: logistic regression and multi-feature OLS regression.
 
-Loss is binary cross-entropy computed in a numerically stable form
+Logistic regression trains by full-batch gradient descent. Loss is binary
+cross-entropy computed in a numerically stable form
 (``softplus(z) - y·z`` with ``softplus(z) = log1p(exp(-|z|)) + max(z, 0)``),
 so no probability clipping is needed and the loss never overflows even for
 saturated logits. Optional L2 regularisation shrinks weights but never the
 bias term.
+
+:class:`LinearRegression` solves ordinary least squares in closed form via
+the normal equations and the shared PLU solver in :mod:`cds.math_utils`.
 """
 
 from __future__ import annotations
 
 import math
+
+from cds.math_utils.linalg import solve_linear
 
 
 def _sigmoid(z: float) -> float:
@@ -139,3 +145,81 @@ class LogisticRegression:
     def predict(self, x: list[float]) -> int:
         """Predicted class: 1 when P(class = 1) >= 0.5, else 0."""
         return 1 if self.predict_proba(x) >= 0.5 else 0
+
+
+class LinearRegression:
+    """Multi-feature ordinary least squares via the normal equations.
+
+    Fits ``y = w·x + b`` in closed form (no iterations, fully deterministic).
+    With ``fit_intercept=False`` the bias is fixed at zero and only the
+    weights are estimated.
+    """
+
+    def __init__(self, *, fit_intercept: bool = True) -> None:
+        """Store whether an unconstrained intercept is fitted.
+
+        Args:
+            fit_intercept: estimate a bias term (default) or force it to 0.
+        """
+        self.fit_intercept = fit_intercept
+        self._fitted = False
+        self.weights: list[float] = []
+        self.intercept = 0.0
+
+    def fit(self, X: list[list[float]], y: list[float]) -> LinearRegression:
+        """Solve the least-squares system for ``X`` and ``y``.
+
+        Raises:
+            ValueError: if ``X`` is empty, lengths mismatch, rows are ragged,
+                or the design matrix is rank-deficient (singular normal
+                equations).
+        """
+        if not X:
+            raise ValueError("X must be non-empty")
+        if len(X) != len(y):
+            raise ValueError("X and y must have the same length")
+        width = len(X[0])
+        if any(len(row) != width for row in X):
+            raise ValueError("all rows must have the same length")
+
+        # Augment with a constant column when fitting an intercept so the
+        # bias drops out of the same closed-form solve.
+        design = [[*row, 1.0] if self.fit_intercept else list(row) for row in X]
+        d = len(design[0])
+
+        xtx = [[sum(row[i] * row[j] for row in design) for j in range(d)] for i in range(d)]
+        xty = [sum(row[i] * yi for row, yi in zip(design, y)) for i in range(d)]
+        try:
+            beta = solve_linear(xtx, xty)
+        except ValueError as exc:
+            raise ValueError(
+                "design matrix is rank-deficient; cannot fit unique OLS solution"
+            ) from exc
+
+        if self.fit_intercept:
+            self.weights = beta[:-1]
+            self.intercept = beta[-1]
+        else:
+            self.weights = beta
+            self.intercept = 0.0
+        self._fitted = True
+        return self
+
+    def predict(self, x: list[float]) -> float:
+        """Predict the response for one feature row.
+
+        Raises:
+            ValueError: if called before :meth:`fit` or on width mismatch.
+        """
+        if not self._fitted:
+            raise ValueError("model is not fitted")
+        if len(x) != len(self.weights):
+            raise ValueError(f"query must have {len(self.weights)} features")
+        return sum(w * xi for w, xi in zip(self.weights, x)) + self.intercept
+
+    def score(self, X: list[list[float]], y: list[float]) -> float:
+        """R² of the fit on ``(X, y)``; 0.0 when the target has zero variance."""
+        residuals = sum((yi - self.predict(row)) ** 2 for row, yi in zip(X, y))
+        my = sum(y) / len(y)
+        total = sum((yi - my) ** 2 for yi in y)
+        return 1.0 - residuals / total if total > 0 else 0.0
