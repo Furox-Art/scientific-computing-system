@@ -94,7 +94,7 @@ jobs:
     steps:
       - name: Create pypi deployment record
         id: deployment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const deployment = await github.rest.repos.createDeployment({
@@ -136,7 +136,7 @@ jobs:
 
       - name: Set pypi deployment status
         if: always() && steps.deployment.outputs.id != ''
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const state = "${{ job.status }}" === "success" ? "success" : "failure";
