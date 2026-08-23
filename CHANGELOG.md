@@ -7,8 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes yet. See [v1.6.0](#v160---2026-08-21) below for the
+No unreleased changes yet. See [v1.6.1](#v161---2026-08-21) below for the
 latest release.
+
+## [v1.6.1] - 2026-08-21
+
+A **patch** release completing the JSON round trip for core data models.
+
+### Added
+
+- **`cds.core`**: `Hypothesis.from_dict()` — the inverse of `to_dict()`.
+  CLI/JSON output can now be re-imported: enum strings are coerced back to
+  `Domain` / `HypothesisStatus`, ISO-8601 timestamps are parsed, and missing
+  optional keys fall back to constructor defaults. Invalid `status` values
+  raise `ValueError`.
+
+### Changed
+
+- Internal layering cleanup — shared special-function kernels moved to their
+  single home (`cds.math_utils.special`) so lower-level packages never depend
+  on higher-level ones; a suite-level import-direction guard enforces this.
+- `cds.cli` is now a package (`_style` / `_handlers` / `_parser`) with
+  identical behaviour; refreshed module descriptions in `cds modules`.
 
 ## [v1.6.0] - 2026-08-21
 

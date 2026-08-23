@@ -122,6 +122,26 @@ class Hypothesis:
             "metadata": dict(self.metadata),
         }
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Hypothesis:
+        """Rebuild a :class:`Hypothesis` from :meth:`to_dict` output.
+
+        Completes the JSON round trip: enum strings are coerced back into
+        their :class:`Domain` / :class:`HypothesisStatus` members and
+        ``created_at`` is parsed from its ISO-8601 rendering. Missing
+        optional keys fall back to the same defaults as the constructor, so
+        partially-specified records load cleanly. Unknown ``status`` values
+        raise ``ValueError``.
+        """
+        payload = dict(data)  # copy so we never mutate the caller's dict
+        created_at = payload.get("created_at")
+        if isinstance(created_at, str):
+            payload["created_at"] = datetime.fromisoformat(created_at)
+        status = payload.get("status")
+        if status is not None and not isinstance(status, HypothesisStatus):
+            payload["status"] = HypothesisStatus(status)
+        return cls(**payload)
+
     def to_markdown(self) -> str:
         """Render this hypothesis as a structured Markdown document."""
         lines = [

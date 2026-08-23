@@ -231,3 +231,43 @@ class TestToMarkdown:
     def test_none_rationale_omitted(self, make_hypothesis: Callable[..., Hypothesis]) -> None:
         h = make_hypothesis(rationale=None)
         assert "## Rationale" not in h.to_markdown()
+
+
+class TestFromDictRoundTrip:
+    """``from_dict`` completes the JSON round trip started by ``to_dict``."""
+
+    def test_full_round_trip_preserves_every_field(
+        self, make_hypothesis: Callable[..., Hypothesis]
+    ) -> None:
+        h = make_hypothesis(
+            status=HypothesisStatus.TESTABLE,
+            confidence=0.73,
+        )
+        assert Hypothesis.from_dict(h.to_dict()) == h
+
+    def test_missing_optional_keys_fall_back_to_defaults(self) -> None:
+        partial = Hypothesis.from_dict(
+            {"id": "x", "statement": "y", "domain": "biology", "research_question": "q"}
+        )
+        assert partial.status == HypothesisStatus.NEW
+        assert partial.confidence == 0.5
+        assert partial.assumptions == []
+        assert partial.rationale is None
+
+    def test_invalid_status_raises_value_error(self) -> None:
+        with pytest.raises(ValueError, match="olmayan"):
+            Hypothesis.from_dict(
+                {
+                    "id": "x",
+                    "statement": "y",
+                    "domain": "physics",
+                    "research_question": "q",
+                    "status": "olmayan",
+                }
+            )
+
+    def test_json_dumps_output_is_loadable(self, hypothesis: Hypothesis) -> None:
+        import json
+
+        loaded = Hypothesis.from_dict(json.loads(json.dumps(hypothesis.to_dict())))
+        assert loaded == hypothesis
