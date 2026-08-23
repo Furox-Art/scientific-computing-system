@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to **cognitive-discovery-system** will be documented in this file.
+All notable changes to **scientific-computing-system** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -143,7 +143,7 @@ used).
   - `plot_acf` / PACF stems via `cds.stats` time-series helpers
   - `plot_optimization_path` for 2-D optimizer trajectories
   - Lazy matplotlib backend with install-hint `ImportError`
-- **Extra**: `pip install cognitive-discovery-system[plot]` (also in `[all]`)
+- **Extra**: `pip install scientific-computing-system[plot]` (also in `[all]`)
 - **CLI**: `cds plot 1,2,3 --file out.png` saves a PNG when matplotlib is
   installed; without `--file` the existing ASCII terminal plot remains
 - **Examples**: `examples/plot_demo.py`, `examples/plotting_notebook.ipynb`

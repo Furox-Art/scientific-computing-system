@@ -1,4 +1,4 @@
-# Pre-commit hooks for cognitive-discovery-system
+# Pre-commit hooks for scientific-computing-system
 #
 # Install once after cloning:
 #   pip install pre-commit

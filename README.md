@@ -1,32 +1,32 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="cognitive-discovery-system" width="640">
+  <img src="assets/logo.svg" alt="scientific-computing-system" width="640">
 </p>
 
-<h1 align="center">cognitive-discovery-system</h1>
+<h1 align="center">scientific-computing-system</h1>
 
 <p align="center"><b>An open-source computational science platform — quantum, stats, signals, optimization &amp; hypothesis generation, in one pure-Python package.</b></p>
 
 <p align="center">
-  <a href="https://pypi.org/project/cognitive-discovery-system/"><img src="https://img.shields.io/pypi/v/cognitive-discovery-system.svg" alt="PyPI version"></a>
-  <a href="https://pypi.org/project/cognitive-discovery-system/"><img src="https://img.shields.io/pypi/dm/cognitive-discovery-system.svg" alt="PyPI downloads"></a>
+  <a href="https://pypi.org/project/scientific-computing-system/"><img src="https://img.shields.io/pypi/v/scientific-computing-system.svg" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/scientific-computing-system/"><img src="https://img.shields.io/pypi/dm/scientific-computing-system.svg" alt="PyPI downloads"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10+-green.svg" alt="Python 3.10+"></a>
-  <a href="https://codecov.io/gh/Furox88/cognitive-discovery-system"><img src="https://codecov.io/gh/Furox88/cognitive-discovery-system/branch/main/graph/badge.svg" alt="codecov"></a>
-  <a href="https://github.com/Furox88/cognitive-discovery-system/actions/workflows/tests.yml"><img src="https://github.com/Furox88/cognitive-discovery-system/actions/workflows/tests.yml/badge.svg" alt="CI"></a>
+  <a href="https://codecov.io/gh/Furox88/scientific-computing-system"><img src="https://codecov.io/gh/Furox88/scientific-computing-system/branch/main/graph/badge.svg" alt="codecov"></a>
+  <a href="https://github.com/Furox88/scientific-computing-system/actions/workflows/tests.yml"><img src="https://github.com/Furox88/scientific-computing-system/actions/workflows/tests.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://Furox88.github.io/cognitive-discovery-system/"><img src="https://img.shields.io/badge/docs-mkdocs-teal.svg" alt="Docs"></a>
-  <a href="https://github.com/Furox88/cognitive-discovery-system/releases"><img src="https://img.shields.io/github/v/release/Furox88/cognitive-discovery-system.svg" alt="GitHub release"></a>
-  <a href="https://github.com/Furox88/cognitive-discovery-system"><img src="https://img.shields.io/github/stars/Furox88/cognitive-discovery-system.svg?style=social" alt="GitHub stars"></a>
+  <a href="https://Furox88.github.io/scientific-computing-system/"><img src="https://img.shields.io/badge/docs-mkdocs-teal.svg" alt="Docs"></a>
+  <a href="https://github.com/Furox88/scientific-computing-system/releases"><img src="https://img.shields.io/github/v/release/Furox88/scientific-computing-system.svg" alt="GitHub release"></a>
+  <a href="https://github.com/Furox88/scientific-computing-system"><img src="https://img.shields.io/github/stars/Furox88/scientific-computing-system.svg?style=social" alt="GitHub stars"></a>
 </p>
 
 <p align="center">
-  <a href="https://mybinder.org/v2/gh/Furox88/cognitive-discovery-system/main?urlpath=lab/tree/examples/tour_of_numerical_methods.ipynb"><img src="https://img.shields.io/badge/try%20it-on%20Binder-orange.svg?logo=jupyter" alt="Launch on Binder"></a>
+  <a href="https://mybinder.org/v2/gh/Furox88/scientific-computing-system/main?urlpath=lab/tree/examples/tour_of_numerical_methods.ipynb"><img src="https://img.shields.io/badge/try%20it-on%20Binder-orange.svg?logo=jupyter" alt="Launch on Binder"></a>
 </p>
 
 <p align="center">
-  <a href="https://Furox88.github.io/cognitive-discovery-system/">Documentation</a> &nbsp;·&nbsp;
-  <a href="https://Furox88.github.io/cognitive-discovery-system/tour_of_numerical_methods/">Tour of Numerical Methods</a> &nbsp;·&nbsp;
-  <a href="https://Furox88.github.io/cognitive-discovery-system/cookbook/">Cookbook</a> &nbsp;·&nbsp;
-  <a href="https://github.com/Furox88/cognitive-discovery-system/releases">Releases</a> &nbsp;·&nbsp;
+  <a href="https://Furox88.github.io/scientific-computing-system/">Documentation</a> &nbsp;·&nbsp;
+  <a href="https://Furox88.github.io/scientific-computing-system/tour_of_numerical_methods/">Tour of Numerical Methods</a> &nbsp;·&nbsp;
+  <a href="https://Furox88.github.io/scientific-computing-system/cookbook/">Cookbook</a> &nbsp;·&nbsp;
+  <a href="https://github.com/Furox88/scientific-computing-system/releases">Releases</a> &nbsp;·&nbsp;
   <a href="docs/tutorials/">Tutorials</a> &nbsp;·&nbsp;
   <a href="#quick-start">Quick Start</a> &nbsp;·&nbsp;
   <a href="docs/CASE_STUDY_HUBBLE.md">Case Studies</a>
@@ -42,12 +42,12 @@ readable pure Python you can open, run, and modify line by line.
 
 **Start here:**
 
-1. `pip install cognitive-discovery-system` — no NumPy, no compilers,
+1. `pip install scientific-computing-system` — no NumPy, no compilers,
    nothing to configure
 2. `cds modules` — see everything inside
 3. Run any demo: `python examples/quantum_demo.py`
 4. Follow the tutorials — zero-install via
-   [Binder](https://mybinder.org/v2/gh/Furox88/cognitive-discovery-system/main?urlpath=lab/tree/examples/tour_of_numerical_methods.ipynb)
+   [Binder](https://mybinder.org/v2/gh/Furox88/scientific-computing-system/main?urlpath=lab/tree/examples/tour_of_numerical_methods.ipynb)
 
 > **One package, no heavy dependencies.** CDS brings together quantum circuit simulation, statistical analysis, signal processing, optimization, probability, ODE/numerical solvers, symbolic modeling, knowledge graphs, educational NLP, and **structured hypothesis generation** — all in readable pure Python. **No NumPy. No SciPy. No compiled extensions.** Just `pip install` and you can read every line of source.
 
@@ -56,7 +56,7 @@ readable pure Python you can open, run, and modify line by line.
 > **If CDS saves you time, a star helps others find it — and keeps the project maintained.** Thank you!
 
 ---
-**Latest Update (v1.6.0):** scikit-learn-flavored deepening — **PCA**, **k-NN / k-means / decision tree / logistic & linear regression**, **StandardScaler + train/test split**, chi-square/Student-t/gamma/beta distributions with seeded samplers, **implicit stiff ODE solvers** (backward Euler, Crank–Nicolson), **Nelder–Mead** and **simulated annealing**, plus Mann–Whitney U and Wilcoxon tests. Install: `pip install -U "cognitive-discovery-system[plot]"`.
+**Latest Update (v1.6.0):** scikit-learn-flavored deepening — **PCA**, **k-NN / k-means / decision tree / logistic & linear regression**, **StandardScaler + train/test split**, chi-square/Student-t/gamma/beta distributions with seeded samplers, **implicit stiff ODE solvers** (backward Euler, Crank–Nicolson), **Nelder–Mead** and **simulated annealing**, plus Mann–Whitney U and Wilcoxon tests. Install: `pip install -U "scientific-computing-system[plot]"`.
 ---
 
 ## Contents
@@ -137,10 +137,10 @@ below spells out exactly where each fits.
 These aren't the pitch, but they remove the usual reasons to hesitate:
 
 - The full test suite runs on every push across Linux, Windows, and macOS,
-  Python 3.10–3.13. See the [CI badge](https://github.com/Furox88/cognitive-discovery-system/actions/workflows/tests.yml)
+  Python 3.10–3.13. See the [CI badge](https://github.com/Furox88/scientific-computing-system/actions/workflows/tests.yml)
   for the live test count.
 - **100% code coverage (statement + branch)** is enforced as a gate — CI fails
-  if either drops. See the [codecov badge](https://codecov.io/gh/Furox88/cognitive-discovery-system).
+  if either drops. See the [codecov badge](https://codecov.io/gh/Furox88/scientific-computing-system).
 - `mypy --strict` passes clean across `src/` and `tests/`.
 - An interactive CLI with ASCII visualization is included, no plotting deps.
 
@@ -189,14 +189,14 @@ If CDS is useful in your research or publications, please cite it using the info
 | `cds.numerical_integration` | Deterministic quadrature — trapezoid, Simpson 1/3 & 3/8, Romberg, Gauss-Legendre, adaptive Simpson, **2-D tensor-product quadrature** (Simpson + Gauss-Legendre) |
 | `cds.nlp` | Educational NLP from scratch — BPE tokenizer, sinusoidal embeddings, multi-head attention, Transformer block, scalar autograd (SGD/Adam), MiniGPT demo |
 | `cds.hypothesis` | Structured hypothesis generation with prompt templates for custom research workflows |
-| `cds.plot` | Optional matplotlib charts — series/multi-series, scatter, regression, histograms, waveforms, power spectra, ACF/PACF, seasonal decompose, heatmaps, loss curves (`pip install cognitive-discovery-system[plot]`) |
+| `cds.plot` | Optional matplotlib charts — series/multi-series, scatter, regression, histograms, waveforms, power spectra, ACF/PACF, seasonal decompose, heatmaps, loss curves (`pip install scientific-computing-system[plot]`) |
 
 ## Quick Start
 
 The fastest way in is from PyPI — no clone, no download needed:
 
 ```bash
-pip install cognitive-discovery-system
+pip install scientific-computing-system
 cds --help
 cds hypothesis "What causes the Hubble tension?"
 ```
@@ -206,8 +206,8 @@ cds hypothesis "What causes the Hubble tension?"
 **macOS / Linux**
 
 ```bash
-git clone https://github.com/Furox88/cognitive-discovery-system.git
-cd cognitive-discovery-system
+git clone https://github.com/Furox88/scientific-computing-system.git
+cd scientific-computing-system
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
@@ -223,8 +223,8 @@ cds hypothesis "What causes the Hubble tension?"
 **Windows (PowerShell)**
 
 ```powershell
-git clone https://github.com/Furox88/cognitive-discovery-system.git
-cd cognitive-discovery-system
+git clone https://github.com/Furox88/scientific-computing-system.git
+cd scientific-computing-system
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
@@ -270,7 +270,7 @@ cds plot "1, 5, 3, 8, 4, 9" --title "My Data"
 CDS includes an **Interactive Web Dashboard** for scientific exploration. Launch it from your terminal:
 
 ```bash
-pip install "cognitive-discovery-system[dashboard]"
+pip install "scientific-computing-system[dashboard]"
 cds dashboard
 ```
 
@@ -639,14 +639,14 @@ MIT — see [LICENSE](LICENSE).
 ## Contact
 
 - Maintainer: [@Furox88](https://github.com/Furox88)
-- Issues & Discussions: [GitHub](https://github.com/Furox88/cognitive-discovery-system/issues)
+- Issues & Discussions: [GitHub](https://github.com/Furox88/scientific-computing-system/issues)
 
 
 ## Security
 
 Found a vulnerability? **Please do not open a public issue.** Report it privately:
 
-- GitHub private advisory: [Report a vulnerability](https://github.com/Furox88/cognitive-discovery-system/security/advisories/new)
+- GitHub private advisory: [Report a vulnerability](https://github.com/Furox88/scientific-computing-system/security/advisories/new)
 - Or email the maintainer directly.
 
 Acknowledgement target: **48 hours** · Fix SLA: **7 days**. Full threat model,
@@ -660,7 +660,7 @@ supported versions, and out-of-scope items are in [SECURITY.md](SECURITY.md).
 
 CDS is built and maintained solo, for free. If it helped your research, teaching, or prototyping:
 
-- **Star the repo** — [github.com/Furox88/cognitive-discovery-system](https://github.com/Furox88/cognitive-discovery-system) — it costs nothing and is the single biggest signal that helps others discover CDS.
+- **Star the repo** — [github.com/Furox88/scientific-computing-system](https://github.com/Furox88/scientific-computing-system) — it costs nothing and is the single biggest signal that helps others discover CDS.
 - **Share it** — a post on X, Reddit, or with a colleague who'd find it useful.
 - **Cite it** — see [CITATION.cff](CITATION.cff) if CDS appears in your work.
 - **Contribute** — new modules, docs, examples, and issue triage are all welcome. See [Contributing](#contributing).

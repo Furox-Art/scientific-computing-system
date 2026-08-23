@@ -3,8 +3,8 @@
 ## Installation
 
 ```bash
-git clone https://github.com/Furox88/cognitive-discovery-system.git
-cd cognitive-discovery-system
+git clone https://github.com/Furox88/scientific-computing-system.git
+cd scientific-computing-system
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"

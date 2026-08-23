@@ -33,8 +33,8 @@ import subprocess
 import sys
 from typing import Any
 
-DEFAULT_REPO = "Furox88/cognitive-discovery-system"
-PYPI_URL = "https://pypi.org/project/cognitive-discovery-system/"
+DEFAULT_REPO = "Furox88/scientific-computing-system"
+PYPI_URL = "https://pypi.org/project/scientific-computing-system/"
 
 # Resolved at runtime from --repo; defaults to DEFAULT_REPO.
 REPO = DEFAULT_REPO

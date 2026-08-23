@@ -220,5 +220,5 @@ st.sidebar.title("System Status")
 st.sidebar.success(f"Core: v{__version__}")
 st.sidebar.info("Dependencies: Standard Library + Typer/Rich/Pydantic")
 st.sidebar.markdown("""
-[View Source on GitHub](https://github.com/Furox88/cognitive-discovery-system)
+[View Source on GitHub](https://github.com/Furox88/scientific-computing-system)
 """)

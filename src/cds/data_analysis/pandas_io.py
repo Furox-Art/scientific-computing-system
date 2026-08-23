@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
 _PANDAS_INSTALL_HINT = (
     "pandas is an optional dependency. Install it with "
-    "`pip install cognitive-discovery-system[pandas]` "
+    "`pip install scientific-computing-system[pandas]` "
     "(or `pip install pandas`)."
 )
 

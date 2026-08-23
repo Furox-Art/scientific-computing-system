@@ -1,4 +1,4 @@
-# git-cliff configuration for cognitive-discovery-system
+# git-cliff configuration for scientific-computing-system
 # Documentation: https://git-cliff.org/docs/configuration
 #
 # Generates CHANGELOG.md from git history. Tag-based grouping (no conventional
@@ -17,7 +17,7 @@
 header = """
 # Changelog
 
-All notable changes to **cognitive-discovery-system** will be documented in this file.
+All notable changes to **scientific-computing-system** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).

@@ -1,5 +1,5 @@
 """
-cognitive-discovery-system
+scientific-computing-system
 
 Pure Python computational science system for research, simulation,
 and scientific discovery.

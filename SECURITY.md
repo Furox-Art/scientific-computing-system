@@ -19,13 +19,13 @@ Stable releases (1.0.0+) follow a stricter support window: the current minor ver
 If you find a security vulnerability, please **do not open a public issue.**
 
 Instead, email the maintainer directly or use GitHub's private vulnerability reporting feature:
-- GitHub: https://github.com/Furox88/cognitive-discovery-system/security/advisories/new
+- GitHub: https://github.com/Furox88/scientific-computing-system/security/advisories/new
 
 We'll acknowledge receipt within 48 hours and aim to provide a fix or mitigation plan within 7 days.
 
 ## Threat Model
 
-`cognitive-discovery-system` is a pure-Python scientific computing library distributed via PyPI.
+`scientific-computing-system` is a pure-Python scientific computing library distributed via PyPI.
 The threat model below describes what we consider in scope and out of scope.
 
 ### In Scope
@@ -36,7 +36,7 @@ The threat model below describes what we consider in scope and out of scope.
 | **Supply chain: malicious release artifact** | PyPI releases uploaded solely via the `release.yml` GitHub Actions workflow (the sole publish authority), triggered by a `v*` tag push; `scripts/publish.py` builds, tests, verifies, and pushes the tag locally but never touches PyPI directly. Each release attaches the sdist + wheel to a GitHub Release; GitHub Actions `attest-build-provenance@v2` produces a sigstore attestation that any consumer can verify. |
 | **Code execution from package install** | Build backend is `hatchling` (no setup.py execution); versioning is static (`version` in `pyproject.toml`, mirrored in `src/cds/_version.py`), so no runtime version derivation executes on install. |
 | **Untrusted input in scientific functions** | All numerical kernels are pure-Python implementations; no `eval`/`exec` of user input; CLI (`cds` command) uses Typer with strict parsing. |
-| **Dependency confusion** | PyPI project name `cognitive-discovery-system` is unique; the import name `cds` is short enough to be susceptible but we document it in the README. |
+| **Dependency confusion** | PyPI project name `scientific-computing-system` is unique; the import name `cds` is short enough to be susceptible but we document it in the README. |
 
 ### Out of Scope
 
@@ -55,7 +55,7 @@ The threat model below describes what we consider in scope and out of scope.
 
 ## Security Best Practices for Users
 
-1. **Pin versions**: Always pin `cognitive-discovery-system==X.Y.Z` in `requirements.txt` rather than using `>=` or unpinned ranges.
+1. **Pin versions**: Always pin `scientific-computing-system==X.Y.Z` in `requirements.txt` rather than using `>=` or unpinned ranges.
 2. **Verify releases**: For high-assurance environments, verify the sigstore attestation on the GitHub Release against the published wheel/sdist hashes.
 3. **Keep dependencies fresh**: Run `pip install --upgrade` regularly; Dependabot PRs are opened weekly.
 4. **Audit lockfiles**: `requirements.lock` and `requirements-dev.lock` are committed; diff them on every PR to spot unexpected changes.

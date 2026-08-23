@@ -7,7 +7,7 @@ assignees: ''
 ---
 
 > **Security vulnerability?** Do **not** open a public issue.
-> Report it via a [private GitHub advisory](https://github.com/Furox88/cognitive-discovery-system/security/advisories/new)
+> Report it via a [private GitHub advisory](https://github.com/Furox88/scientific-computing-system/security/advisories/new)
 > (or email the maintainer). See [SECURITY.md](../../SECURITY.md) for the policy, SLAs, and threat model.
 > Use this template only for ordinary bugs.
 
@@ -41,7 +41,7 @@ Paste the full error or unexpected output here.
 - CDS version: `cds --version` →
 - Python version:
 - OS:
-- How installed: `pip install cognitive-discovery-system` / from source / other
+- How installed: `pip install scientific-computing-system` / from source / other
 
 ## Module / function affected
 e.g. `cds.quantum`, `cds.numerical_integration.simpson`, `cds.cli`

@@ -8,7 +8,7 @@ from typing import Any
 
 _MATPLOTLIB_INSTALL_HINT = (
     "matplotlib is an optional dependency. Install it with "
-    "`pip install cognitive-discovery-system[plot]` "
+    "`pip install scientific-computing-system[plot]` "
     "(or `pip install matplotlib`)."
 )
 

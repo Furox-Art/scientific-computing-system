@@ -270,7 +270,7 @@ def _cmd_plot(args: argparse.Namespace) -> int:
     kind = getattr(args, "kind", "series") or "series"
     out_file = getattr(args, "file", None)
     if out_file:
-        # Optional matplotlib path — requires `pip install cognitive-discovery-system[plot]`.
+        # Optional matplotlib path — requires `pip install scientific-computing-system[plot]`.
         try:
             from cds.plot import plot_acf, plot_histogram, plot_series, save_figure
         except ImportError as exc:  # pragma: no cover - package always ships cds.plot

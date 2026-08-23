@@ -299,7 +299,7 @@ def main() -> None:
     fig.text(
         0.5,
         0.012,
-        "data: cds.montecarlo  ·  cognitive-discovery-system",
+        "data: cds.montecarlo  ·  scientific-computing-system",
         ha="center",
         color=MUTED,
         fontsize=8,

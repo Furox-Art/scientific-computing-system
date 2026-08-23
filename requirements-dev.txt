@@ -1,4 +1,4 @@
-# Development dependencies for cognitive-discovery-system.
+# Development dependencies for scientific-computing-system.
 #
 # The source of truth is pyproject.toml ([project.optional-dependencies] ->
 # dev + test + docs + property). This file is a convenience mirror so that:

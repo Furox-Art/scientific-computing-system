@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Demo: optional ``cds[plot]`` matplotlib helpers.
 
-Requires: ``pip install cognitive-discovery-system[plot]``
+Requires: ``pip install scientific-computing-system[plot]``
 
 Saves figures under ``examples/_plot_out/``.
 """

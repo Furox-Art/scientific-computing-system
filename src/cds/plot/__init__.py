@@ -4,7 +4,7 @@ This package is **optional**: matplotlib is imported lazily inside each
 plotting call, so ``import cds`` and ``import cds.plot`` stay free of
 heavy dependencies. Install with::
 
-    pip install cognitive-discovery-system[plot]
+    pip install scientific-computing-system[plot]
 
 Design mirrors :mod:`cds.data_analysis.pandas_io`: clear install-hint
 ``ImportError`` when matplotlib is missing, pure-Python inputs

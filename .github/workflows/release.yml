@@ -7,7 +7,7 @@ name: Release
 # and signs them.
 #
 # Setup (one-time): create a PyPI API token scoped to
-# `cognitive-discovery-system` (Account → API tokens), then add it as a
+# `scientific-computing-system` (Account → API tokens), then add it as a
 # repository secret named `PYPI_API_TOKEN`:
 #   gh secret set PYPI_API_TOKEN < ~/.pypi-token
 #
@@ -68,7 +68,7 @@ jobs:
               if ": " in line and line.split(": ", 1)[0] in {"Name", "Version"}
           )
           print(f"Built: {name}")
-          if name["Name"] != "cognitive-discovery-system":
+          if name["Name"] != "scientific-computing-system":
               sys.exit(f"Unexpected package name: {name['Name']!r}")
           print("Package name OK.")
           PY
@@ -145,7 +145,7 @@ jobs:
               repo: context.repo.repo,
               deployment_id: ${{ steps.deployment.outputs.id }},
               state,
-              environment_url: "https://pypi.org/project/cognitive-discovery-system/",
+              environment_url: "https://pypi.org/project/scientific-computing-system/",
               description: `PyPI publish ${state}`
             });
             core.info(`Deployment #${{ steps.deployment.outputs.id }} marked ${state}`);

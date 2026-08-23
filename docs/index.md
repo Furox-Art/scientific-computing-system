@@ -16,7 +16,7 @@ CDS is an open-source computational science platform designed for research, simu
 CDS is designed as a first stop: every algorithm is readable pure Python, so
 you learn *how* things work, not just how to call them.
 
-1. Install: `pip install cognitive-discovery-system`
+1. Install: `pip install scientific-computing-system`
 2. Explore: `cds modules`, then run any script in `examples/`
 3. Learn: follow the [Tutorials](tutorials/quick_start.md) in order —
    [Quick Start](tutorials/quick_start.md), [Statistics](tutorials/stats_demo.md),
@@ -26,7 +26,7 @@ you learn *how* things work, not just how to call them.
 - **Quantum Simulation:** Full state-vector simulation for single and multi-qubit circuits with entanglement and O(1) sampling.
 - **Advanced Mathematics:** O(N³) Partial Pivoting LU decomposition, vectorized optimizers, and adaptive ODE solvers (RK45).
 - **Hypothesis Engine:** Built-in tools for generating and statistically validating scientific hypotheses, complemented by effect-size measures (Cohen's d, Cramér's V) that quantify the magnitude of an effect alongside its significance.
-- **High Reliability:** Comprehensive test suite with 100% code coverage (statement + branch) on the reference CI cell. See the CI and codecov badges in the [README](https://github.com/Furox88/cognitive-discovery-system) for the live test count and coverage.
+- **High Reliability:** Comprehensive test suite with 100% code coverage (statement + branch) on the reference CI cell. See the CI and codecov badges in the [README](https://github.com/Furox88/scientific-computing-system) for the live test count and coverage.
 - **Interactive Tools:** Beautiful CLI and a Streamlit-based web dashboard.
 
 ## Overview of Modules

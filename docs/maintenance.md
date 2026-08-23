@@ -30,7 +30,7 @@ pytest tests/
 CDS publishes to PyPI automatically via **GitHub Actions** (`.github/workflows/release.yml`) using a scoped **PyPI API token** stored as the `PYPI_API_TOKEN` repository secret. The release pipeline is the **sole** publish authority — `scripts/publish.py` only builds, verifies, runs tests, pushes the tag (which triggers CI), and deploys docs; it never uploads to PyPI directly.
 
 ### 0. One-time setup
-Create a PyPI API token scoped to `cognitive-discovery-system` (Account → API tokens) and add it as a repo secret:
+Create a PyPI API token scoped to `scientific-computing-system` (Account → API tokens) and add it as a repo secret:
 ```bash
 gh secret set PYPI_API_TOKEN < ~/.pypi-token
 ```

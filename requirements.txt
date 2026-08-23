@@ -1,4 +1,4 @@
-# Runtime dependencies for cognitive-discovery-system.
+# Runtime dependencies for scientific-computing-system.
 #
 # The source of truth is pyproject.toml ([project.dependencies]). This file is a
 # convenience mirror for environments/workflows that expect a requirements.txt

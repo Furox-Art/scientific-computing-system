@@ -722,7 +722,7 @@ ds2 = from_dataframe(df)  # and back, losslessly
 Optional extra — core CDS stays zero-dependency.
 
 ```bash
-pip install "cognitive-discovery-system[plot]"
+pip install "scientific-computing-system[plot]"
 ```
 
 ### Plot a series, histogram, and ACF

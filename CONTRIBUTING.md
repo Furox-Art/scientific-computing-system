@@ -24,8 +24,8 @@ Thank you for your interest! CDS is an open-source computational science platfor
 ## Development Setup
 
 ```bash
-git clone https://github.com/Furox88/cognitive-discovery-system.git
-cd cognitive-discovery-system
+git clone https://github.com/Furox88/scientific-computing-system.git
+cd scientific-computing-system
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev,test]"
@@ -202,9 +202,9 @@ pip-compile pyproject.toml --extra dev --extra test --extra docs --output-file r
 
 ## Package Name
 
-The project is published as `cognitive-discovery-system` on both **PyPI** (`pip install cognitive-discovery-system`) and **GitHub**. The Python **import name** is the short `cds` (e.g. `import cds`); the long `cognitive-discovery-system` is only the install/distribution name.
+The project is published as `scientific-computing-system` on both **PyPI** (`pip install scientific-computing-system`) and **GitHub**. The Python **import name** is the short `cds` (e.g. `import cds`); the long `scientific-computing-system` is only the install/distribution name.
 
-> **History note:** earlier releases were published under the PyPI name `cognitive-discovery-platform`. That name is preserved on PyPI for historical installs but is no longer updated — always install the active `cognitive-discovery-system` package.
+> **History note:** earlier releases were published under the PyPI name `cognitive-discovery-platform`. That name is preserved on PyPI for historical installs but is no longer updated — always install the active `scientific-computing-system` package.
 
 ## Code Style
 

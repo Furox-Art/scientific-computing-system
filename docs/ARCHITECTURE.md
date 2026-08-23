@@ -18,24 +18,24 @@ through an `__init__.py` with an explicit `__all__`.
 
 | Module | Responsibility |
 | --- | --- |
-| [`core`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/core) | Shared data models (`DataPoint`, `Dataset`) and numeric guards. |
-| [`math_utils`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/math_utils) | Linear algebra, special functions, combinatorics, number theory. |
-| [`probability`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/probability) | Discrete/continuous distributions and sampling, plus chi-square/Student-t quantiles and gamma/beta (Marsaglia–Tsang) samplers. |
-| [`scientific`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/scientific) | Physical constants and closed-form scientific formulas. |
-| [`graph`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/graph) | Graph algorithms — BFS/DFS, Dijkstra, Kruskal MST, etc. |
-| [`signals`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/signals) | DFT/FFT, convolution, power spectra, Butterworth filter design. |
-| [`stats`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/stats) | Descriptive stats, hypothesis tests, regression, time-series, nonparametric rank tests. |
-| [`montecarlo`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/montecarlo) | Stochastic estimation and integration (e.g. π by dart-throwing). |
-| [`numerical_integration`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/numerical_integration) | Deterministic quadrature — Newton-Cotes, Romberg, Gauss-Legendre, 2-D. |
-| [`diffeq`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/diffeq) | ODE solvers — Euler, RK4, RK45, plus implicit stiff methods (backward Euler, Crank–Nicolson). |
-| [`optimization`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/optimization) | Gradient descent, Newton, Adam, line search, Nelder–Mead, simulated annealing. |
-| [`quantum`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/quantum) | Single- and multi-qubit circuit/state-vector simulation. |
-| [`ml`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/ml) | From-scratch neural networks plus k-NN, k-means, CART trees, logistic/linear regression, PCA, scaling and splitting. |
-| [`nlp`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/nlp) | BPE tokenizer, embeddings, attention, a mini-GPT, autograd. |
-| [`modeling`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/modeling) | Symbolic expressions, equation systems, solvers. |
-| [`data_analysis`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/data_analysis) | Data loading, analysis, optional pandas interop, visualization. |
-| [`hypothesis`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/hypothesis) | Structured research-hypothesis generation and evaluation. |
-| [`knowledge`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/knowledge) | Concept graphs and structured research-note retrieval. |
+| [`core`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/core) | Shared data models (`DataPoint`, `Dataset`) and numeric guards. |
+| [`math_utils`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/math_utils) | Linear algebra, special functions, combinatorics, number theory. |
+| [`probability`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/probability) | Discrete/continuous distributions and sampling, plus chi-square/Student-t quantiles and gamma/beta (Marsaglia–Tsang) samplers. |
+| [`scientific`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/scientific) | Physical constants and closed-form scientific formulas. |
+| [`graph`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/graph) | Graph algorithms — BFS/DFS, Dijkstra, Kruskal MST, etc. |
+| [`signals`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/signals) | DFT/FFT, convolution, power spectra, Butterworth filter design. |
+| [`stats`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/stats) | Descriptive stats, hypothesis tests, regression, time-series, nonparametric rank tests. |
+| [`montecarlo`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/montecarlo) | Stochastic estimation and integration (e.g. π by dart-throwing). |
+| [`numerical_integration`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/numerical_integration) | Deterministic quadrature — Newton-Cotes, Romberg, Gauss-Legendre, 2-D. |
+| [`diffeq`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/diffeq) | ODE solvers — Euler, RK4, RK45, plus implicit stiff methods (backward Euler, Crank–Nicolson). |
+| [`optimization`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/optimization) | Gradient descent, Newton, Adam, line search, Nelder–Mead, simulated annealing. |
+| [`quantum`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/quantum) | Single- and multi-qubit circuit/state-vector simulation. |
+| [`ml`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/ml) | From-scratch neural networks plus k-NN, k-means, CART trees, logistic/linear regression, PCA, scaling and splitting. |
+| [`nlp`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/nlp) | BPE tokenizer, embeddings, attention, a mini-GPT, autograd. |
+| [`modeling`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/modeling) | Symbolic expressions, equation systems, solvers. |
+| [`data_analysis`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/data_analysis) | Data loading, analysis, optional pandas interop, visualization. |
+| [`hypothesis`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/hypothesis) | Structured research-hypothesis generation and evaluation. |
+| [`knowledge`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/knowledge) | Concept graphs and structured research-note retrieval. |
 
 ---
 
@@ -196,7 +196,7 @@ the output of `linear_regression` feeds `one_sample_ttest`, which feeds
 
 CDS keeps its zero-dependency guarantee by isolating anything that needs
 a third-party library behind an **optional adapter**. Today that is the
-pandas interop in [`data_analysis/pandas_io.py`](https://github.com/Furox88/cognitive-discovery-system/blob/main/src/cds/data_analysis/pandas_io.py):
+pandas interop in [`data_analysis/pandas_io.py`](https://github.com/Furox88/scientific-computing-system/blob/main/src/cds/data_analysis/pandas_io.py):
 
 - The core algorithms operate on plain `list` and `dict`.
 - `to_dataframe` / `from_dataframe` are the *only* places pandas appears,

@@ -1,7 +1,9 @@
 [project]
-name = "cognitive-discovery-system"
+# Distribution name. Formerly published as "cognitive-discovery-system";
+# the import name stays `cds`. Keep the old PyPI project alive as an alias.
+name = "scientific-computing-system"
 version = "1.6.1"
-description = "A 19-module pure-Python computational science platform — quantum circuits, ML, NLP, signal processing, optimization, statistics & time-series, probability CDFs/sampling, ODE solvers, Monte Carlo, symbolic math, knowledge graphs, hypothesis generation, plus optional matplotlib plotting (cds[plot]). Zero runtime dependencies."
+description = "A 19-module pure-Python computational science platform — quantum circuits, ML, NLP, signal processing, optimization, statistics & time-series, probability CDFs/sampling, ODE solvers, Monte Carlo, symbolic math, knowledge graphs, hypothesis generation, plus optional matplotlib plotting (scientific-computing-system[plot]). Zero runtime dependencies."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -27,7 +29,7 @@ dependencies = []
 
 [project.optional-dependencies]
 # Meta-package: every extras group in one install.
-# Use as: `pip install cognitive-discovery-system[all]`
+# Use as: `pip install scientific-computing-system[all]`
 all = [
     "streamlit>=1.30.0",
     "matplotlib>=3.8.0",
@@ -113,12 +115,12 @@ promo = [
 cds = "cds.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/Furox88/cognitive-discovery-system"
-Repository = "https://github.com/Furox88/cognitive-discovery-system"
-Documentation = "https://furox88.github.io/cognitive-discovery-system/"
-"PyPI" = "https://pypi.org/project/cognitive-discovery-system/"
-Issues = "https://github.com/Furox88/cognitive-discovery-system/issues"
-Changelog = "https://github.com/Furox88/cognitive-discovery-system/releases"
+Homepage = "https://github.com/Furox88/scientific-computing-system"
+Repository = "https://github.com/Furox88/scientific-computing-system"
+Documentation = "https://furox88.github.io/scientific-computing-system/"
+"PyPI" = "https://pypi.org/project/scientific-computing-system/"
+Issues = "https://github.com/Furox88/scientific-computing-system/issues"
+Changelog = "https://github.com/Furox88/scientific-computing-system/releases"
 
 [build-system]
 requires = ["hatchling"]

@@ -6,9 +6,9 @@ dicts) and a pandas `DataFrame`. The core package stays zero-dependency;
 install the extra and the conversion functions become available:
 
 ```bash
-pip install "cognitive-discovery-system[pandas]"
+pip install "scientific-computing-system[pandas]"
 # or, to pull every optional dependency at once:
-pip install "cognitive-discovery-system[all]"
+pip install "scientific-computing-system[all]"
 ```
 
 The two functions live in `cds.data_analysis` and are lazily resolved on
@@ -147,7 +147,7 @@ from cds.data_analysis import to_dataframe
 
 to_dataframe(ds)
 # ImportError: pandas is an optional dependency. Install it with
-# `pip install cognitive-discovery-system[pandas]` ...
+# `pip install scientific-computing-system[pandas]` ...
 ```
 
 The package itself imports fine without pandas; only the bridge
