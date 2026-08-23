@@ -72,5 +72,5 @@ Three reasons, in priority order:
 For publication-quality plots, export the matrices
 (`attn_weights`, the `_pca_2d` result, `losses`) and plot them with your
 own toolchain — the data path is the same. The runnable demo at
-[`examples/nlp_viz_demo.py`](https://github.com/Furox88/scientific-computing-system/blob/main/examples/nlp_viz_demo.py)
+[`examples/nlp_viz_demo.py`](https://github.com/Furox-Art/scientific-computing-system/blob/main/examples/nlp_viz_demo.py)
 wires all three renderers to a tiny live tokenizer + embedding pass.

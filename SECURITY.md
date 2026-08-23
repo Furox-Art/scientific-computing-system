@@ -19,7 +19,7 @@ Stable releases (1.0.0+) follow a stricter support window: the current minor ver
 If you find a security vulnerability, please **do not open a public issue.**
 
 Instead, email the maintainer directly or use GitHub's private vulnerability reporting feature:
-- GitHub: https://github.com/Furox88/scientific-computing-system/security/advisories/new
+- GitHub: https://github.com/Furox-Art/scientific-computing-system/security/advisories/new
 
 We'll acknowledge receipt within 48 hours and aim to provide a fix or mitigation plan within 7 days.
 

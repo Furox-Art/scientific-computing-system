@@ -115,12 +115,12 @@ promo = [
 cds = "cds.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/Furox88/scientific-computing-system"
-Repository = "https://github.com/Furox88/scientific-computing-system"
-Documentation = "https://furox88.github.io/scientific-computing-system/"
+Homepage = "https://github.com/Furox-Art/scientific-computing-system"
+Repository = "https://github.com/Furox-Art/scientific-computing-system"
+Documentation = "https://furox-art.github.io/scientific-computing-system/"
 "PyPI" = "https://pypi.org/project/scientific-computing-system/"
-Issues = "https://github.com/Furox88/scientific-computing-system/issues"
-Changelog = "https://github.com/Furox88/scientific-computing-system/releases"
+Issues = "https://github.com/Furox-Art/scientific-computing-system/issues"
+Changelog = "https://github.com/Furox-Art/scientific-computing-system/releases"
 
 [build-system]
 requires = ["hatchling"]

@@ -24,7 +24,7 @@ Thank you for your interest! CDS is an open-source computational science platfor
 ## Development Setup
 
 ```bash
-git clone https://github.com/Furox88/scientific-computing-system.git
+git clone https://github.com/Furox-Art/scientific-computing-system.git
 cd scientific-computing-system
 python -m venv .venv
 source .venv/bin/activate

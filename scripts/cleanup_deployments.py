@@ -33,7 +33,7 @@ import subprocess
 import sys
 from typing import Any
 
-DEFAULT_REPO = "Furox88/scientific-computing-system"
+DEFAULT_REPO = "Furox-Art/scientific-computing-system"
 PYPI_URL = "https://pypi.org/project/scientific-computing-system/"
 
 # Resolved at runtime from --repo; defaults to DEFAULT_REPO.

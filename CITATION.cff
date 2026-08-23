@@ -8,8 +8,8 @@ authors:
     email: "furkanarkn1451@gmail.com"
 abstract: "Pure Python computational science system — quantum simulation, signal processing, statistics, optimization, hypothesis generation, optional matplotlib plotting, and related numerical methods. All core modules are implemented without heavy external dependencies."
 license: MIT
-repository-code: "https://github.com/Furox88/scientific-computing-system"
-url: "https://github.com/Furox88/scientific-computing-system"
+repository-code: "https://github.com/Furox-Art/scientific-computing-system"
+url: "https://github.com/Furox-Art/scientific-computing-system"
 date-released: "2026-08-21"
 keywords:
   - "pure python"
@@ -26,4 +26,4 @@ preferred-citation:
     - name: "Furox88"
   year: 2026
 version: 1.6.1
-  url: "https://github.com/Furox88/scientific-computing-system"
+  url: "https://github.com/Furox-Art/scientific-computing-system"

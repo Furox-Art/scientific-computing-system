@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Ask a question / discussion
-    url: https://github.com/Furox88/scientific-computing-system/discussions
+    url: https://github.com/Furox-Art/scientific-computing-system/discussions
     about: For usage questions, ideas, and general discussion — please use Discussions instead of opening an issue.
   - name: Documentation
-    url: https://Furox88.github.io/scientific-computing-system/
+    url: https://furox-art.github.io/scientific-computing-system/
     about: Read the docs, tutorials, and API reference before filing a bug.

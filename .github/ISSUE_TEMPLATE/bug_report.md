@@ -7,7 +7,7 @@ assignees: ''
 ---
 
 > **Security vulnerability?** Do **not** open a public issue.
-> Report it via a [private GitHub advisory](https://github.com/Furox88/scientific-computing-system/security/advisories/new)
+> Report it via a [private GitHub advisory](https://github.com/Furox-Art/scientific-computing-system/security/advisories/new)
 > (or email the maintainer). See [SECURITY.md](../../SECURITY.md) for the policy, SLAs, and threat model.
 > Use this template only for ordinary bugs.
 

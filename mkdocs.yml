@@ -1,7 +1,7 @@
 site_name: Cognitive Discovery System
-site_url: https://Furox88.github.io/scientific-computing-system/
-repo_url: https://github.com/Furox88/scientific-computing-system
-repo_name: Furox88/scientific-computing-system
+site_url: https://furox-art.github.io/scientific-computing-system/
+repo_url: https://github.com/Furox-Art/scientific-computing-system
+repo_name: Furox-Art/scientific-computing-system
 
 theme:
   name: material

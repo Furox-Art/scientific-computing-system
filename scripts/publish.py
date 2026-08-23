@@ -193,7 +193,7 @@ def main() -> int:
         flush=True,
     )
     print(
-        "Watch: https://github.com/Furox88/scientific-computing-system/actions/workflows/release.yml",
+        "Watch: https://github.com/Furox-Art/scientific-computing-system/actions/workflows/release.yml",
         flush=True,
     )
     return 0

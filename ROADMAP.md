@@ -51,7 +51,7 @@ Backward-compatible patch train after the stable cut. No API or behavior changes
 
 ## v1.1.0 — Modeling & Knowledge Modules (Released 2026-06-19)
 
-A backward-compatible **minor** release. Adds two new public subpackages; the platform now spans 17 modules. Tracked under issues [#2](https://github.com/Furox88/scientific-computing-system/issues/2) and [#3](https://github.com/Furox88/scientific-computing-system/issues/3).
+A backward-compatible **minor** release. Adds two new public subpackages; the platform now spans 17 modules. Tracked under issues [#2](https://github.com/Furox-Art/scientific-computing-system/issues/2) and [#3](https://github.com/Furox-Art/scientific-computing-system/issues/3).
 
 - [x] ~~**`cds.modeling`** — symbolic algebra~~: expression-tree AST (`+ - * / **`, unary `-`, `Variable`/`Constant`), `diff`, `simplify`, `subs`, `evaluate`, `to_latex`; `MathModel` with `solve_equation` (Newton-Raphson) and `fit_parameters` (least squares). See `examples/modeling_demo.py`.
 - [x] ~~**`cds.knowledge`** — knowledge organization layer~~: `KnowledgeGraph` (`Concept`/`Relation`, BFS shortest path, transitive closure, cycle detection, JSON persistence), `Notebook` (`Note` with tag/concept lookups), `retrieval.search()` ranked across concepts+notes. See `examples/knowledge_demo.py`.
@@ -140,8 +140,8 @@ Open ideas — not version-committed. Contributions welcome.
 ### Completed tracks (graduated out of this section)
 
 - **Educational NLP track** — shipped across v0.9.0b5 → v1.0.0 (now `cds.nlp`): BPE tokenizer + embeddings, multi-head self-attention, pure-Python autograd with optional `cds[fast-jit]` Numba backend, tiny GPT-from-scratch, attention/embedding visualisations. Scope explicitly excludes production-scale training (PyTorch / JAX / MLX territory).
-- **Mathematical Modeling Framework** ([#2](https://github.com/Furox88/scientific-computing-system/issues/2)) — shipped in v1.1.0 as `cds.modeling`.
-- **Knowledge Organization System** ([#3](https://github.com/Furox88/scientific-computing-system/issues/3)) — shipped in v1.1.0 as `cds.knowledge`.
+- **Mathematical Modeling Framework** ([#2](https://github.com/Furox-Art/scientific-computing-system/issues/2)) — shipped in v1.1.0 as `cds.modeling`.
+- **Knowledge Organization System** ([#3](https://github.com/Furox-Art/scientific-computing-system/issues/3)) — shipped in v1.1.0 as `cds.knowledge`.
 - **Optional pandas interop** — shipped in v1.2.0 as the `cds[pandas]` extra (`to_dataframe` / `from_dataframe`).
 - **"Tour of Numerical Methods" guide** — shipped in v1.0.0 and expanded through v1.2.0 (`docs/tour_of_numerical_methods.md`).
 

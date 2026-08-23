@@ -3,7 +3,7 @@
 ## Installation
 
 ```bash
-git clone https://github.com/Furox88/scientific-computing-system.git
+git clone https://github.com/Furox-Art/scientific-computing-system.git
 cd scientific-computing-system
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
