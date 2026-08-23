@@ -1,7 +1,7 @@
 # Case Study: Analyzing the Hubble Tension with CDS
 
 ## Abstract
-The discrepant measurements of the Hubble constant ($H_0$) from the early universe (CMB) and the late universe (local distance ladder) constitute one of the most significant challenges in modern cosmology. This case study demonstrates the use of the **Cognitive Discovery System (CDS)** to generate potential physical resolutions, manage observation data, and quantify the statistical significance of the tension.
+The discrepant measurements of the Hubble constant ($H_0$) from the early universe (CMB) and the late universe (local distance ladder) constitute one of the most significant challenges in modern cosmology. This case study demonstrates the use of the **Scientific Computing System (CDS)** to generate potential physical resolutions, manage observation data, and quantify the statistical significance of the tension.
 
 ## 1. Problem Statement
 Measurements from the Planck satellite (CMB) suggest $H_0 \approx 67.4 \pm 0.5 \text{ km s}^{-1} \text{ Mpc}^{-1}$, while local observations using Type Ia supernovae (SH0ES) yield $H_0 \approx 73.0 \pm 1.4 \text{ km s}^{-1} \text{ Mpc}^{-1}$. The resulting $\sim 5\sigma$ tension suggests either undetected systematic errors or physics beyond the $\Lambda$CDM model.
@@ -75,4 +75,4 @@ if result.p_value < 1e-5:
 The CDS framework lets researchers move from high-level theoretical exploration to data validation in a single environment. By combining automated hypothesis generation with statistical tools, we can approach the Hubble tension systematically and evaluate the viability of new physics.
 
 ---
-*This report was generated using the Cognitive Discovery System (CDS).*
+*This report was generated using the Scientific Computing System (CDS).*

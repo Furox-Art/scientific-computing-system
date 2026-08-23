@@ -27,7 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
     """Construct the top-level ``cds`` argument parser and its subcommands."""
     parser = argparse.ArgumentParser(
         prog="cds",
-        description="Cognitive Discovery System — computational science platform.",
+        description="Scientific Computing System — computational science platform.",
     )
     parser.add_argument("--version", "-v", action="store_true", help="Show System version and exit")
 

@@ -22,7 +22,7 @@ the canonical docs build lives on the local toolchain.
 Versioning: static. ``version`` lives in ``pyproject.toml`` and is mirrored
 in ``src/cds/_version.py`` (kept in lockstep — bump both before tagging).
 The script reads the version from the built wheel filename (e.g.
-``cognitive_discovery_system-1.0.2-py3-none-any.whl``) and uses it for
+``scientific_computing_system-1.0.2-py3-none-any.whl``) and uses it for
 verification and tag creation. (Previously we tried hatch-vcs, but 0.5.0
 silently ignored the version-scheme override; static versioning is what
 shipped — see ``pyproject.toml`` release checklist.)
@@ -75,8 +75,8 @@ def latest_tag() -> str | None:
 def version_from_wheel(path: Path) -> str | None:
     """Extract the version from a built wheel filename.
 
-    ``cognitive_discovery_system-1.0.2-py3-none-any.whl`` -> ``1.0.2``
-    ``cognitive_discovery_system-1.0.2.post1-py3-none-any.whl`` -> ``1.0.2.post1``
+    ``scientific_computing_system-1.0.2-py3-none-any.whl`` -> ``1.0.2``
+    ``scientific_computing_system-1.0.2.post1-py3-none-any.whl`` -> ``1.0.2.post1``
     """
     m = re.search(r"-([\w.+]+)-py\d", path.name)
     return m.group(1) if m else None

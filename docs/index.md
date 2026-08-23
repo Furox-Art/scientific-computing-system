@@ -1,6 +1,6 @@
-# Cognitive Discovery System (CDS)
+# Scientific Computing System (CDS)
 
-Welcome to the official documentation for the **Cognitive Discovery System (CDS)**.
+Welcome to the official documentation for the **Scientific Computing System (CDS)**.
 
 CDS is an open-source computational science platform designed for research, simulation, and discovery. It provides a lightweight, dependency-free environment for scientific exploration, featuring 19 modules covering everything from quantum simulation to symbolic math, knowledge organization, educational NLP primitives, and automated hypothesis generation.
 

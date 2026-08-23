@@ -1,7 +1,7 @@
 # Case Study: Integrating Quantum Simulation with Machine Learning
 
 ## Overview
-This case study combines quantum circuit simulation with classical machine learning using the Cognitive Discovery System (CDS). It uses `cds.quantum` for feature generation and `cds.ml` for predictive modeling to illustrate a hybrid quantum-classical workflow.
+This case study combines quantum circuit simulation with classical machine learning using the Scientific Computing System (CDS). It uses `cds.quantum` for feature generation and `cds.ml` for predictive modeling to illustrate a hybrid quantum-classical workflow.
 
 ## 1. Building a Quantum Circuit with `cds.quantum`
 

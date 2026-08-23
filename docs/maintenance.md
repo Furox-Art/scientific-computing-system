@@ -1,6 +1,6 @@
 # Maintenance & Distribution Guide
 
-This guide explains how to maintain the Cognitive Discovery System and publish new versions to PyPI.
+This guide explains how to maintain the Scientific Computing System and publish new versions to PyPI.
 
 ## Local Development Setup
 

@@ -1,5 +1,5 @@
 """
-Scientific hypothesis generator for the Cognitive Discovery System.
+Scientific hypothesis generator for the Scientific Computing System.
 
 This module turns research questions into structured, falsifiable
 hypotheses with clear assumptions and predictions.

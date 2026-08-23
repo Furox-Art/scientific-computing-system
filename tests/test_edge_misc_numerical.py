@@ -545,7 +545,7 @@ class TestCLIMainGuard:
             env=env,
         )
         assert result.returncode == 0
-        assert "Cognitive Discovery" in result.stdout or "cognitive" in result.stdout.lower()
+        assert "Scientific Computing" in result.stdout or "scientific" in result.stdout.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -586,7 +586,7 @@ class TestMainModuleRun:
             env=env,
         )
         assert result.returncode == 0
-        assert "Cognitive" in result.stdout or "cognitive" in result.stdout.lower()
+        assert "usage: cds" in result.stdout
 
 
 # ---------------------------------------------------------------------------

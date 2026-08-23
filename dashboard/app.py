@@ -24,7 +24,7 @@ except ImportError:
 
 st.set_page_config(page_title="System Interactive Dashboard", layout="wide")
 
-st.title("Cognitive Discovery System")
+st.title("Scientific Computing System")
 st.markdown("""
 Welcome to the interactive showcase of the **System**.
 Everything you see here is powered by **Pure Python** algorithms, built from scratch without NumPy, SciPy, or other heavy numerical dependencies.

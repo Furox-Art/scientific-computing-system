@@ -1,4 +1,4 @@
-# Contributing to Cognitive Discovery System
+# Contributing to Scientific Computing System
 
 Thank you for your interest! CDS is an open-source computational science platform. Your input — whether as a researcher, engineer, or domain expert — is valuable.
 

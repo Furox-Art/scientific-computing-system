@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes how the Cognitive Discovery System (CDS) is
+This document describes how the Scientific Computing System (CDS) is
 organized: the module layers, what depends on what, and how data flows
 from a user call to a result. CDS is deliberately a **pure-Python,
 zero-heavy-dependency** library — every algorithm lives in `src/cds/` as

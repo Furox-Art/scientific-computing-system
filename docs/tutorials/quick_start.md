@@ -1,6 +1,6 @@
 # CDS Quick Start Tutorial
 
-Welcome to the **Cognitive Discovery System (CDS)**. This guide will show you how to perform scientific calculations with **Zero Dependencies**.
+Welcome to the **Scientific Computing System (CDS)**. This guide will show you how to perform scientific calculations with **Zero Dependencies**.
 
 ## 1. Setup and Version Check
 
