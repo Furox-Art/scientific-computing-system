@@ -11,6 +11,17 @@ CDS is an open-source computational science platform designed for research, simu
 
 ## Key Features
 
+### New to scientific Python?
+
+CDS is designed as a first stop: every algorithm is readable pure Python, so
+you learn *how* things work, not just how to call them.
+
+1. Install: `pip install cognitive-discovery-system`
+2. Explore: `cds modules`, then run any script in `examples/`
+3. Learn: follow the [Tutorials](tutorials/quick_start.md) in order —
+   [Quick Start](tutorials/quick_start.md), [Statistics](tutorials/stats_demo.md),
+   [Machine Learning](tutorials/ml_demo.md), then branch out.
+
 - **Pure Python:** Every module is implemented from scratch using the Python standard library. No heavy dependencies like NumPy or SciPy required.
 - **Quantum Simulation:** Full state-vector simulation for single and multi-qubit circuits with entanglement and O(1) sampling.
 - **Advanced Mathematics:** O(N³) Partial Pivoting LU decomposition, vectorized optimizers, and adaptive ODE solvers (RK45).

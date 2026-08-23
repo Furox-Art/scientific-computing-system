@@ -34,6 +34,21 @@
 
 ---
 
+## Learning scientific Python?
+
+CDS was built for you. Every algorithm you'd normally call as a black box —
+numpy's FFT, scipy's integrators, sklearn's clustering — lives here as
+readable pure Python you can open, run, and modify line by line.
+
+**Start here:**
+
+1. `pip install cognitive-discovery-system` — no NumPy, no compilers,
+   nothing to configure
+2. `cds modules` — see everything inside
+3. Run any demo: `python examples/quantum_demo.py`
+4. Follow the tutorials — zero-install via
+   [Binder](https://mybinder.org/v2/gh/Furox88/cognitive-discovery-system/main?urlpath=lab/tree/examples/tour_of_numerical_methods.ipynb)
+
 > **One package, no heavy dependencies.** CDS brings together quantum circuit simulation, statistical analysis, signal processing, optimization, probability, ODE/numerical solvers, symbolic modeling, knowledge graphs, educational NLP, and **structured hypothesis generation** — all in readable pure Python. **No NumPy. No SciPy. No compiled extensions.** Just `pip install` and you can read every line of source.
 
 **Why CDS exists** — for teaching, prototyping, scientific exploration, and edge deployments where a single, dependency-light, fully-readable Python package beats juggling six libraries. Every algorithm is implemented from scratch so you can *learn how it works*, not just call it.
