@@ -1,4 +1,4 @@
-﻿cff-version: 1.2.0
+cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata from this file."
 type: software
 title: "scientific-computing-system"
@@ -27,4 +27,3 @@ preferred-citation:
   year: 2026
 version: 1.7.0
   url: "https://github.com/Furox-Art/scientific-computing-system"
-
