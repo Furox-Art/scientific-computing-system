@@ -46,6 +46,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Correlation-mining engine** (`cds.hypothesis`) — `mine_correlations`
   turns numeric datasets into statistically tested, falsifiable
   `Hypothesis` objects.
+- **Power analysis** (`cds.stats`) — `power_t_test`,
+  `power_proportion_test` and `required_n_per_group` sample-size solver.
+- **VotingClassifier** (`cds.ml`) — hard (majority vote) and soft
+  (averaged probabilities) ensembles over the shared estimator interface.
+- Four new runnable demos under `examples/` — interpolation, PDE,
+  ensemble showcase and the end-to-end discovery pipeline.
 
 ### Changed
 

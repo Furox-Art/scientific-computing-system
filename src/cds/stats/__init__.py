@@ -26,6 +26,12 @@ from cds.stats.hypothesis_tests import (
     two_sample_ttest,
 )
 from cds.stats.nonparametric import mann_whitney_u, wilcoxon_signed_rank
+from cds.stats.power import (
+    PowerResult,
+    power_proportion_test,
+    power_t_test,
+    required_n_per_group,
+)
 from cds.stats.regression import RegressionResult, linear_regression
 from cds.stats.time_series import (
     LjungBoxResult,
@@ -84,4 +90,9 @@ __all__ = [
     "BootstrapResult",
     "bootstrap_ci",
     "bootstrap_diff_ci",
+    # Power analysis
+    "PowerResult",
+    "power_t_test",
+    "power_proportion_test",
+    "required_n_per_group",
 ]

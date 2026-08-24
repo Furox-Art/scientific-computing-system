@@ -23,6 +23,7 @@ from cds.ml.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from cds.ml.neural import MLP, Layer
 from cds.ml.preprocessing import StandardScaler, train_test_split
 from cds.ml.tree import DecisionTreeClassifier
+from cds.ml.voting import SoftVotingModel, VotingClassifier
 
 __all__ = [
     "CVResult",
@@ -42,6 +43,7 @@ __all__ = [
     "PCAResult",
     "Prf",
     "RandomForestClassifier",
+    "SoftVotingModel",
     "StandardScaler",
     "accuracy",
     "confusion_matrix",
@@ -54,4 +56,5 @@ __all__ = [
     "r2_score",
     "roc_auc",
     "train_test_split",
+    "VotingClassifier",
 ]
