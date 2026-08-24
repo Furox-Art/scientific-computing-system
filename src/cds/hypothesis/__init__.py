@@ -32,6 +32,7 @@ from cds.hypothesis.generator import (
     SimpleOfflineGenerator,
     generate_hypotheses,
 )
+from cds.hypothesis.mining import MinedHypothesis, mine_correlations
 
 __all__ = [
     "Domain",
@@ -45,4 +46,6 @@ __all__ = [
     "EvaluationData",
     "ChiSquareGofPayload",
     "EvaluationResult",
+    "MinedHypothesis",
+    "mine_correlations",
 ]

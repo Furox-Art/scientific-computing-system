@@ -26,6 +26,7 @@ from cds.signals.stft import (
     stft,
     window,
 )
+from cds.signals.wavelet import dwt, dwt_multi_level, idwt
 
 __all__ = [
     # Fourier toolkit (processing.py)
@@ -51,4 +52,8 @@ __all__ = [
     "frame_signal",
     "stft",
     "window",
+    # Wavelet transforms (wavelet.py)
+    "dwt",
+    "idwt",
+    "dwt_multi_level",
 ]

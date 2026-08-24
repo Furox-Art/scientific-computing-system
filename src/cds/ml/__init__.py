@@ -18,6 +18,7 @@ from cds.ml.metrics import (
     roc_auc,
 )
 from cds.ml.model_selection import CVResult, cross_val_score, k_fold_indices
+from cds.ml.naive_bayes import GaussianNaiveBayes
 from cds.ml.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from cds.ml.neural import MLP, Layer
 from cds.ml.preprocessing import StandardScaler, train_test_split
@@ -25,6 +26,7 @@ from cds.ml.tree import DecisionTreeClassifier
 
 __all__ = [
     "CVResult",
+    "GaussianNaiveBayes",
     "GradientBoostingClassifier",
     "ConfusionMatrixResult",
     "DecisionTreeClassifier",

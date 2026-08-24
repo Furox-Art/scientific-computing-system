@@ -37,6 +37,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`cds.probability`) — pmf + cdf for both.
 - **TF-IDF ranked retrieval** (`cds.knowledge`) — `rank_tfidf` across
   concepts and notes with smoothed idf.
+- **Haar wavelet transform** (`cds.signals`) — `dwt` / `idwt` /
+  `dwt_multi_level`, orthonormal with perfect reconstruction.
+- **PDE solvers** (`cds.pde`) — explicit FTCS heat equation (Dirichlet /
+  Neumann, stability-guarded) and wave equation (CFL-guarded).
+- **Gaussian Naive Bayes** (`cds.ml`) — log-space scoring with variance
+  smoothing.
+- **Correlation-mining engine** (`cds.hypothesis`) — `mine_correlations`
+  turns numeric datasets into statistically tested, falsifiable
+  `Hypothesis` objects.
 
 ### Changed
 

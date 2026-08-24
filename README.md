@@ -175,8 +175,8 @@ If CDS is useful in your research or publications, please cite it using the info
 | `cds.interpolate` | Interpolation — 1-D linear & nearest-neighbour evaluators, bilinear interpolation on regular 2-D grids |
 | `cds.quantum` | Single & multi-qubit simulation — Hadamard, Pauli, CNOT, SWAP, Toffoli, Bell/GHZ states, entanglement detection |
 | `cds.optimization` | Gradient descent, Newton's method, Adam optimizer, golden section search, **Nelder–Mead simplex**, **simulated annealing** (box bounds, seeded), **projected gradient descent** & **quadratic-penalty constrained solves** |
-| `cds.ml` | Pure Python Neural Networks — MLP, dense layers, Adam-based training — plus **k-NN classifier/regressor**, **k-means clustering** (k-means++), **CART decision tree** (Gini), **logistic regression**, **vector OLS `LinearRegression`**, **PCA** (Jacobi eigen-solver), **StandardScaler** & seeded **train/test split**, **Random Forest**, **gradient-boosted trees**, classification metrics (accuracy, P/R/F1, ROC-AUC) & **k-fold cross-validation** |
-| `cds.signals` | DFT, radix-2 FFT/IFFT (O(N log N)), 2D FFT/IFFT, convolution, power spectrum, **Butterworth IIR filter design** (low/high/band), moving-median denoiser, **STFT & spectrogram** (Hann/Hamming windows) |
+| `cds.ml` | Pure Python Neural Networks — MLP, dense layers, Adam-based training — plus **k-NN classifier/regressor**, **k-means clustering** (k-means++), **CART decision tree** (Gini), **logistic regression**, **vector OLS `LinearRegression`**, **PCA** (Jacobi eigen-solver), **StandardScaler** & seeded **train/test split**, **Random Forest**, **gradient-boosted trees**, **Gaussian Naive Bayes**, classification metrics (accuracy, P/R/F1, ROC-AUC) & **k-fold cross-validation** |
+| `cds.signals` | DFT, radix-2 FFT/IFFT (O(N log N)), 2D FFT/IFFT, convolution, power spectrum, **Butterworth IIR filter design** (low/high/band), moving-median denoiser, **STFT & spectrogram** (Hann/Hamming windows), **Haar wavelet DWT/IDWT** (multi-level) |
 | `cds.probability` | Gaussian, uniform, exponential, binomial, Poisson distributions — plus **chi-square / Student-t (pdf·cdf·ppf)**, **gamma / beta densities with seeded samplers** (Marsaglia–Tsang), **hypergeometric & negative-binomial pmf/cdf** |
 | `cds.stats` | Descriptive stats, Pearson correlation, linear regression, t-test, chi-square, ANOVA, effect-size measures (Cohen's d, η², Cramér's V), Bonferroni correction, **time-series analysis** (ACF/PACF, KPSS, Ljung-Box, exponential smoothing, seasonal decomposition), **nonparametric tests** (Mann–Whitney U, Wilcoxon signed-rank with tie corrections), **bootstrap confidence intervals** (percentile method) |
 | `cds.math_utils` | Numerical calculus, O(N³) LU / QR / Cholesky, eigenvalue (power iteration), Gram-Schmidt, matrix inverse, **SVD via Jacobi rotations** (+ rank & condition number) |
@@ -189,7 +189,8 @@ If CDS is useful in your research or publications, please cite it using the info
 | `cds.diffeq` | Euler method, RK4, midpoint method, ODE system solver — plus **implicit stiff solvers**: backward Euler & Crank–Nicolson (scalar + systems, analytic or finite-difference Jacobian), **symplectic integrators** (semi-implicit Euler, velocity Verlet) |
 | `cds.numerical_integration` | Deterministic quadrature — trapezoid, Simpson 1/3 & 3/8, Romberg, Gauss-Legendre, adaptive Simpson, **2-D tensor-product quadrature** (Simpson + Gauss-Legendre) |
 | `cds.nlp` | Educational NLP from scratch — BPE tokenizer, sinusoidal embeddings, multi-head attention, Transformer block, scalar autograd (SGD/Adam), MiniGPT demo |
-| `cds.hypothesis` | Structured hypothesis generation with prompt templates for custom research workflows |
+| `cds.hypothesis` | Structured hypothesis generation with prompt templates for custom research workflows, plus the **correlation-mining engine**: `mine_correlations` turns numeric datasets into falsifiable, statistically tested Hypothesis objects |
+| `cds.pde` | 1-D finite-difference PDE solvers — explicit FTCS heat equation (Dirichlet/Neumann, von Neumann stability guard) and wave equation (CFL-guarded) |
 | `cds.plot` | Optional matplotlib charts — series/multi-series, scatter, regression, histograms, waveforms, power spectra, ACF/PACF, seasonal decompose, heatmaps, loss curves (`pip install scientific-computing-system[plot]`) |
 
 ## Quick Start
@@ -568,7 +569,9 @@ src/cds/
 ├── diffeq/         # ODE solvers (Euler, RK4, midpoint)
 ├── numerical_integration/  # Deterministic quadrature (trapezoid, Simpson, Romberg, Gauss-Legendre)
 ├── nlp/            # Educational NLP (BPE, embeddings, attention, autograd, MiniGPT)
-├── hypothesis/     # Hypothesis generation
+├── interpolate/    # 1-D linear/nearest + 2-D bilinear interpolation
+├── pde/            # 1-D finite-difference PDE solvers (heat FTCS, wave CFL)
+├── hypothesis/     # Hypothesis generation + correlation-mining engine
 ├── core/           # Shared models, config
 └── cli/           # Command-line interface package
 
