@@ -1,5 +1,6 @@
 """Machine Learning module for CDS."""
 
+from cds.ml.boosting import GradientBoostingClassifier
 from cds.ml.clustering import KMeans, KMeansResult
 from cds.ml.decomposition import PCA, PCAResult
 from cds.ml.ensemble import RandomForestClassifier
@@ -24,6 +25,7 @@ from cds.ml.tree import DecisionTreeClassifier
 
 __all__ = [
     "CVResult",
+    "GradientBoostingClassifier",
     "ConfusionMatrixResult",
     "DecisionTreeClassifier",
     "KMeans",

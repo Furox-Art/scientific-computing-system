@@ -80,4 +80,8 @@ __all__ = [
     # Nonparametric tests
     "mann_whitney_u",
     "wilcoxon_signed_rank",
+    # Bootstrap resampling
+    "BootstrapResult",
+    "bootstrap_ci",
+    "bootstrap_diff_ci",
 ]

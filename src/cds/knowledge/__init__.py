@@ -22,7 +22,9 @@ from cds.knowledge.notes import (
     Notebook,
 )
 from cds.knowledge.retrieval import (
+    RetrievalHit,
     SearchResult,
+    rank_tfidf,
     search,
     search_concepts,
     search_notes,
@@ -38,4 +40,6 @@ __all__ = [
     "search",
     "search_concepts",
     "search_notes",
+    "RetrievalHit",
+    "rank_tfidf",
 ]

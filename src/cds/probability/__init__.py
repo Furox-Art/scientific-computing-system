@@ -27,6 +27,12 @@ from cds.probability.distributions import (
     uniform_pdf,
     uniform_sample,
 )
+from cds.probability.extra_distributions import (
+    hypergeometric_cdf,
+    hypergeometric_pmf,
+    negative_binomial_cdf,
+    negative_binomial_pmf,
+)
 
 __all__ = [
     "beta_pdf",
@@ -42,6 +48,10 @@ __all__ = [
     "gaussian_sample",
     "gamma_pdf",
     "geometric_pmf",
+    "hypergeometric_cdf",
+    "hypergeometric_pmf",
+    "negative_binomial_cdf",
+    "negative_binomial_pmf",
     "poisson_pmf",
     "poisson_sample",
     "sample_beta",

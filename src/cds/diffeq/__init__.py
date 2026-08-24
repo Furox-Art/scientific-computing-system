@@ -14,6 +14,11 @@ from cds.diffeq.solvers import (
     rk45,
     solve_system,
 )
+from cds.diffeq.symplectic import (
+    SymplecticSolution,
+    symplectic_euler,
+    velocity_verlet,
+)
 
 __all__ = [
     "ODESolution",
@@ -26,4 +31,7 @@ __all__ = [
     "solve_system",
     "trapezoid_method",
     "trapezoid_method_system",
+    "SymplecticSolution",
+    "symplectic_euler",
+    "velocity_verlet",
 ]

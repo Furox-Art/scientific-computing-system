@@ -1,6 +1,11 @@
 """Numerical optimization algorithms."""
 
 from cds.optimization._metaheuristics import nelder_mead, simulated_annealing
+from cds.optimization.constrained import (
+    ProjectedGradientResult,
+    projected_gradient_descent,
+    quadratic_penalty,
+)
 from cds.optimization.minimize import (
     adam,
     gradient_descent,
@@ -15,4 +20,7 @@ __all__ = [
     "newton_method",
     "simulated_annealing",
     "adam",
+    "ProjectedGradientResult",
+    "projected_gradient_descent",
+    "quadratic_penalty",
 ]

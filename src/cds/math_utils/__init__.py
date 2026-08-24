@@ -18,6 +18,7 @@ from cds.math_utils.linalg import (
     transpose,
     vector_norm,
 )
+from cds.math_utils.svd import SVDResult, condition_number, svd
 
 __all__ = [
     "derivative",
@@ -38,4 +39,7 @@ __all__ = [
     "vector_norm",
     "frobenius_norm",
     "matrix_trace",
+    "svd",
+    "SVDResult",
+    "condition_number",
 ]

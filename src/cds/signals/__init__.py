@@ -20,6 +20,12 @@ from cds.signals.processing import (
     low_pass_filter,
     power_spectrum,
 )
+from cds.signals.stft import (
+    STFTResult,
+    frame_signal,
+    stft,
+    window,
+)
 
 __all__ = [
     # Fourier toolkit (processing.py)
@@ -40,4 +46,9 @@ __all__ = [
     "butter_bandstop",
     "apply_filter",
     "moving_median",
+    # Time-frequency analysis (stft.py)
+    "STFTResult",
+    "frame_signal",
+    "stft",
+    "window",
 ]

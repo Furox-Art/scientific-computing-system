@@ -1101,6 +1101,8 @@ class TestPublicAPI:
             "search",
             "search_concepts",
             "search_notes",
+            "RetrievalHit",
+            "rank_tfidf",
         }
         assert expected.issubset(set(dir(mod)))
         assert expected == set(mod.__all__)

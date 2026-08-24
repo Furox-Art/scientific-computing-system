@@ -1,5 +1,6 @@
 """Monte Carlo methods — estimation, integration, random walks."""
 
+from cds.montecarlo.markov import MHResult, metropolis_hastings
 from cds.montecarlo.methods import (
     buffon_needle,
     estimate_pi,
@@ -18,4 +19,6 @@ __all__ = [
     "random_walk_1d",
     "random_walk_2d",
     "buffon_needle",
+    "MHResult",
+    "metropolis_hastings",
 ]

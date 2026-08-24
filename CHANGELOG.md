@@ -17,6 +17,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and tie-aware rank-based `roc_auc`.
 - **Cross-validation** (`cds.ml.model_selection`) — `k_fold_indices` and
   `cross_val_score` over the shared estimator interface.
+- **Interpolation module** (`cds.interpolate`) — `interp1d` (linear /
+  nearest) and `interp2d` (bilinear on regular grids).
+- **SVD** (`cds.math_utils`) — one-sided Jacobi decomposition with
+  `svd`, `rank` and `condition_number`; full U/Vt factors.
+- **STFT / spectrogram** (`cds.signals`) — Hann/Hamming windows, framed
+  zero-padded transforms reusing the radix-2 FFT, `STFTResult`.
+- **Gradient Boosting classifier** (`cds.ml`) — logistic-loss boosted
+  regression trees with Newton leaf values; binary labels.
+- **Bootstrap confidence intervals** (`cds.stats`) — percentile-method
+  `bootstrap_ci` and two-sample `bootstrap_diff_ci`.
+- **Metropolis-Hastings sampler** (`cds.montecarlo`) — 1-D random-walk
+  MCMC with burn-in/thinning and acceptance-rate reporting.
+- **Symplectic integrators** (`cds.diffeq`) — semi-implicit Euler and
+  velocity Verlet with forward/backward integration.
+- **Constrained optimization** (`cds.optimization`) — projected gradient
+  descent for box bounds and quadratic-penalty constrained solves.
+- **Hypergeometric & negative-binomial distributions**
+  (`cds.probability`) — pmf + cdf for both.
+- **TF-IDF ranked retrieval** (`cds.knowledge`) — `rank_tfidf` across
+  concepts and notes with smoothed idf.
+
+### Changed
+
 - `DecisionTreeClassifier` now accepts `max_features` and `seed` for
   random-forest-style split randomization (default behavior unchanged).
 
