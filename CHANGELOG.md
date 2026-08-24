@@ -7,8 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes yet. See [v1.6.1](#v161---2026-08-21) below for the
-latest release.
+### Added
+
+- **Random Forest classifier** (`cds.ml`) — bagged CART trees with
+  bootstrap resampling and per-split feature randomization (`sqrt`/`log2`
+  / explicit count), fully deterministic under a seed.
+- **Metrics** (`cds.ml`) — `accuracy`, `confusion_matrix`,
+  `precision_recall_f1`, `macro_prf`, regression `mse`/`mae`/`r2_score`,
+  and tie-aware rank-based `roc_auc`.
+- **Cross-validation** (`cds.ml.model_selection`) — `k_fold_indices` and
+  `cross_val_score` over the shared estimator interface.
+- `DecisionTreeClassifier` now accepts `max_features` and `seed` for
+  random-forest-style split randomization (default behavior unchanged).
 
 ## [v1.6.1] - 2026-08-21
 

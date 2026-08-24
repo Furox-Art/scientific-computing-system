@@ -8,6 +8,7 @@ Depth is bounded by ``max_depth``, so recursion depth is never a concern.
 
 from __future__ import annotations
 
+import random
 from collections.abc import Sequence
 
 
@@ -67,12 +68,24 @@ class DecisionTreeClassifier:
     tiny/degenerate datasets.
     """
 
-    def __init__(self, *, max_depth: int = 5, min_samples_split: int = 2) -> None:
+    def __init__(
+        self,
+        *,
+        max_depth: int = 5,
+        min_samples_split: int = 2,
+        max_features: int | None = None,
+        seed: int | None = None,
+    ) -> None:
         """Store hyperparameters; call :meth:`fit` before predicting.
 
         Args:
             max_depth: Maximum number of split levels (>= 0).
             min_samples_split: Minimum rows required to consider a split (>= 2).
+            max_features: Number of features considered at each split
+                (``None`` uses all features). Subsets are drawn without
+                replacement from a seeded RNG, enabling random-forest-style
+                split randomization.
+            seed: RNG seed used only when ``max_features`` is set.
 
         Raises:
             ValueError: if a hyperparameter is out of range.
@@ -81,8 +94,12 @@ class DecisionTreeClassifier:
             raise ValueError("max_depth must be >= 0")
         if min_samples_split < 2:
             raise ValueError("min_samples_split must be >= 2")
+        if max_features is not None and max_features < 1:
+            raise ValueError("max_features must be >= 1")
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
+        self.max_features = max_features
+        self._rng = random.Random(seed)
         self._fitted = False
         self._root: _Leaf | _Split = _Leaf({})
         self._n_features = 0
@@ -107,6 +124,8 @@ class DecisionTreeClassifier:
         width = len(X[0])
         if any(len(row) != width for row in X):
             raise ValueError("all rows must have the same length")
+        if self.max_features is not None and self.max_features > width:
+            raise ValueError("max_features must be <= the number of features")
         self._n_features = width
         self._X = [list(row) for row in X]
         self._y = list(y)
@@ -177,7 +196,14 @@ class DecisionTreeClassifier:
         best_score = parent_gini + 1.0  # anything strictly better wins
         best: tuple[int, float] | None = None
 
-        for feature in range(self._n_features):
+        if self.max_features is None:
+            feature_pool = list(range(self._n_features))
+        else:
+            # Random-forest-style split randomization: draw a fresh subset
+            # per node. The shared per-tree RNG keeps each tree deterministic.
+            feature_pool = self._rng.sample(range(self._n_features), self.max_features)
+
+        for feature in feature_pool:
             ordered = sorted((self._X[i][feature], i) for i in idxs)
             for pos in range(len(ordered) - 1):
                 va, _ = ordered[pos]
