@@ -91,7 +91,7 @@ simulation, statistics, signal processing, optimization, numerical methods,
 symbolic modeling, and structured hypothesis generation, and you can step
 through any of it line by line.
 
-**The pitch in numbers:** 19 modules · **1,600+ tests** on Linux/Windows/macOS
+**The pitch in numbers:** 21 modules · **2,000+ tests** on Linux/Windows/macOS
 (Python 3.10–3.13) · **100% coverage** (statement *and* branch) enforced as a
 CI gate · `mypy --strict` clean across source and tests · **zero runtime
 dependencies**.
