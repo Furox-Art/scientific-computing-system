@@ -33,9 +33,16 @@ repos:
         args: ["--fix", "--exit-non-zero-on-fix"]
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
-    hooks:
-      - id: mypy
-        files: ^src/
-        args: ["--config-file=pyproject.toml"]
+# Type checking is deliberately NOT a hook. mypy needs a real environment: the
+# hook runs in an isolated venv where the optional-extra stubs are missing, so
+# `cds/data_analysis/pandas_io.py` fails on absent pandas stubs, and supplying
+# `pandas-stubs` instead drags in numpy's `.pyi` files, which use PEP 695
+# `type` statements that mypy rejects under this project's
+# `python_version = "3.10"` target (see issue #62).
+#
+# It is covered where it works properly instead:
+#   * CI: the `test` matrix runs `mypy src/` and `mypy tests/` after installing
+#     every extra, and the `property-tests` job owns the hypothesis file.
+#   * Locally: `mypy src/` in your dev environment, which has the extras.
+#
+# tests.yml used to pass `SKIP: mypy` to this hook set for exactly this reason.

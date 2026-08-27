@@ -210,9 +210,9 @@ jobs:
       with:
         python-version: "3.12"
     - uses: pre-commit/action@v3.0.1
-      env:
-        # Skip mypy in CI hook (already covered by the test job).
-        SKIP: mypy
+      # No SKIP needed: the mypy hook was removed from .pre-commit-config.yaml
+      # (see the note there). Type checking lives in the `test` matrix, which
+      # installs the extras mypy actually needs.
 
   # The main matrix installs every optional extra (pandas, ...) so the
   # importorskip'd tests actually run and coverage stays at 100%. This job is
