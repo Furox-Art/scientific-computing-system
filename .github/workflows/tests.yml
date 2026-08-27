@@ -3,8 +3,38 @@ name: CI
 on:
   push:
     branches: [ main ]
+    # Files that cannot change the package, the test result or the published
+    # site, so a metadata-only commit should not spend 18 job checkouts.
+    # `docs/**` is deliberately absent: docs changes must still trigger the
+    # `deploy-docs` job below or the published site drifts from main.
+    #
+    # Deliberately NOT applied to `pull_request`. The aggregate `CI` job is
+    # designed to be the single required status check, and a workflow skipped
+    # by paths-ignore never reports that context — which would leave a PR
+    # pending forever if branch protection is re-enabled.
+    paths-ignore:
+      - '.github/CODEOWNERS'
+      - '.github/FUNDING.yml'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+      - 'CITATION.cff'
+      - 'CODE_OF_CONDUCT.md'
+      - 'CONTRIBUTING.md'
+      - 'LICENSE'
+      - 'SECURITY.md'
   pull_request:
     branches: [ main ]
+
+# One in-flight run per ref. Every CI run in this repo is a push to main
+# (27 of 27 over the last fortnight), so without this a burst of commits
+# starts a full 18-job run per commit while only the last result matters.
+#
+# Note this can cancel a superseded run's `deploy-docs` job mid-flight.
+# That is safe: `mkdocs gh-deploy --force` either has not pushed yet or has
+# already replaced gh-pages wholesale, and the superseding run redeploys.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -17,9 +47,12 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
+    # Shallow clone. The version is static (see the note by `version` in
+    # pyproject.toml on why setuptools_scm/hatch-vcs was dropped) and the only
+    # mkdocs plugins are search + mkdocstrings, neither of which reads git
+    # history — so nothing in this job needs the log. All 12 matrix cells were
+    # fetching the entire history for nothing.
     - uses: actions/checkout@v5
-      with:
-        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v6
