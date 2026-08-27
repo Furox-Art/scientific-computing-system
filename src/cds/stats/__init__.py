@@ -1,5 +1,6 @@
 """Statistical analysis tools."""
 
+from cds.stats.bootstrap import BootstrapResult, bootstrap_ci, bootstrap_diff_ci
 from cds.stats.descriptive import (
     correlation,
     mean,
