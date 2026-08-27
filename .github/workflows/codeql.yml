@@ -12,10 +12,34 @@ name: CodeQL
 on:
   push:
     branches: [main]
+    # CodeQL only analyses Python here, so a commit that touches no code and no
+    # dependency pin cannot change the result. Mirrors tests.yml and is applied
+    # to `push` only for the same reason: a workflow skipped by paths-ignore
+    # never reports its status context.
+    paths-ignore:
+      - '.github/CODEOWNERS'
+      - '.github/FUNDING.yml'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+      - 'CITATION.cff'
+      - 'CODE_OF_CONDUCT.md'
+      - 'CONTRIBUTING.md'
+      - 'LICENSE'
+      - 'SECURITY.md'
+      - 'docs/**'
+      - '*.md'
   pull_request:
     branches: [main]
   schedule:
     - cron: "37 4 * * 1"  # weekly, off-peak
+
+# One analysis per ref. This was the second-busiest workflow in the repo
+# (29 runs a fortnight) and a superseded analysis has no value: code-scanning
+# alerts reflect the latest commit that finished, so racing runs only cost
+# checkouts.
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

@@ -36,6 +36,15 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege for the whole workflow. This repo's *default* workflow
+# permission is read-only, but that is a repo setting a future change could
+# flip back, and these jobs install and execute third-party packages from
+# PyPI — they must never hold a write-scoped GITHUB_TOKEN. `deploy-docs`
+# below re-grants `contents: write` for itself, which is the only job that
+# writes anything (the gh-pages push).
+permissions:
+  contents: read
+
 jobs:
   test:
     name: ${{ matrix.python-version }} on ${{ matrix.os }}

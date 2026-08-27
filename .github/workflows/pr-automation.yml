@@ -10,6 +10,17 @@ on:
         required: true
         type: string
 
+# One run per PR. `synchronize` fires on every push to a PR branch, so without
+# this a burst of commits queues a labeler run per push.
+concurrency:
+  group: pr-automation-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: true
+
+# Deny by default; each job re-grants only what it needs. `review-checklist`
+# previously declared nothing and therefore inherited the repository default,
+# which was read-write at the time this was written.
+permissions: {}
+
 jobs:
   labeler:
     if: github.event_name == 'pull_request'
@@ -24,6 +35,11 @@ jobs:
 
   review-checklist:
     runs-on: ubuntu-latest
+    # Posts a comment on the PR via the issues API, which for a pull request
+    # is gated by `pull-requests: write`.
+    permissions:
+      contents: read
+      pull-requests: write
     # Runs on label 'needs-review' or manual dispatch
     if: |
       (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'needs-review')) ||
