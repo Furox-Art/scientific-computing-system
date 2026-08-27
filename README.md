@@ -642,7 +642,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Contact
 
-- Maintainer: [@Furox88](https://github.com/Furox88)
+- Maintainer: [@Furox-Art](https://github.com/Furox-Art)
 - Issues & Discussions: [GitHub](https://github.com/Furox-Art/scientific-computing-system/issues)
 
 

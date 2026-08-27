@@ -22,13 +22,13 @@ name: Bot Reviewer
 #   serves two purposes:
 #     1. Open bot PRs that trigger downstream CI/CodeQL (benchmarks, changelog).
 #     2. Post approving reviews here (bot-reviewer).
-#   The App is a *different* identity than the human PR author (`Furox88`) and
+#   The App is a *different* identity than the human PR author (`Furox-Art`) and
 #   than `dependabot[bot]`, so GitHub accepts its reviews on those PRs.
 #
 #   SELF-APPROVAL GUARD: GitHub rejects an identity approving a PR it authored.
 #   The App opens the benchmark/changelog PRs, so it CANNOT approve them — and
 #   it never tries: the gate below only approves `dependabot[bot]` and
-#   (optionally) `Furox88`, so on an App-authored PR `github.actor` is the bot
+#   (optionally) `Furox-Art`, so on an App-authored PR `github.actor` is the bot
 #   identity and the gate yields `approve=false`, no-oping cleanly. No separate
 #   REVIEW_BOT_TOKEN secret is needed anymore.
 #
@@ -38,7 +38,7 @@ name: Bot Reviewer
 # SECURITY NOTES:
 #   * Only auto-approves `dependabot[bot]` PRs by default. Setting
 #     `auto-approve-maintainer` to `true` below broadens this to PRs authored
-#     by `Furox88`; do that only if you accept that the author's own CI is the
+#     by `Furox-Art`; do that only if you accept that the author's own CI is the
 #     sole gate.
 #   * Never log the token. It is referenced only via the `env` mapping below.
 
@@ -93,7 +93,7 @@ jobs:
         if: steps.cfg.outputs.configured == 'true'
         env:
           ACTOR: ${{ github.actor }}
-          MAINTAINER: "Furox88"
+          MAINTAINER: "Furox-Art"
           AUTO_MAINTAINER: ${{ env.auto-approve-maintainer }}
         run: |
           approve="false"

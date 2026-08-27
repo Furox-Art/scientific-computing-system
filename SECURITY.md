@@ -67,6 +67,6 @@ Responsible disclosures are credited in the relevant GitHub Security Advisory (w
 
 ## Contact
 
-- Maintainer: Furox88 (@Furox88)
+- Maintainer: Furox-Art (@Furox-Art)
 - Email: furkanarkn1451@gmail.com
 - PGP key: not published (use GitHub private vulnerability reporting)

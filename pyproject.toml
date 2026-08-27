@@ -9,7 +9,7 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [
-    {name = "Furox88", email = "furkanarkn1451@gmail.com"}
+    {name = "Furox-Art", email = "furkanarkn1451@gmail.com"}
 ]
 keywords = ["quantum", "machine-learning", "nlp", "signal-processing", "optimization", "statistics", "probability", "scientific-computing", "numerical-methods", "numerical-integration", "differential-equations", "monte-carlo", "graph-theory", "knowledge-graph", "symbolic-math", "data-analysis", "physics", "linear-algebra", "hypothesis-generation", "pure-python"]
 classifiers = [

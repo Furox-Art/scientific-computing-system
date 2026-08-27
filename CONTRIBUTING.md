@@ -272,4 +272,4 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 Open an issue or discussion.
 
-— Furox88 + contributors
+— Furox-Art + contributors

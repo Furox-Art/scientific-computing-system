@@ -4,9 +4,9 @@ type: software
 title: "scientific-computing-system"
 version: 1.7.0
 authors:
-  - name: "Furox88"
+  - name: "Furox-Art"
     email: "furkanarkn1451@gmail.com"
-abstract: "Pure Python computational science system â€” quantum simulation, signal processing, statistics, optimization, hypothesis generation, optional matplotlib plotting, and related numerical methods. All core modules are implemented without heavy external dependencies."
+abstract: "Pure Python computational science system — quantum simulation, signal processing, statistics, optimization, hypothesis generation, optional matplotlib plotting, and related numerical methods. All core modules are implemented without heavy external dependencies."
 license: MIT
 repository-code: "https://github.com/Furox-Art/scientific-computing-system"
 url: "https://github.com/Furox-Art/scientific-computing-system"
@@ -23,7 +23,7 @@ preferred-citation:
   type: software
   title: "scientific-computing-system"
   authors:
-    - name: "Furox88"
+    - name: "Furox-Art"
   year: 2026
-version: 1.7.0
+  version: 1.7.0
   url: "https://github.com/Furox-Art/scientific-computing-system"
