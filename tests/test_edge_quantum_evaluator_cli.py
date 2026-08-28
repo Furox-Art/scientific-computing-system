@@ -574,6 +574,7 @@ def test_cli_dashboard_launch(
     def fake_run(cmd: list[str], **kwargs: object) -> None:
         raise KeyboardInterrupt()
 
+    monkeypatch.delenv("PYTHONPATH", raising=False)
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(Path, "exists", lambda self: True)
     rc = main(["dashboard"])
@@ -590,6 +591,7 @@ def test_cli_dashboard_streamlit_missing(
     def fake_run(cmd: list[str], **kwargs: object) -> None:
         raise FileNotFoundError("streamlit not found")
 
+    monkeypatch.delenv("PYTHONPATH", raising=False)
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(Path, "exists", lambda self: True)
     rc = main(["dashboard"])
