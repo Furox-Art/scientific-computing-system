@@ -1,4 +1,9 @@
 version: 2
+# NOTE: `commit-message` is an object with a `prefix` key. A bare
+# `commit-message-prefix` is not in the schema, and Dependabot rejects the
+# WHOLE file when it meets an unknown key — which is why this repo had never
+# produced a single Dependabot PR or run despite being configured since day one,
+# and why its actions had drifted up to three majors behind.
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -7,7 +12,8 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
-    commit-message-prefix: "ci"
+    commit-message:
+      prefix: "ci"
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -15,4 +21,5 @@ updates:
     labels:
       - "dependencies"
       - "python"
-    commit-message-prefix: "deps"
+    commit-message:
+      prefix: "deps"
