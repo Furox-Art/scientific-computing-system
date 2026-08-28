@@ -45,13 +45,25 @@ class StationarityResult:
     p_value: float
 
 
+_SQRT2 = math.sqrt(2.0)
+
+
 def _normal_cdf(z: float) -> float:
-    """Standard normal CDF via the Abramowitz-Stegun 7.1.26 approximation."""
-    a1, a2, a3, p = 0.254829592, -0.284496736, 1.421413741, 0.3275911
-    sign = -1.0 if z < 0 else 1.0
-    x = 1.0 / (1.0 + p * abs(z))
-    y = 1.0 - ((((a3 * x + a2) * x) + a1) * x) * math.exp(-(z * z))
-    return 0.5 * (1.0 + sign * y)
+    """Standard normal CDF, ``P(Z <= z)``.
+
+    Uses ``math.erfc`` and the identity ``Phi(z) = erfc(-z / sqrt(2)) / 2``,
+    which is exact to double precision and keeps the left tail accurate (the
+    ``0.5 * (1 + erf(z / sqrt(2)))`` form cancels catastrophically there).
+
+    This previously hand-rolled Abramowitz & Stegun 7.1.26 and got it wrong
+    twice over: 7.1.26 approximates ``erf``, not ``Phi``, so its argument must
+    be ``z / sqrt(2)`` rather than ``z``, and two of the five polynomial
+    coefficients were missing. The result was off by up to 0.196 —
+    ``Phi(0)`` returned 0.304 instead of 0.5 — which silently corrupted every
+    p-value from :func:`kpss_statistic`. There is no reason to approximate a
+    function the standard library computes exactly.
+    """
+    return 0.5 * math.erfc(-z / _SQRT2)
 
 
 def autocorrelation(data: list[float], lag: int = 1) -> float:

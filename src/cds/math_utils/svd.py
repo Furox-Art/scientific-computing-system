@@ -203,7 +203,16 @@ def svd(a: Matrix, *, tol: float = 1e-12, max_sweeps: int = 50) -> SVDResult:
 
     u = [[cols[j][i] for j in range(m)] for i in range(m)]
     values = [svals[order[pos]] for pos in range(k_dim)]
-    return SVDResult(U=u, singular_values=values, Vt=transpose(v))
+    # `order` permutes the Jacobi output into descending singular value, and it
+    # must be applied to V as well as to U and the values. Returning
+    # `transpose(v)` unpermuted left row j of Vt paired with the wrong singular
+    # value, so `A = U @ diag(s) @ Vt` failed whenever the Jacobi sweep did not
+    # happen to produce descending order — e.g. `diag(1, 5, 3)` reconstructed as
+    # `[[0,0,1],[5,0,0],[0,3,0]]`. Random matrices masked it because the sweep
+    # usually orders the columns already. `order` is a permutation of all n
+    # indices, so this also fixes the trailing columns beyond `k_dim`.
+    v_sorted = [[v[i][order[j]] for j in range(n)] for i in range(n)]
+    return SVDResult(U=u, singular_values=values, Vt=transpose(v_sorted))
 
 
 def rank(a: Matrix, *, tol: float = 1e-10) -> int:

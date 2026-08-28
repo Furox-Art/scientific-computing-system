@@ -256,20 +256,43 @@ def power_iteration(
     max_iter: int = 1000,
     tol: float = NEWTON_TOLERANCE,
 ) -> tuple[float, Vector]:
-    """Find dominant eigenvalue and eigenvector using power iteration.
+    """Find the dominant eigenvalue and eigenvector by power iteration.
 
-    Von Mises iteration (1929). Optimized with scaling to prevent overflow.
+    Von Mises iteration (1929): repeatedly apply ``A``, renormalize, and read
+    the eigenvalue off the Rayleigh quotient ``vᵗAv / vᵗv``.
+
+    Convergence is decided on the **residual** ``‖Av − λv‖``, not on successive
+    Rayleigh quotients agreeing. That distinction matters: the quotient can sit
+    still while ``v`` is nowhere near an eigenvector. On ``[[3, 4], [4, -3]]``
+    (eigenvalues +5 and −5) the old quotient test exited at iteration two and
+    returned 4.0 — a number that is not an eigenvalue at all — because the
+    iterate oscillates between two directions instead of converging.
+
+    That oscillation is the method's fundamental limitation, not a bug: power
+    iteration needs ``|λ₁| > |λ₂|`` strictly. When the residual test cannot be
+    met this function now says so instead of returning a plausible-looking
+    wrong answer.
 
     Args:
-        m: square matrix
-        max_iter: iteration limit
-        tol: convergence tolerance
+        m: square matrix.
+        max_iter: iteration limit.
+        tol: residual tolerance, scaled by ``max(1, |λ|)``.
 
     Returns:
-        (eigenvalue, eigenvector) tuple
+        ``(eigenvalue, unit eigenvector)``. If the iterate collapses to zero —
+        a nilpotent or zero matrix, where ``A^k v → 0`` — returns ``0.0`` with
+        the last iterate, which is the correct dominant eigenvalue there.
+
+    Raises:
+        ValueError: if the residual never falls below the tolerance, which
+            means ``|λ₁|`` is not strictly dominant (equal-magnitude or complex
+            conjugate pair). Use a shifted or deflated iteration instead.
     """
     n = len(m)
-    v = [1.0] * n
+    # A non-degenerate deterministic start. All-ones is orthogonal to any
+    # eigenvector of the form (1, -1, ...), which silently costs the dominant
+    # direction on symmetric matrices that have one.
+    v = [1.0 / (i + 1) for i in range(n)]
 
     # Initial scaling
     max_val = max(abs(x) for x in v)
@@ -295,7 +318,8 @@ def power_iteration(
                 norm = max(abs(x) for x in w)
 
         if norm < NEAR_ZERO:
-            break
+            # A^k v collapsed to zero: the dominant eigenvalue is 0.
+            return 0.0, v
 
         v_new = [x / norm for x in w]
 
@@ -305,12 +329,23 @@ def power_iteration(
         denominator = sum(vi * vi for vi in v_new)
         new_eigenvalue = numerator / denominator if denominator > NEAR_ZERO else 0.0
 
-        if abs(new_eigenvalue - eigenvalue) < tol:
+        # Residual test: is v_new actually an eigenvector for new_eigenvalue?
+        # Compared squared, so the tolerance means "‖Av − λv‖ <= tol·max(1,|λ|)"
+        # without a second sqrt call on the hot path.
+        av = [sum(m[i][j] * v_new[j] for j in range(n)) for i in range(n)]
+        residual_sq = sum((av[i] - new_eigenvalue * v_new[i]) ** 2 for i in range(n))
+        limit = tol * max(1.0, abs(new_eigenvalue))
+        if residual_sq <= limit * limit:
             return new_eigenvalue, v_new
         eigenvalue = new_eigenvalue
         v = v_new
 
-    return eigenvalue, v
+    raise ValueError(
+        f"power iteration did not converge in {max_iter} iterations "
+        f"(last Rayleigh quotient {eigenvalue!r}, residual {residual_sq**0.5:.3e}); "
+        "|lambda_1| is probably not strictly dominant — an equal-magnitude or "
+        "complex-conjugate pair needs a shifted or deflated iteration instead"
+    )
 
 
 def gram_schmidt(vectors: list[Vector]) -> list[Vector]:

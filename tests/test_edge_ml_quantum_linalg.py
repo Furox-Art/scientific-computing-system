@@ -193,8 +193,11 @@ class TestPowerIterationOverflowExcept:
 
         with mock.patch("cds.math_utils.linalg.math.sqrt", side_effect=fake_sqrt):
             # Identity-like matrix: A·v has positive norm once fallback applies.
-            ev, vec = power_iteration([[2.0, 0.0], [0.0, 1.0]], max_iter=20)
-        assert isinstance(ev, float)
+            # The budget is generous because convergence is now decided on the
+            # residual, which for a ratio-2 spectrum needs roughly twice the
+            # iterations that the old successive-quotient test did.
+            ev, vec = power_iteration([[2.0, 0.0], [0.0, 1.0]], max_iter=200)
+        assert abs(ev - 2.0) < 1e-9
         assert len(vec) == 2
 
 

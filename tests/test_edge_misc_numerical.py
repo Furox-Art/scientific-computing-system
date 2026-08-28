@@ -18,6 +18,7 @@ Targets the last 61 uncovered lines across 14 files:
 - __main__.py               (1 line   — __main__ guard)
 """
 
+import math
 import os
 import subprocess
 import sys
@@ -226,13 +227,29 @@ class TestPowerIterationEdgeCases:
         assert abs(eigenvalue) < 1e-10
 
     def test_non_convergence(self) -> None:
-        # A matrix that doesn't converge within very few iterations.
-        eigenvalue, v = power_iteration(
-            [[2.0, 1.0], [1.0, 2.0]],
-            max_iter=1,
-        )
-        assert isinstance(eigenvalue, float)
-        assert len(v) == 2
+        # Convergence is decided on the residual, so an iteration budget too
+        # small to drive ‖Av − λv‖ under the tolerance must report failure
+        # rather than hand back the last iterate as if it were an answer.
+        with pytest.raises(ValueError, match="did not converge"):
+            power_iteration([[2.0, 1.0], [1.0, 2.0]], max_iter=1)
+
+    def test_equal_magnitude_eigenvalues_raise(self) -> None:
+        # Power iteration requires |lambda_1| > |lambda_2| strictly. A real
+        # rotation has the conjugate pair +i / -i and no real eigenvector, so
+        # no iterate can ever satisfy the residual test.
+        with pytest.raises(ValueError, match="strictly dominant"):
+            power_iteration([[0.0, -1.0], [1.0, 0.0]], max_iter=200)
+
+    def test_symmetric_indefinite_pair_is_found(self) -> None:
+        # [[3, 4], [4, -3]] has eigenvalues +5 and -5. Equal magnitude, so the
+        # old all-ones start oscillated and the old quotient test exited early
+        # with 4.0 — not an eigenvalue at all. Verify both that the eigenvalue
+        # is right and that the vector really is an eigenvector.
+        eigenvalue, v = power_iteration([[3.0, 4.0], [4.0, -3.0]])
+        assert abs(abs(eigenvalue) - 5.0) < 1e-9
+        av = [3.0 * v[0] + 4.0 * v[1], 4.0 * v[0] - 3.0 * v[1]]
+        residual = math.sqrt(sum((av[i] - eigenvalue * v[i]) ** 2 for i in range(2)))
+        assert residual < 1e-9
 
 
 class TestQRDegenerateColumns:

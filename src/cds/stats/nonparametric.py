@@ -109,11 +109,21 @@ def wilcoxon_signed_rank(differences: list[float]) -> RankTestResult:
     mu = n * (n + 1.0) / 4.0
 
     # Variance with tie correction over |d| groups (zeros already removed).
+    #
+    # var = n(n+1)(2n+1)/24 - (sum over tie groups of t^3 - t) / 48
+    #
+    # The divisor is 48, not 2. Both terms come from the same derivation: the
+    # untied variance is sum of squared ranks / 4, and a tie group of size t
+    # replaces t distinct squared ranks by their midrank, removing
+    # (t^3 - t)/48 from the total. Using /2 inflates the correction 24-fold
+    # and shrinks the variance, so z is too large and p too small — at n = 12
+    # with six pairs of tied |d| it reported p = 0.0012 where the correct
+    # value is 0.0022. [Hollander & Wolfe 1999, sec. 3.1]
     counts: dict[float, int] = {}
     for d in nonzero:
         counts[abs(d)] = counts.get(abs(d), 0) + 1
     tie_term = sum(t**3 - t for t in counts.values() if t > 1)
-    var = n * (n + 1.0) * (2.0 * n + 1.0) / 24.0 - tie_term / 2.0
+    var = n * (n + 1.0) * (2.0 * n + 1.0) / 24.0 - tie_term / 48.0
     sigma = math.sqrt(var) if var > 0 else 1e-12
 
     z = (w_plus - mu) / sigma
