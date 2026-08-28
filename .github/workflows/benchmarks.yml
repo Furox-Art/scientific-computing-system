@@ -107,7 +107,7 @@ jobs:
 
       - name: Open PR with regenerated artifacts
         if: steps.changed.outputs.changed == 'true' && steps.cfg.outputs.configured == 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ steps.app-token.outputs.token }}
           # base must be a branch, not a tag. On tag pushes the workspace
