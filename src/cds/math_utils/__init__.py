@@ -18,7 +18,7 @@ from cds.math_utils.linalg import (
     transpose,
     vector_norm,
 )
-from cds.math_utils.svd import SVDResult, condition_number, svd
+from cds.math_utils.svd import SVDResult, condition_number, rank, svd
 
 __all__ = [
     "derivative",
@@ -42,4 +42,5 @@ __all__ = [
     "svd",
     "SVDResult",
     "condition_number",
+    "rank",
 ]

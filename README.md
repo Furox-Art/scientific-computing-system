@@ -56,7 +56,7 @@ readable pure Python you can open, run, and modify line by line.
 > **If CDS saves you time, a star helps others find it — and keeps the project maintained.** Thank you!
 
 ---
-**Latest Update (v1.6.0):** scikit-learn-flavored deepening — **PCA**, **k-NN / k-means / decision tree / logistic & linear regression**, **StandardScaler + train/test split**, chi-square/Student-t/gamma/beta distributions with seeded samplers, **implicit stiff ODE solvers** (backward Euler, Crank–Nicolson), **Nelder–Mead** and **simulated annealing**, plus Mann–Whitney U and Wilcoxon tests. Install: `pip install -U "scientific-computing-system[plot]"`.
+**Latest Update (v1.7.0):** power analysis + sample-size solver (`power_t_test`, `power_proportion_test`), **VotingClassifier** (hard/soft ensembles), four new runnable demos (interpolation, PDE, ensembles, end-to-end discovery) — plus the 1.6.0 deepening: **PCA**, **k-NN/k-means/trees**, **StandardScaler + train/test split**, chi-square/Student-t/gamma/beta samplers, **implicit stiff ODE solvers**, **Nelder–Mead** / **simulated annealing**, Mann–Whitney U & Wilcoxon. `pip install -U "scientific-computing-system[plot]"`.
 ---
 
 ## Contents
@@ -91,7 +91,7 @@ simulation, statistics, signal processing, optimization, numerical methods,
 symbolic modeling, and structured hypothesis generation, and you can step
 through any of it line by line.
 
-**The pitch in numbers:** 21 modules · **2,000+ tests** on Linux/Windows/macOS
+**The pitch in numbers:** 22 modules · **2,300+ tests** on Linux/Windows/macOS
 (Python 3.10–3.13) · **100% coverage** (statement *and* branch) enforced as a
 CI gate · `mypy --strict` clean across source and tests · **zero runtime
 dependencies**.
@@ -176,7 +176,7 @@ If CDS is useful in your research or publications, please cite it using the info
 | `cds.quantum` | Single & multi-qubit simulation — Hadamard, Pauli, CNOT, SWAP, Toffoli, Bell/GHZ states, entanglement detection |
 | `cds.optimization` | Gradient descent, Newton's method, Adam optimizer, golden section search, **Nelder–Mead simplex**, **simulated annealing** (box bounds, seeded), **projected gradient descent** & **quadratic-penalty constrained solves** |
 | `cds.ml` | Pure Python Neural Networks — MLP, dense layers, Adam-based training — plus **k-NN classifier/regressor**, **k-means clustering** (k-means++), **CART decision tree** (Gini), **logistic regression**, **vector OLS `LinearRegression`**, **PCA** (Jacobi eigen-solver), **StandardScaler** & seeded **train/test split**, **Random Forest**, **gradient-boosted trees**, **Gaussian Naive Bayes**, **VotingClassifier** (hard/soft), classification metrics (accuracy, P/R/F1, ROC-AUC) & **k-fold cross-validation** |
-| `cds.signals` | DFT, radix-2 FFT/IFFT (O(N log N)), 2D FFT/IFFT, convolution, power spectrum, **Butterworth IIR filter design** (low/high/band), moving-median denoiser, **STFT & spectrogram** (Hann/Hamming windows), **Haar wavelet DWT/IDWT** (multi-level) |
+| `cds.signals` | DFT, radix-2 FFT/IFFT (O(N log N)), 2D FFT/IFFT, convolution, power spectrum, **Butterworth IIR filter design** (low/high/band), moving-median denoiser, **STFT** with overlapping frames (Hann/Hamming windows), **Haar wavelet DWT/IDWT** (multi-level) |
 | `cds.probability` | Gaussian, uniform, exponential, binomial, Poisson distributions — plus **chi-square / Student-t (pdf·cdf·ppf)**, **gamma / beta densities with seeded samplers** (Marsaglia–Tsang), **hypergeometric & negative-binomial pmf/cdf** |
 | `cds.stats` | Descriptive stats, Pearson correlation, linear regression, t-test, chi-square, ANOVA, effect-size measures (Cohen's d, η², Cramér's V), Bonferroni correction, **time-series analysis** (ACF/PACF, KPSS, Ljung-Box, exponential smoothing, seasonal decomposition), **nonparametric tests** (Mann–Whitney U, Wilcoxon signed-rank with tie corrections), **bootstrap confidence intervals** (percentile method), **power analysis & sample-size solver** (t / proportion tests) |
 | `cds.math_utils` | Numerical calculus, O(N³) LU / QR / Cholesky, eigenvalue (power iteration), Gram-Schmidt, matrix inverse, **SVD via Jacobi rotations** (+ rank & condition number) |
@@ -191,7 +191,7 @@ If CDS is useful in your research or publications, please cite it using the info
 | `cds.nlp` | Educational NLP from scratch — BPE tokenizer, sinusoidal embeddings, multi-head attention, Transformer block, scalar autograd (SGD/Adam), MiniGPT demo |
 | `cds.hypothesis` | Structured hypothesis generation with prompt templates for custom research workflows, plus the **correlation-mining engine**: `mine_correlations` turns numeric datasets into falsifiable, statistically tested Hypothesis objects |
 | `cds.pde` | 1-D finite-difference PDE solvers — explicit FTCS heat equation (Dirichlet/Neumann, von Neumann stability guard) and wave equation (CFL-guarded) |
-| `cds.plot` | Optional matplotlib charts — series/multi-series, scatter, regression, histograms, waveforms, power spectra, ACF/PACF, seasonal decompose, heatmaps, loss curves (`pip install scientific-computing-system[plot]`) |
+| `cds.plot` | Optional matplotlib charts — series/multi-series, scatter, regression, histograms, waveforms, power spectra, ACF, seasonal decompose, heatmaps, loss curves (`pip install scientific-computing-system[plot]`) |
 
 ## Quick Start
 
