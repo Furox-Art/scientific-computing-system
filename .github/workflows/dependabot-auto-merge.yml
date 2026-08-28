@@ -43,11 +43,23 @@ jobs:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Enable auto-merge (squash) for Dependabot PRs
-        # `--auto` only *arms* the merge; GitHub completes it once every
-        # required status check turns green. The `--admin` flag lets the
-        # GITHUB_TOKEN actor arm it even under stricter rules without
-        # bypassing the status-check gate itself.
-        run: gh pr merge --auto --squash --admin "$PR_URL"
+        # Only patch and minor updates. `--auto` arms the merge and GitHub
+        # completes it once every *required* status check is green — but `main`
+        # currently has no branch protection, so there are no required checks
+        # and an armed merge lands immediately. Gating on update-type is
+        # therefore the only thing standing between a major action bump and an
+        # unreviewed merge, and major bumps are exactly the ones that carry
+        # config-schema changes (actions/labeler v5 changed its schema).
+        #
+        # To have CI gate this instead, protect `main` and mark the aggregate
+        # `CI` job as a required context — it exists for precisely that purpose,
+        # see the comment above it in tests.yml. Then this condition can widen.
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        # NOTE: --auto and --admin are mutually exclusive; gh rejects the pair
+        # with "specify only one of --auto, --disable-auto, or --admin". This
+        # step passed both and so had never once succeeded — invisible until the
+        # dependabot config itself was repaired and the first PR appeared.
+        run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -55,7 +67,10 @@ jobs:
       - name: Report auto-merge status
         if: always()
         run: |
-          echo "::notice::Auto-merge armed for ${{ github.event.pull_request.html_url }}"
           echo "Dependabot update type: ${{ steps.metadata.outputs.update-type }}"
           echo "Dependency: ${{ steps.metadata.outputs.dependency-names }} (${{ steps.metadata.outputs.new-version }})"
-          echo "GitHub will merge automatically once required CI checks pass."
+          if [ "${{ steps.metadata.outputs.update-type }}" = "version-update:semver-major" ]; then
+            echo "::notice::Major update — auto-merge deliberately NOT armed, review by hand."
+          else
+            echo "::notice::Auto-merge armed for ${{ github.event.pull_request.html_url }}"
+          fi
