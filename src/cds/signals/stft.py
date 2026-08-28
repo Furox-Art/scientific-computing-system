@@ -1,14 +1,15 @@
 """Short-time Fourier transform (STFT) with periodic Hann/Hamming windows.
 
-Slices a real-valued sequence into non-overlapping ``hop``-sized frames,
-tapers each frame with a periodic analysis window, and evaluates one radix-2
-FFT per frame via :func:`cds.signals.processing.fft_radix2` (reused verbatim —
-no FFT is reimplemented here). The result is a time-frequency matrix restricted
-to the non-redundant lower spectrum (DC through Nyquist, ``n_fft // 2 + 1``
-bins), the standard representation behind spectrograms of real signals.
+Slices a real-valued sequence into ``n_fft``-long frames that advance by ``hop``
+samples — so consecutive frames overlap by ``n_fft - hop`` — tapers each frame
+with a periodic analysis window, and evaluates one radix-2 FFT per frame via
+:func:`cds.signals.processing.fft_radix2` (reused verbatim — no FFT is
+reimplemented here). The result is a time-frequency matrix restricted to the
+non-redundant lower spectrum (DC through Nyquist, ``n_fft // 2 + 1`` bins), the
+standard representation behind spectrograms of real signals.
 
 Windows follow the periodic (DFT-even) convention ``w[k] = a - b *
-cos(2 * pi * k / n)``, which tiles seamlessly across successive frames because
+cos(2 * pi * k / n)``, which tiles seamlessly across overlapping frames because
 the wrap-around sample ``w[n]`` is excluded from the taper.
 
 All routines are pure Python with no external dependencies.
@@ -80,14 +81,24 @@ def window(kind: str, n: int) -> list[float]:
 
 
 def frame_signal(signal: Sequence[float], n_fft: int, hop: int) -> list[list[complex]]:
-    """Split a signal into hop-sized frames, each zero-padded to ``n_fft``.
+    """Split a signal into overlapping ``n_fft``-long frames advancing by ``hop``.
 
-    Frames are non-overlapping and advance by exactly ``hop`` samples; a final
-    partial frame keeps whatever samples remain and is completed with zeros.
+    Each frame holds ``n_fft`` *consecutive* samples, and successive frames start
+    ``hop`` samples apart, so they overlap by ``n_fft - hop``. Only the final
+    frame is zero-padded, and only by however much the signal falls short.
+
+    This previously took ``hop`` samples per frame and zero-padded the rest to
+    ``n_fft``, which made frames non-overlapping and left the analysis window
+    tapering zeros — at the default ``hop = n_fft // 4``, three quarters of the
+    Hann window multiplied nothing. That is a block transform, not a short-time
+    Fourier transform: the entire point of ``hop < n_fft`` is overlap, and the
+    window's constant-overlap-add property is meaningless without it. The old
+    behaviour was only correct in the single case ``hop == n_fft``, which is
+    also the only case the spectral tests exercised.
 
     Args:
         signal: input samples.
-        n_fft: FFT size, a power of two >= 2.
+        n_fft: frame length and FFT size, a power of two >= 2.
         hop: frame advance in samples, ``1 <= hop <= n_fft``.
 
     Returns:
@@ -110,10 +121,18 @@ def frame_signal(signal: Sequence[float], n_fft: int, hop: int) -> list[list[com
         raise ValueError(f"hop ({hop}) must not exceed n_fft ({n_fft})")
 
     total = len(signal)
+    # Frame count in closed form: one frame at offset 0, plus however many hops
+    # are needed for a frame to reach the end. Computing it rather than breaking
+    # out of the loop keeps the loop free of an unreachable exit — because
+    # ``hop <= n_fft``, the final start always satisfies ``start + n_fft >=
+    # total``, so a ``break`` would make the for-else path dead code.
+    span = total - n_fft
+    n_frames = 1 + (max(0, -(-span // hop)) if span > 0 else 0)
+
     frames: list[list[complex]] = []
-    for start in range(0, total, hop):
-        stop = min(start + hop, total)
-        frame: list[complex] = [complex(sample) for sample in signal[start:stop]]
+    for index in range(n_frames):
+        start = index * hop
+        frame: list[complex] = [complex(sample) for sample in signal[start : start + n_fft]]
         frame.extend([0j] * (n_fft - len(frame)))
         frames.append(frame)
     return frames

@@ -273,10 +273,38 @@ def butter_bandpass(order: int, low: float, high: float) -> BandFilterCoefficien
 
 
 def butter_bandstop(order: int, low: float, high: float) -> BandFilterCoefficients:
-    """Design a Butterworth band-stop (notch) filter as a parallel low+high sum.
+    """Band-stop response built as a parallel sum of a low-pass and a high-pass.
 
-    The response is unity outside ``[low, high]`` and attenuated inside it;
-    the -3 dB edges fall at ``low`` and ``high`` (normalised to Nyquist).
+    Unity outside ``[low, high]``, attenuated inside it. Both branches are
+    genuine Butterworth sections, but their **parallel sum is not** a
+    Butterworth band-stop, and it is worth knowing what that costs before
+    relying on the rejection figure.
+
+    Measured for ``order=4, low=0.2, high=0.5`` against a true band-stop of the
+    same order (``scipy.signal.butter(4, [0.2, 0.5], "bandstop")``):
+
+    ======  ==========  =============
+    freq    this        true 4th-order
+    ======  ==========  =============
+    0.05    1.000       1.000
+    0.20    0.700       0.707
+    0.35    0.061       0.00022
+    0.50    0.700       0.707
+    0.90    1.000       1.000
+    ======  ==========  =============
+
+    So the pass bands and the edges are right to within about 0.09 dB, but the
+    stop band bottoms out near -24 dB where a true 4th-order band-stop reaches
+    -73 dB. The reason is structural rather than a coding slip: away from its
+    own cutoff each branch still leaks its skirt, and because the two cutoffs
+    differ the branches are not power-complementary, so the leakages add instead
+    of cancelling. No choice of coefficients fixes that; a real band-stop needs
+    the analogue band-stop transformation ``s -> s*BW / (s^2 + w0^2)``, which
+    turns an order-``N`` prototype into a single ``2N``-order IIR rather than
+    two ``N``-order sections.
+
+    Adequate for separating well-spaced components. Not adequate as a notch when
+    you need the stated order's rejection.
 
     Args:
         order: per-section order ``N`` (>= 1).

@@ -228,14 +228,37 @@ class TestBandFilters:
             assert abs(abs(h) - 1 / math.sqrt(2)) < 1e-3
 
     def test_bandstop_negative_3db_edges(self) -> None:
-        # Parallel low+high sum interacts near the edges, so the -3 dB point is
-        # approximate (the stopband shape, not the exact edge, is the defining
-        # property of this cascade design). Verify it sits in the transition.
+        # Pinned to the measured value rather than a wide band. 0.4 < |H| < 0.8
+        # accepted both the true 0.707107 and anything from a badly broken
+        # design, so it could not detect a regression.
         coef = butter_bandstop(order=4, low=0.2, high=0.5)
         for edge in (0.2, 0.5):
-            h = _band_response(coef, edge)
-            assert abs(h) < 0.8  # clearly attenuated relative to unity passband
-            assert abs(h) > 0.4
+            assert abs(_band_response(coef, edge)) == pytest.approx(0.699906425, abs=1e-7)
+
+    def test_bandstop_stopband_floor_is_documented_not_butterworth(self) -> None:
+        """Pin the parallel-sum stop band, including how far short it falls.
+
+        A true 4th-order band-stop reaches 2.24e-4 at mid-band; the parallel
+        low+high sum bottoms out near 6.1e-2, about 49 dB shallower, because the
+        two branches are not power-complementary and their skirts add instead of
+        cancelling. That limit is structural, so it is asserted here rather than
+        hidden behind a loose inequality — see butter_bandstop's docstring.
+        """
+        coef = butter_bandstop(order=4, low=0.2, high=0.5)
+        measured = {
+            0.30: 0.095992878,
+            0.35: 0.060886809,
+            0.40: 0.229074587,
+        }
+        for w, expected in measured.items():
+            assert abs(_band_response(coef, w)) == pytest.approx(expected, abs=1e-7)
+        # nowhere near the ~2e-4 a real 4th-order band-stop achieves
+        assert abs(_band_response(coef, 0.35)) > 1e-2
+
+    def test_bandstop_passband_is_unity(self) -> None:
+        coef = butter_bandstop(order=4, low=0.2, high=0.5)
+        for w in (0.05, 0.9):
+            assert abs(_band_response(coef, w)) == pytest.approx(1.0, abs=1e-4)
 
     def test_bandpass_passband_unity(self) -> None:
         coef = butter_bandpass(order=4, low=0.2, high=0.5)

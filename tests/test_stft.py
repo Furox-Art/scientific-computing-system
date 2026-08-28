@@ -45,14 +45,31 @@ def test_frame_signal_exact_single_frame() -> None:
     assert frames[0] == [1 + 0j, 2 + 0j, 3 + 0j, 4 + 0j]
 
 
-def test_frame_signal_zero_pads_partial_final_frame() -> None:
+def test_frame_signal_frames_overlap_by_n_fft_minus_hop() -> None:
+    # Each frame carries n_fft consecutive samples and starts hop later, so
+    # frame k and frame k+1 share their last/first n_fft - hop samples.
+    frames = frame_signal([float(v) for v in range(1, 21)], 8, 4)
+    assert len(frames) == 4
+    assert frames[0] == [1 + 0j, 2 + 0j, 3 + 0j, 4 + 0j, 5 + 0j, 6 + 0j, 7 + 0j, 8 + 0j]
+    assert frames[1] == [5 + 0j, 6 + 0j, 7 + 0j, 8 + 0j, 9 + 0j, 10 + 0j, 11 + 0j, 12 + 0j]
+    # the overlap is real: the tail of one frame is the head of the next
+    for earlier, later in zip(frames, frames[1:]):
+        assert earlier[4:] == later[:4]
+
+
+def test_frame_signal_zero_pads_only_the_final_frame() -> None:
     signal = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
     frames = frame_signal(signal, 8, 3)
-    assert len(frames) == 3
-    zeros = [0j] * 5
-    assert frames[0] == [1 + 0j, 2 + 0j, 3 + 0j, *zeros]
-    assert frames[1] == [4 + 0j, 5 + 0j, 6 + 0j, *zeros]
-    assert frames[2] == [7 + 0j, 0j, 0j, 0j, 0j, 0j, 0j, 0j]
+    # 7 samples, 8-long frames: the very first frame already reaches the end,
+    # so exactly one frame is emitted and only it is padded.
+    assert len(frames) == 1
+    assert frames[0] == [1 + 0j, 2 + 0j, 3 + 0j, 4 + 0j, 5 + 0j, 6 + 0j, 7 + 0j, 0j]
+
+
+def test_frame_signal_full_frames_are_not_padded() -> None:
+    signal = [float(v) for v in range(16)]
+    for frame in frame_signal(signal, 8, 8):
+        assert all(value != 0j for value in frame[1:])
 
 
 def test_frame_signal_rejects_empty_signal() -> None:
@@ -106,8 +123,9 @@ def test_stft_freqs_are_cycles_per_sample_and_times_are_frame_starts() -> None:
     n_fft = 32
     result = stft([math.sin(0.2 * k) for k in range(70)], n_fft=n_fft)
     assert result.freqs == pytest.approx([k / n_fft for k in range(n_fft // 2 + 1)])
-    # hop defaults to n_fft // 4 = 8; ceil(70 / 8) frames
-    assert result.times == [float(start) for start in range(0, 70, 8)]
+    # hop defaults to n_fft // 4 = 8, frames are 32 long, and framing stops with
+    # the frame that first reaches sample 70: starts 0, 8, 16, 24, 32, 40.
+    assert result.times == [0.0, 8.0, 16.0, 24.0, 32.0, 40.0]
 
 
 def test_stft_default_hop_matches_quarter_window() -> None:
@@ -155,9 +173,29 @@ def test_stft_parseval_window_energy_identity() -> None:
 def test_stft_result_type_and_row_shape() -> None:
     result = stft(list(range(40)), n_fft=16, hop=8)
     assert isinstance(result, STFTResult)
-    assert len(result.times) == len(result.magnitude) == 5
+    # 16-long frames stepping by 8 over 40 samples: starts 0, 8, 16, 24.
+    assert len(result.times) == len(result.magnitude) == 4
     assert all(isinstance(t, float) for t in result.times)
     assert len(result.freqs) == 9
+
+
+def test_stft_overlapping_frames_concentrate_a_tone_like_a_real_stft() -> None:
+    """A windowed tone on the FFT grid puts 2/3 of its frame energy in one bin.
+
+    That fraction is a property of the Hann window, not of this library: the
+    taper splits a grid-aligned tone as 0.5 / 0.25 / 0.25 in amplitude across
+    three bins, giving 0.5^2 / (0.5^2 + 0.25^2 + 0.25^2) = 2/3 in energy. When
+    frames carried only ``hop`` real samples and padded the rest, the window was
+    tapering zeros and this dropped to about 0.15.
+    """
+    n_fft, tone_bin = 256, 32
+    signal = [math.sin(2 * math.pi * tone_bin * k / n_fft) for k in range(4096)]
+    result = stft(signal, n_fft=n_fft, hop=64)
+
+    row = result.magnitude[len(result.magnitude) // 2]
+    assert max(range(len(row)), key=row.__getitem__) == tone_bin
+    energy = sum(value * value for value in row)
+    assert row[tone_bin] ** 2 / energy == pytest.approx(2.0 / 3.0, abs=0.02)
 
 
 def test_stft_rejects_empty_signal() -> None:
