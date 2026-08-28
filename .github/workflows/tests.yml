@@ -64,7 +64,7 @@ jobs:
     - uses: actions/checkout@v5
 
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -134,7 +134,7 @@ jobs:
     - uses: actions/checkout@v5
 
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: "3.12"
 
@@ -173,7 +173,7 @@ jobs:
     - uses: actions/checkout@v5
 
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: "3.12"
 
@@ -206,7 +206,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
-    - uses: actions/setup-python@v6
+    - uses: actions/setup-python@v7
       with:
         python-version: "3.12"
     - uses: pre-commit/action@v3.0.1
@@ -233,7 +233,7 @@ jobs:
     - uses: actions/checkout@v5
 
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: "3.12"
 
@@ -325,7 +325,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
