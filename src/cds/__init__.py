@@ -27,10 +27,12 @@ Usage:
 # Core modules
 # Scientific computing modules
 from cds import (
+    bayes,
     core,
     data_analysis,
     diffeq,
     fractals,
+    genetics,
     graph,
     hypothesis,
     infotheory,
@@ -48,6 +50,7 @@ from cds import (
     scientific,
     signals,
     stats,
+    wavelets,
 )
 from cds._version import __version__
 from cds.scientific.constants import CONSTANTS, get_constant
@@ -82,10 +85,12 @@ __all__ = [
     "centripetal_acceleration",
     "pendulum_period",
     "doppler_frequency",
+    "bayes",
     "core",
     "data_analysis",
     "diffeq",
     "fractals",
+    "genetics",
     "graph",
     "hypothesis",
     "infotheory",
@@ -103,4 +108,5 @@ __all__ = [
     "scientific",
     "signals",
     "stats",
+    "wavelets",
 ]
