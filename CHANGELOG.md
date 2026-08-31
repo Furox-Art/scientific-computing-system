@@ -56,6 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   variance comparison, component selection, 2-D ASCII projection,
   reconstruction error and train/test discipline, with a matching
   tutorial (`docs/tutorials/pca_demo.md`).
+- **ML correctness reference table** (`scripts/verify_ml_reference.py`,
+  `docs/ml_reference.md`) — LogisticRegression, DecisionTree, KMeans,
+  PCA and LinearRegression checked against scikit-learn 1.9.0 outputs
+  on a fixed seeded dataset; one-command, dependency-free verification.
 
 ### Changed
 

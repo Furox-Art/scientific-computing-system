@@ -88,6 +88,7 @@ nav:
       - Quantum-ML: CASE_STUDY_QUANTUM_ML.md
   - Research Workflows: research-workflows.md
   - Performance: benchmarks.md
+  - ML Reference Values: ml_reference.md
   - Architecture: ARCHITECTURE.md
   - Maintenance: maintenance.md
 
