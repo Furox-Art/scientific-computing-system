@@ -287,13 +287,14 @@ Explore how CDS is used to solve real-world research problems:
 
 ## Examples
 
-CDS ships **27 runnable demo scripts** in [`examples/`](examples/) — one per module.
+CDS ships **28 runnable demo scripts** in [`examples/`](examples/) — one per module.
 Each is a self-contained `.py` you can run directly:
 
 ```bash
 python examples/quantum_demo.py       # quantum circuits & entanglement
 python examples/signals_demo.py       # FFT, convolution, power spectrum
 python examples/ml_and_viz_demo.py   # neural network training + plots
+python examples/pca_demo.py           # PCA + preprocessing end-to-end
 python examples/montecarlo_demo.py    # π estimation & integration
 python examples/hypothesis_demo.py    # structured hypothesis generation
 ```

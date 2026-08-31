@@ -52,6 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (averaged probabilities) ensembles over the shared estimator interface.
 - Four new runnable demos under `examples/` — interpolation, PDE,
   ensemble showcase and the end-to-end discovery pipeline.
+- **PCA end-to-end demo** (`examples/pca_demo.py`) — scaling vs raw
+  variance comparison, component selection, 2-D ASCII projection,
+  reconstruction error and train/test discipline, with a matching
+  tutorial (`docs/tutorials/pca_demo.md`).
 
 ### Changed
 
