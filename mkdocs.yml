@@ -1,10 +1,21 @@
 site_name: Scientific Computing System
 site_url: https://furox-art.github.io/scientific-computing-system/
+site_description: >-
+  Pure-Python computational science platform - quantum simulation, FFT,
+  linear algebra, statistics, ODEs, symbolic math and ML from scratch,
+  with zero runtime dependencies.
+site_author: Furox-Art
 repo_url: https://github.com/Furox-Art/scientific-computing-system
 repo_name: Furox-Art/scientific-computing-system
+edit_uri: edit/main/docs/
+copyright: Released under the MIT License
 
 theme:
   name: material
+  logo: assets/icon.svg
+  favicon: assets/icon.svg
+  icon:
+    repo: fontawesome/brands/github
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -22,11 +33,31 @@ theme:
         name: Switch to light mode
   features:
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
+    - navigation.indexes
     - navigation.top
+    - navigation.tracking
+    - toc.follow
     - search.suggest
     - search.highlight
+    - search.share
     - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - content.tabs.link
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Furox-Art/scientific-computing-system
+      name: Source on GitHub
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/scientific-computing-system/
+      name: scientific-computing-system on PyPI
 
 plugins:
   - search
@@ -46,59 +77,81 @@ plugins:
 
 nav:
   - Home: index.md
-  - Tour of Numerical Methods: tour_of_numerical_methods.md
-  - Getting Started: getting-started.md
+  - Getting Started:
+      - Install & First Steps: getting-started.md
+      - Tour of Numerical Methods: tour_of_numerical_methods.md
+      - Quick Start Tutorial: tutorials/quick_start.md
   - Tutorials:
-      - Quick Start: tutorials/quick_start.md
-      - Core Data Models: tutorials/core_demo.md
-      - Scientific Formulas: tutorials/scientific_demo.md
-      - Math Utilities: tutorials/math_utils_demo.md
-      - Linear Algebra: tutorials/linalg_demo.md
-      - Numerical Integration: tutorials/numerical_integration_demo.md
-      - Differential Equations: tutorials/diffeq_demo.md
-      - Stiff ODE Solvers: tutorials/stiff_ode_demo.md
-      - Monte Carlo: tutorials/montecarlo_demo.md
-      - Probability: tutorials/probability_demo.md
-      - Graph Algorithms: tutorials/graph_demo.md
-      - Mathematical Modeling: tutorials/modeling_demo.md
-      - Knowledge Organization: tutorials/knowledge_demo.md
-      - Data Analysis: tutorials/data_analysis_demo.md
-      - Hypothesis Engine: tutorials/hypothesis_demo.md
-      - Hypothesis + Stats: tutorials/hypothesis_with_stats_demo.md
-      - Hypothesis Testing: tutorials/hypothesis_tests_demo.md
-      - Quantum Lab: tutorials/quantum_demo.md
-      - Signal Processing: tutorials/signals_demo.md
-      - 2-D FFT: tutorials/fft2_demo.md
-      - Machine Learning + Viz: tutorials/ml_and_viz_demo.md
-      - Machine Learning: tutorials/ml_demo.md
-      - Advanced ML — PCA & Classic Models: tutorials/ml_advanced_demo.md
-      - PCA End-to-End + Preprocessing: tutorials/pca_demo.md
-      - Statistics: tutorials/stats_demo.md
-      - Time-Series Analysis: tutorials/time_series_demo.md
-      - Pandas Interoperability: tutorials/pandas_io_demo.md
-      - Optimization: tutorials/optimization_demo.md
-      - NLP — BPE & Embeddings: tutorials/nlp_bpe_demo.md
-      - NLP — Attention: tutorials/nlp_attention_demo.md
-      - NLP — MiniGPT: tutorials/nlp_mini_gpt_demo.md
-      - NLP Visualisation: tutorials/nlp_viz.md
-  - Cookbook: cookbook.md
-  - API Reference: api.md
-  - Case Studies:
-      - Hubble Tension: CASE_STUDY_HUBBLE.md
-      - Quantum-ML: CASE_STUDY_QUANTUM_ML.md
-  - Research Workflows: research-workflows.md
-  - Performance: benchmarks.md
-  - ML Reference Values: ml_reference.md
-  - Architecture: ARCHITECTURE.md
+      - Foundations:
+          - Core Data Models: tutorials/core_demo.md
+          - Scientific Formulas: tutorials/scientific_demo.md
+          - Math Utilities: tutorials/math_utils_demo.md
+          - Linear Algebra: tutorials/linalg_demo.md
+      - Numerical Methods:
+          - Numerical Integration: tutorials/numerical_integration_demo.md
+          - Differential Equations: tutorials/diffeq_demo.md
+          - Stiff ODE Solvers: tutorials/stiff_ode_demo.md
+          - Optimization: tutorials/optimization_demo.md
+      - Probability & Statistics:
+          - Probability: tutorials/probability_demo.md
+          - Monte Carlo: tutorials/montecarlo_demo.md
+          - Statistics: tutorials/stats_demo.md
+          - Hypothesis Testing: tutorials/hypothesis_tests_demo.md
+          - Time-Series Analysis: tutorials/time_series_demo.md
+      - Signals & Quantum:
+          - Signal Processing: tutorials/signals_demo.md
+          - 2-D FFT: tutorials/fft2_demo.md
+          - Quantum Lab: tutorials/quantum_demo.md
+      - Machine Learning:
+          - Machine Learning: tutorials/ml_demo.md
+          - Machine Learning + Viz: tutorials/ml_and_viz_demo.md
+          - Advanced ML — PCA & Classic Models: tutorials/ml_advanced_demo.md
+          - PCA End-to-End + Preprocessing: tutorials/pca_demo.md
+      - Natural Language Processing:
+          - BPE & Embeddings: tutorials/nlp_bpe_demo.md
+          - Attention: tutorials/nlp_attention_demo.md
+          - MiniGPT: tutorials/nlp_mini_gpt_demo.md
+          - Visualisation: tutorials/nlp_viz.md
+      - Data & Knowledge:
+          - Data Analysis: tutorials/data_analysis_demo.md
+          - Pandas Interoperability: tutorials/pandas_io_demo.md
+          - Graph Algorithms: tutorials/graph_demo.md
+          - Mathematical Modeling: tutorials/modeling_demo.md
+          - Knowledge Organization: tutorials/knowledge_demo.md
+      - Hypothesis Engine:
+          - Hypothesis Engine: tutorials/hypothesis_demo.md
+          - Hypothesis + Stats: tutorials/hypothesis_with_stats_demo.md
+  - Reference:
+      - API Reference: api.md
+      - Cookbook: cookbook.md
+      - ML Reference Values: ml_reference.md
+      - Architecture: ARCHITECTURE.md
+  - Research:
+      - Research Workflows: research-workflows.md
+      - Case Studies:
+          - Hubble Tension: CASE_STUDY_HUBBLE.md
+          - Quantum-ML: CASE_STUDY_QUANTUM_ML.md
+      - Performance: benchmarks.md
   - Maintenance: maintenance.md
 
 markdown_extensions:
   - admonition
+  - attr_list
+  - md_in_html
+  - def_list
+  - footnotes
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.details
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
   - pymdownx.arithmatex:
       generic: true
 

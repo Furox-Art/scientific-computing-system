@@ -1,26 +1,70 @@
 # Scientific Computing System (CDS)
 
-Welcome to the official documentation for the **Scientific Computing System (CDS)**.
+<div class="cds-hero" markdown>
+<p class="cds-hero__title">Computational science, from scratch.</p>
+<p class="cds-hero__tagline">
+CDS is an open-source platform for research, simulation and discovery: 19 modules
+spanning quantum simulation, FFT, linear algebra, statistics, ODEs, symbolic math,
+machine learning and NLP — implemented in readable pure Python with
+<strong>zero runtime dependencies</strong>.
+</p>
+<div class="cds-hero__actions" markdown>
+[Get started](getting-started.md){ .md-button .md-button--primary }
+[Take the tour](tour_of_numerical_methods.md){ .md-button }
+[API reference](api.md){ .md-button }
+</div>
+</div>
 
-CDS is an open-source computational science platform designed for research, simulation, and discovery. It provides a lightweight, dependency-free environment for scientific exploration, featuring 19 modules covering everything from quantum simulation to symbolic math, knowledge organization, educational NLP primitives, and automated hypothesis generation.
+```bash
+pip install scientific-computing-system
+cds modules          # see what's inside
+```
 
-<video controls loop muted autoplay playsinline poster="assets/cds_promo_poster.png" style="max-width:100%;border-radius:12px;border:1px solid rgba(148,163,184,.25)">
-  <source src="assets/cds_promo.mp4" type="video/mp4">
-  <source src="assets/cds_promo.webm" type="video/webm">
-</video>
+## Start here
+
+<div class="cds-cards" markdown>
+
+<div class="cds-card" markdown>
+### [Getting Started](getting-started.md)
+Install, run your first simulation, and learn the CLI in about five minutes.
+</div>
+
+<div class="cds-card" markdown>
+### [Quick Start Tutorial](tutorials/quick_start.md)
+A guided first session: constants, statistics, a quantum circuit, an ODE.
+</div>
+
+<div class="cds-card" markdown>
+### [Tour of Numerical Methods](tour_of_numerical_methods.md)
+How the solvers actually work — quadrature, RK45, LU, FFT — with worked output.
+</div>
+
+<div class="cds-card" markdown>
+### [Cookbook](cookbook.md)
+Problem-oriented recipes: pick the task, copy the snippet.
+</div>
+
+<div class="cds-card" markdown>
+### [API Reference](api.md)
+Every public function and class, generated from the source docstrings.
+</div>
+
+<div class="cds-card" markdown>
+### [Architecture](ARCHITECTURE.md)
+Module dependency graph and data flow, for contributors and auditors.
+</div>
+
+</div>
+
+!!! tip "New to scientific Python?"
+
+    CDS is designed as a first stop: every algorithm is readable pure Python, so
+    you learn *how* things work, not just how to call them. Follow the tutorials
+    in order — [Quick Start](tutorials/quick_start.md),
+    [Statistics](tutorials/stats_demo.md),
+    [Machine Learning](tutorials/ml_demo.md) — then branch out.
 
 ## Key Features
-
-### New to scientific Python?
-
-CDS is designed as a first stop: every algorithm is readable pure Python, so
-you learn *how* things work, not just how to call them.
-
-1. Install: `pip install scientific-computing-system`
-2. Explore: `cds modules`, then run any script in `examples/`
-3. Learn: follow the [Tutorials](tutorials/quick_start.md) in order —
-   [Quick Start](tutorials/quick_start.md), [Statistics](tutorials/stats_demo.md),
-   [Machine Learning](tutorials/ml_demo.md), then branch out.
 
 - **Pure Python:** Every module is implemented from scratch using the Python standard library. No heavy dependencies like NumPy or SciPy required.
 - **Quantum Simulation:** Full state-vector simulation for single and multi-qubit circuits with entanglement and O(1) sampling.

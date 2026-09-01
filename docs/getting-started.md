@@ -28,7 +28,7 @@ cds calc wave
 cds calc gas
 
 # Generate hypotheses
-cds hypothesize "what causes the Hubble tension?" --domain cosmology
+cds hypothesis "what causes the Hubble tension?" --domain cosmology
 ```
 
 ### Python API

@@ -134,7 +134,13 @@ assets/cds_promo.mp4
 assets/cds_promo.webm
 assets/cds_promo_poster.png
 assets/promo_hero.html
-docs/assets/
+# Generated promo media copied into the docs tree by the render scripts.
+# Ignore the artifacts, not the whole directory: docs/assets/ also holds
+# committed theme art (icon.svg, logo.svg) that the site needs to build.
+docs/assets/cds_promo.gif
+docs/assets/cds_promo.mp4
+docs/assets/cds_promo.webm
+docs/assets/cds_promo_poster.png
 
 # Local launch/promo copy — personal drafting scratch (Reddit/HN/X posts,
 # awesome-list PR text). Not docs-site material; do not commit.
