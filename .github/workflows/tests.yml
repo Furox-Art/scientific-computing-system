@@ -28,6 +28,25 @@ on:
 # One in-flight run per ref. Every CI run in this repo is a push to main
 # (27 of 27 over the last fortnight), so without this a burst of commits
 # starts a full 18-job run per commit while only the last result matters.
+  ml-reference:
+    name: ML reference parity on Linux with Python 3.12
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+
+    - name: Install package (zero runtime dependencies)
+      run: |
+        python -m pip install --upgrade pip
+        pip install .
+
+    - name: Verify estimators against frozen scikit-learn reference values
+      run: python scripts/verify_ml_reference.py
+
 #
 # Note this can cancel a superseded run's `deploy-docs` job mid-flight.
 # That is safe: `mkdocs gh-deploy --force` either has not pushed yet or has
