@@ -2,9 +2,94 @@
 
 from __future__ import annotations
 
+import io
 import sys
 
 _RESET = "\033[0m"
+
+# Characters the CLI emits that legacy 8-bit consoles (Windows cp125x /
+# cp1254, some POSIX C locales) cannot encode. Used only as a last-resort
+# fallback when stdout refuses UTF-8 — see :func:`_safe_text`.
+_ASCII_FALLBACKS: dict[str, str] = {
+    "\u03c0": "pi",  # π
+    "\u2014": "-",  # em dash
+    "\u2013": "-",  # en dash
+    "\u2192": "->",  # →
+    "\u2248": "~=",  # ≈
+    "\u00b1": "+/-",  # ±
+    "\u00b3": "^3",  # ³
+    "\u00b2": "^2",  # ²
+    "\u2264": "<=",  # ≤
+    "\u2265": ">=",  # ≥
+    "\u00d7": "x",  # ×
+    "\u2026": "...",  # …
+    "\u2019": "'",  # ’
+    "\u201c": '"',  # “
+    "\u201d": '"',  # ”
+    "\u00b5": "u",  # µ
+    "\u0394": "delta",  # Δ
+    "\u03bb": "lambda",  # λ
+    "\u03c3": "sigma",  # σ
+    "\u03bc": "mu",  # μ
+    "\u2713": "OK",  # ✓
+    "\u2717": "x",  # ✗
+}
+
+
+def _enable_utf8_stdout() -> None:
+    """Force stdout/stderr to UTF-8 so non-ASCII output cannot crash the CLI.
+
+    Windows consoles default to a legacy ANSI codepage (cp1254 on Turkish
+    systems), which cannot encode characters the CLI prints routinely — ``π``
+    in the Monte Carlo tables, em dashes in module descriptions, ``O(N³)`` in
+    the info banner. Printing those raised ``UnicodeEncodeError`` and killed
+    the process mid-table.
+
+    ``TextIOWrapper.reconfigure`` is available on Python 3.7+, so this is the
+    cheapest fix that keeps the real Unicode glyphs when the terminal can show
+    them. ``errors="backslashreplace"`` guarantees a write can never raise even
+    if the target somehow rejects a codepoint. Wrapped defensively: under
+    pytest's ``capsys`` (and other captured-output shims) the streams may not
+    be ``TextIOWrapper`` at all, in which case we leave them untouched and rely
+    on :func:`_safe_text`.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+        except (ValueError, OSError, io.UnsupportedOperation):  # pragma: no cover
+            # Detached, closed, or non-reconfigurable stream — _safe_text covers us.
+            continue
+
+
+_enable_utf8_stdout()
+
+
+def _safe_text(text: str) -> str:
+    """Downgrade ``text`` to ASCII-safe glyphs if stdout cannot encode it.
+
+    Second line of defence behind :func:`_enable_utf8_stdout`: when stdout is
+    a captured buffer or a stream we could not reconfigure, we transliterate
+    the handful of non-ASCII characters the CLI actually uses (``π`` -> ``pi``,
+    ``—`` -> ``-``) rather than raising. Text that already encodes cleanly is
+    returned unchanged, so UTF-8 terminals keep the real glyphs.
+    """
+    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+    try:
+        text.encode(encoding)
+    except (UnicodeEncodeError, LookupError):
+        pass
+    else:
+        return text
+    for char, replacement in _ASCII_FALLBACKS.items():
+        text = text.replace(char, replacement)
+    # Anything still unencodable (unexpected glyph) degrades to "?" instead of
+    # taking the process down.
+    return text.encode(encoding, errors="replace").decode(encoding, errors="replace")
+
+
 _STYLES: dict[str, str] = {
     "bold": "\033[1m",
     "dim": "\033[2m",
@@ -40,8 +125,12 @@ def _wrap(style: str, text: str) -> str:
 
 
 def _print(*args: object) -> None:
-    """Print helper routed through stdout (so tests can capture via capsys)."""
-    print(*args)
+    """Print helper routed through stdout (so tests can capture via capsys).
+
+    Every argument passes through :func:`_safe_text` so a legacy-codepage
+    console can never turn a table cell into a ``UnicodeEncodeError``.
+    """
+    print(*(_safe_text(str(arg)) for arg in args))
 
 
 def _render(markup: str) -> str:
