@@ -65,6 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `DecisionTreeClassifier` now accepts `max_features` and `seed` for
   random-forest-style split randomization (default behavior unchanged).
+- CI runs the ML reference verification on every push (`ml-reference`
+  job, folded into the aggregate `CI` gate), and the README now
+  displays the sklearn-parity badge and link.
 
 ## [v1.6.1] - 2026-08-21
 

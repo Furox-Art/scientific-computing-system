@@ -12,6 +12,7 @@
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10+-green.svg" alt="Python 3.10+"></a>
   <a href="https://codecov.io/gh/Furox-Art/scientific-computing-system"><img src="https://codecov.io/gh/Furox-Art/scientific-computing-system/branch/main/graph/badge.svg" alt="codecov"></a>
   <a href="https://github.com/Furox-Art/scientific-computing-system/actions/workflows/tests.yml"><img src="https://github.com/Furox-Art/scientific-computing-system/actions/workflows/tests.yml/badge.svg" alt="CI"></a>
+  <a href="https://furox-art.github.io/scientific-computing-system/ml_reference/"><img src="https://img.shields.io/badge/ML_parity_vs_sklearn-5%2F5_PASS-brightgreen.svg" alt="ML parity vs scikit-learn"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
   <a href="https://furox-art.github.io/scientific-computing-system/"><img src="https://img.shields.io/badge/docs-mkdocs-teal.svg" alt="Docs"></a>
   <a href="https://github.com/Furox-Art/scientific-computing-system/releases"><img src="https://img.shields.io/github/v/release/Furox-Art/scientific-computing-system.svg" alt="GitHub release"></a>
@@ -26,6 +27,7 @@
   <a href="https://furox-art.github.io/scientific-computing-system/">Documentation</a> &nbsp;·&nbsp;
   <a href="https://furox-art.github.io/scientific-computing-system/tour_of_numerical_methods/">Tour of Numerical Methods</a> &nbsp;·&nbsp;
   <a href="https://furox-art.github.io/scientific-computing-system/cookbook/">Cookbook</a> &nbsp;·&nbsp;
+  <a href="https://furox-art.github.io/scientific-computing-system/ml_reference/">ML Reference</a> &nbsp;·&nbsp;
   <a href="https://github.com/Furox-Art/scientific-computing-system/releases">Releases</a> &nbsp;·&nbsp;
   <a href="docs/tutorials/">Tutorials</a> &nbsp;·&nbsp;
   <a href="#quick-start">Quick Start</a> &nbsp;·&nbsp;
@@ -38,7 +40,10 @@
 
 CDS was built for you. Every algorithm you'd normally call as a black box —
 numpy's FFT, scipy's integrators, sklearn's clustering — lives here as
-readable pure Python you can open, run, and modify line by line.
+readable pure Python you can open, run, and modify line by line. And it is
+not just readable: the ML estimators are checked against scikit-learn
+reference outputs on every CI run and agree to within 10⁻⁶ (see
+[ML Reference Values](https://furox-art.github.io/scientific-computing-system/ml_reference/)).
 
 **Start here:**
 
