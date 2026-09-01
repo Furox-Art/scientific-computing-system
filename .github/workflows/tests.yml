@@ -28,25 +28,6 @@ on:
 # One in-flight run per ref. Every CI run in this repo is a push to main
 # (27 of 27 over the last fortnight), so without this a burst of commits
 # starts a full 18-job run per commit while only the last result matters.
-  ml-reference:
-    name: ML reference parity on Linux with Python 3.12
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v5
-
-    - name: Set up Python
-      uses: actions/setup-python@v7
-      with:
-        python-version: "3.12"
-
-    - name: Install package (zero runtime dependencies)
-      run: |
-        python -m pip install --upgrade pip
-        pip install .
-
-    - name: Verify estimators against frozen scikit-learn reference values
-      run: python scripts/verify_ml_reference.py
-
 #
 # Note this can cancel a superseded run's `deploy-docs` job mid-flight.
 # That is safe: `mkdocs gh-deploy --force` either has not pushed yet or has
@@ -220,6 +201,31 @@ jobs:
       # regression in an unrelated test.
       run: pytest tests/test_property_invariants.py -v
 
+  ml-reference:
+    # Correctness gate, not a test run: verifies the v1.6 estimators against
+    # frozen scikit-learn 1.9.0 reference values (docs/ml_reference.md). The
+    # script is dependency-free, so this job installs the bare package — no
+    # extras — which doubles as proof that the core stays zero-dependency.
+    # One Linux + 3.12 cell matches the reference cell used elsewhere: the
+    # comparison is deterministic and platform-independent.
+    name: ML reference parity on Linux with Python 3.12
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+
+    - name: Install package (zero runtime dependencies)
+      run: |
+        python -m pip install --upgrade pip
+        pip install .
+
+    - name: Verify estimators against frozen scikit-learn reference values
+      run: python scripts/verify_ml_reference.py
+
   pre-commit:
     name: pre-commit on Linux with Python 3.12
     runs-on: ubuntu-latest
@@ -292,7 +298,7 @@ jobs:
   CI:
     name: CI
     if: always()
-    needs: [test, audit, property-tests, pre-commit, minimal-deps]
+    needs: [test, audit, property-tests, pre-commit, minimal-deps, ml-reference]
     runs-on: ubuntu-latest
     steps:
       - name: Report overall result
@@ -303,13 +309,15 @@ jobs:
           echo "  property-tests.result = ${{ needs.property-tests.result }}"
           echo "  pre-commit.result     = ${{ needs.pre-commit.result }}"
           echo "  minimal-deps.result   = ${{ needs.minimal-deps.result }}"
+          echo "  ml-reference.result   = ${{ needs.ml-reference.result }}"
           # Fail unless every dependency succeeded. `needs.*.result` is one of
           # "success" | "failure" | "cancelled" | "skipped"; we only accept success.
           if [ "${{ needs.test.result }}" != "success" ] \
              || [ "${{ needs.audit.result }}" != "success" ] \
              || [ "${{ needs.property-tests.result }}" != "success" ] \
              || [ "${{ needs.pre-commit.result }}" != "success" ] \
-             || [ "${{ needs.minimal-deps.result }}" != "success" ]; then
+             || [ "${{ needs.minimal-deps.result }}" != "success" ] \
+             || [ "${{ needs.ml-reference.result }}" != "success" ]; then
             echo "::error::One or more required jobs did not succeed."
             exit 1
           fi
