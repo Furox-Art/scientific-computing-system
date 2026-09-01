@@ -54,7 +54,7 @@ typical).
 
 ```python
 model2 = PCA(n_components=2).fit(Xs)
-Z = model2.transform(Xs)          # 2-D projections
+Z = model2.transform(Xs)  # 2-D projections
 X_rec = model2.inverse_transform(Z)  # approximate reconstruction
 ```
 

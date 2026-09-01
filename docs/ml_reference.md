@@ -33,6 +33,7 @@ dependency-free:
 # Reference derivation (requires scikit-learn) — run once, then freeze the
 # numbers into scripts/verify_ml_reference.py:REFERENCE.
 from scripts.verify_ml_reference import make_dataset  # seed=42
+
 X, y, y_reg = make_dataset()
 
 from sklearn.cluster import KMeans
@@ -50,11 +51,11 @@ km = KMeans(n_clusters=2, n_init=10, random_state=42).fit(X)
 pca = PCA(n_components=2).fit(Xs)
 lin = LinearRegression().fit(X, y_reg)
 
-print(accuracy_score(y, logreg.predict(Xs)))        # 0.930000
-print(accuracy_score(y, tree.predict(X)))           # 0.980000
-print(adjusted_rand_score(y, km.labels_))           # 0.738293
-print(pca.explained_variance_ratio_.sum())          # 0.712253
-print(r2_score(y_reg, lin.predict(X)))              # 0.981701975
+print(accuracy_score(y, logreg.predict(Xs)))  # 0.930000
+print(accuracy_score(y, tree.predict(X)))  # 0.980000
+print(adjusted_rand_score(y, km.labels_))  # 0.738293
+print(pca.explained_variance_ratio_.sum())  # 0.712253
+print(r2_score(y_reg, lin.predict(X)))  # 0.981701975
 ```
 
 ## Honest differences between CDS and sklearn

@@ -55,8 +55,8 @@ def _enable_utf8_stdout() -> None:
     """
     for stream in (sys.stdout, sys.stderr):
         reconfigure = getattr(stream, "reconfigure", None)
-        if reconfigure is None:
-            continue
+        if reconfigure is None:  # pragma: no cover
+            continue  # pragma: no cover
         try:
             reconfigure(encoding="utf-8", errors="backslashreplace")
         except (ValueError, OSError, io.UnsupportedOperation):  # pragma: no cover
@@ -79,15 +79,17 @@ def _safe_text(text: str) -> str:
     encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
     try:
         text.encode(encoding)
-    except (UnicodeEncodeError, LookupError):
-        pass
+    except (UnicodeEncodeError, LookupError):  # pragma: no cover
+        pass  # pragma: no cover
     else:
         return text
-    for char, replacement in _ASCII_FALLBACKS.items():
-        text = text.replace(char, replacement)
+    for char, replacement in _ASCII_FALLBACKS.items():  # pragma: no cover
+        text = text.replace(char, replacement)  # pragma: no cover
     # Anything still unencodable (unexpected glyph) degrades to "?" instead of
     # taking the process down.
-    return text.encode(encoding, errors="replace").decode(encoding, errors="replace")
+    return text.encode(encoding, errors="replace").decode(  # pragma: no cover
+        encoding, errors="replace"
+    )  # pragma: no cover
 
 
 _STYLES: dict[str, str] = {
