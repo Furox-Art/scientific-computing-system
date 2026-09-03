@@ -159,7 +159,8 @@ jobs:
     #      space) and don't need to run across the full 4×3 OS/Python matrix —
     #      the invariants are platform-independent. One Linux + 3.12 cell is
     #      the reference cell, matching the coverage-gating job's choice.
-    # The suite itself (tests/test_property_invariants.py) skips gracefully via
+    # The suites themselves (tests/test_property_invariants.py,
+    # tests/test_special_invariants.py) skip gracefully via
     # pytest.importorskip when hypothesis is absent, so the main matrix's
     # `pytest tests/` run is unaffected even though it collects the file.
     #
@@ -192,14 +193,14 @@ jobs:
       # type-checks it, because the main matrix excludes it (hypothesis
       # absent). `--strict` is explicit so the check does not silently relax
       # if the global config ever changes.
-      run: mypy --strict tests/test_property_invariants.py
+      run: mypy --strict tests/test_property_invariants.py tests/test_special_invariants.py
 
     - name: Run property-based tests
       # Run ONLY the property suite here — the main matrix already covers the
       # example-based suite. Isolating it keeps this job's signal clean: a
       # failure here means a Hypothesis search found a counterexample, not a
       # regression in an unrelated test.
-      run: pytest tests/test_property_invariants.py -v
+      run: pytest tests/test_property_invariants.py tests/test_special_invariants.py -v
 
   ml-reference:
     # Correctness gate, not a test run: verifies the v1.6 estimators against
