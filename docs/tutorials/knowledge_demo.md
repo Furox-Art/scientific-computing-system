@@ -23,7 +23,7 @@ kg.add_relation("Dark Energy", "Hubble Constant", kind="affects")
 kg.add_relation("Hubble Constant", "Cosmic Microwave Background", kind="constrains")
 ```
 
-Relations are **directed** — `"A depends-on B"` is not symmetric — but the traversal helpers below follow edges in either direction when that's what you want.
+Relations are **directed**, `"A depends-on B"` is not symmetric, but the traversal helpers below follow edges in either direction when that's what you want.
 
 ## 2. Traverse the Graph
 
@@ -42,7 +42,7 @@ print(sorted(kg.reachable("Dark Energy")))  # transitive closure (undirected)
 print(kg.find_cycles())  # directed cycles, normalized
 ```
 
-`find_path` and `reachable` use BFS and traverse edges in either direction, so a path may run against a relation's direction. `find_cycles` works on the *directed* structure and reports each cycle once, normalized to start at its smallest member — deep graphs are safe because it uses an explicit stack rather than recursion.
+`find_path` and `reachable` use BFS and traverse edges in either direction, so a path may run against a relation's direction. `find_cycles` works on the *directed* structure and reports each cycle once, normalized to start at its smallest member, deep graphs are safe because it uses an explicit stack rather than recursion.
 
 You can filter neighbors by relation type:
 
@@ -53,7 +53,7 @@ print(kg.neighbors("Hubble Constant", kind="constrains"))
 
 ## 3. Keep a Notebook of Notes
 
-A `Note` is a free-form record (title + body + tags) that links to concept names by **string**, not by reference — so a note may mention a concept that isn't in any graph yet, exactly like a citation in a lab book.
+A `Note` is a free-form record (title + body + tags) that links to concept names by **string**, not by reference, so a note may mention a concept that isn't in any graph yet, exactly like a citation in a lab book.
 
 ```python
 from cds.knowledge import Notebook

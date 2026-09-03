@@ -2,8 +2,8 @@
 
 `cds.ml` ships a small, dependency-free multilayer perceptron (`MLP`) built on a
 stack of `Layer` objects. Training uses the Adam optimizer from
-[`cds.optimization`](optimization_demo.md), so the whole pipeline — forward
-pass, backprop, and the optimizer step — is pure Python.
+[`cds.optimization`](optimization_demo.md), so the whole pipeline, forward
+pass, backprop, and the optimizer step, is pure Python.
 
 ## 1. Build and inspect a network
 

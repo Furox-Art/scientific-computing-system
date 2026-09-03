@@ -1,6 +1,6 @@
 # Scientific Constants & Formulas Tutorial
 
-CDS bundles a curated set of physical constants and classical physics formulas — all pure Python.
+CDS bundles a curated set of physical constants and classical physics formulas, all pure Python.
 
 ## 1. Lookup a Constant
 

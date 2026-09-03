@@ -5,7 +5,7 @@
 <p class="cds-hero__tagline">
 CDS is an open-source platform for research, simulation and discovery: 19 modules
 spanning quantum simulation, FFT, linear algebra, statistics, ODEs, symbolic math,
-machine learning and NLP — implemented in readable pure Python with
+machine learning and NLP, implemented in readable pure Python with
 <strong>zero runtime dependencies</strong>.
 </p>
 <div class="cds-hero__actions" markdown>
@@ -36,7 +36,7 @@ A guided first session: constants, statistics, a quantum circuit, an ODE.
 
 <div class="cds-card" markdown>
 ### [Tour of Numerical Methods](tour_of_numerical_methods.md)
-How the solvers actually work — quadrature, RK45, LU, FFT — with worked output.
+How the solvers actually work: quadrature, RK45, LU, FFT, with worked output.
 </div>
 
 <div class="cds-card" markdown>
@@ -60,9 +60,9 @@ Module dependency graph and data flow, for contributors and auditors.
 
     CDS is designed as a first stop: every algorithm is readable pure Python, so
     you learn *how* things work, not just how to call them. Follow the tutorials
-    in order — [Quick Start](tutorials/quick_start.md),
+    in order: [Quick Start](tutorials/quick_start.md),
     [Statistics](tutorials/stats_demo.md),
-    [Machine Learning](tutorials/ml_demo.md) — then branch out.
+    [Machine Learning](tutorials/ml_demo.md), then branch out.
 
 ## Key Features
 
@@ -88,8 +88,8 @@ Module dependency graph and data flow, for contributors and auditors.
 | `cds.data_analysis` | Structured data management, visualization & optional pandas interop (`cds[pandas]`) |
 | `cds.scientific` | Physical constants & scientific formulas |
 | `cds.graph` | Graph algorithms (BFS, DFS, Dijkstra, Kruskal MST) |
-| `cds.modeling` | Symbolic algebra — expressions, differentiation, simplification, LaTeX export, `MathModel` equation systems, root-finding & parameter fitting |
-| `cds.knowledge` | Knowledge organization — concept graph with typed relations, research notes notebook, ranked structured retrieval (JSON persistence) |
+| `cds.modeling` | Symbolic algebra: expressions, differentiation, simplification, LaTeX export, `MathModel` equation systems, root-finding & parameter fitting |
+| `cds.knowledge` | Knowledge organization: concept graph with typed relations, research notes notebook, ranked structured retrieval (JSON persistence) |
 | `cds.montecarlo` | Monte Carlo integration, π estimation, random walks |
 | `cds.diffeq` | ODE solvers (Euler, RK4, midpoint) |
 | `cds.numerical_integration` | Deterministic quadrature (trapezoid, Simpson, Romberg) + 2-D tensor-product rules (Simpson, Gauss-Legendre) |
@@ -101,9 +101,9 @@ Module dependency graph and data flow, for contributors and auditors.
 
 - [Getting Started](getting-started.md)
 - [API Reference](api.md)
-- [Cookbook](cookbook.md) — problem-oriented recipes for every module
-- [Tour of Numerical Methods](tour_of_numerical_methods.md) — guided walkthrough
-- [Architecture](ARCHITECTURE.md) — module dependency graph & data flow
+- [Cookbook](cookbook.md): problem-oriented recipes for every module
+- [Tour of Numerical Methods](tour_of_numerical_methods.md): guided walkthrough
+- [Architecture](ARCHITECTURE.md): module dependency graph & data flow
 - [Case Studies](CASE_STUDY_HUBBLE.md)
 - [Benchmarks](benchmarks.md)
 

@@ -9,7 +9,7 @@ using a scalar autograd engine and an Adam optimizer. Pure Python end to end.
 The demo runs four steps:
 
 1. **Encode** the corpus to token ids via the bundled Shakespeare text.
-2. **Build** the model — embedding + positional encoding + one causal
+2. **Build** the model: embedding + positional encoding + one causal
    multi-head-attention block + feed-forward + output head.
 3. **Train** by sliding a window over the corpus, predicting the next
    character, and updating with Adam.
@@ -38,7 +38,7 @@ model = MiniGPT(
 ## 2. The autograd engine
 
 Unlike the float-matrix math in the other nlp demos, MiniGPT's parameters are
-`Tensor` objects from `cds.nlp.autograd` — each op records its inputs on a tape
+`Tensor` objects from `cds.nlp.autograd`, each op records its inputs on a tape
 so `backward()` can compute gradients automatically. This is the same design
 idea as micrograd / tinygrad, kept minimal so the source stays readable.
 
@@ -86,16 +86,16 @@ out = model.sample(prompt, n_tokens=120)
 print(decode(out))
 ```
 
-The output won't be coherent Shakespeare — 200 steps on a tiny corpus is a
-demonstration, not a real model — but it will reflect learned character
+The output won't be coherent Shakespeare, 200 steps on a tiny corpus is a
+demonstration, not a real model, but it will reflect learned character
 frequencies and common bigrams, which is the whole point: you can watch a
 language model come into being from first principles.
 
 ## Why it matters
 
-Most GPT tutorials hide the mechanics behind a framework. Here, the entire path
-— BPE-free char encoding, positional encoding, causal multi-head attention,
-feed-forward, layernorm, autograd, Adam, sampling — is open Python you can
+Most GPT tutorials hide the mechanics behind a framework. Here, the entire path,
+BPE-free char encoding, positional encoding, causal multi-head attention,
+feed-forward, layernorm, autograd, Adam, sampling, is open Python you can
 read, modify, and instrument. Start from
 [`nlp_bpe_demo.md`](nlp_bpe_demo.md) and [`nlp_attention_demo.md`](nlp_attention_demo.md)
 for the building blocks.

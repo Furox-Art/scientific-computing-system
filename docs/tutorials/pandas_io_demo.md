@@ -12,7 +12,7 @@ pip install "scientific-computing-system[all]"
 ```
 
 The two functions live in `cds.data_analysis` and are lazily resolved on
-first access — importing the package without pandas still works.
+first access, importing the package without pandas still works.
 
 ```python
 from cds.data_analysis import DataSet, to_dataframe, from_dataframe
@@ -56,7 +56,7 @@ print(df)
 print(list(df.columns))  # ['product', 'price', 'units']
 ```
 
-Column order is preserved exactly as defined in the source rows — handy
+Column order is preserved exactly as defined in the source rows, handy
 when downstream pandas code expects a specific layout.
 
 ## 3. From `DataFrame` to `DataSet`
@@ -139,7 +139,7 @@ print(len(back))  # 0
 ## 7. When pandas is missing
 
 If the extra was never installed, calling either function raises a
-clear `ImportError` with install guidance — rather than a cryptic stack
+clear `ImportError` with install guidance, rather than a cryptic stack
 trace:
 
 ```python

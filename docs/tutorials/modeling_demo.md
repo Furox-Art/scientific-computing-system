@@ -25,7 +25,7 @@ print(df.to_str())
 print(df.evaluate({"x": 0.0}))  # 1.0  (analytically e^0*(sin0+cos0))
 ```
 
-The chain, product, and quotient rules are all built in — for `Sin`, `Cos`, `Exp`, `Log`, `Sqrt`, `Pow`, and the arithmetic operators.
+The chain, product, and quotient rules are all built in, for `Sin`, `Cos`, `Exp`, `Log`, `Sqrt`, `Pow`, and the arithmetic operators.
 
 ## 3. Simplify & Export to LaTeX
 
@@ -77,6 +77,6 @@ print(result.x)  # ~1.4142
 print(result.converged)  # True
 ```
 
-For fitting a model's parameters to data, see `cds.modeling.fit_parameters` — it minimizes the residual sum of squares via `cds.optimization.gradient_descent`.
+For fitting a model's parameters to data, see `cds.modeling.fit_parameters`, it minimizes the residual sum of squares via `cds.optimization.gradient_descent`.
 
 Run the full demo with `python examples/modeling_demo.py`.

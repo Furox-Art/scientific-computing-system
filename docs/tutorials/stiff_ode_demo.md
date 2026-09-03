@@ -23,7 +23,7 @@ print(f"{sol.y[-1]:.6f}")  # ≈ 1.000000 — exact is 1 − e⁻⁵⁰ ≈ 1.0
 
 Backward Euler buys stability with only first-order accuracy. The trapezoidal
 rule averages the explicit and implicit slopes for O(dt²) error while staying
-A-stable — on smooth problems its error shrinks ~4× when you halve `dt`.
+A-stable, on smooth problems its error shrinks ~4× when you halve `dt`.
 
 ```python
 import math

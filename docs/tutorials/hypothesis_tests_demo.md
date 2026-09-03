@@ -1,6 +1,6 @@
 # Hypothesis Testing Tutorial
 
-`cds.stats` ships classical inferential tests — one-sample and two-sample
+`cds.stats` ships classical inferential tests: one-sample and two-sample
 t-tests, chi-square (goodness-of-fit and independence), and one-way ANOVA.
 Each returns a result object with `statistic`, `df`, and `p_value`.
 
@@ -56,7 +56,7 @@ print(f"chi2 = {gof.statistic:.3f}, df = {gof.df}, p = {gof.p_value:.4f}")
 #   chi2 = 3.500, df = 5, p = 0.6234
 ```
 
-A large p-value here means the fit is plausible — fail to reject the null.
+A large p-value here means the fit is plausible, fail to reject the null.
 
 ## 4. Chi-square test of independence
 
@@ -95,7 +95,7 @@ A small p-value tells you an effect exists; it does **not** tell you how large i
 is. `cds.stats` ships four standardized effect-size measures, each the natural
 companion to a significance test above.
 
-### Cohen's d — companion to the two-sample t-test
+### Cohen's d: companion to the two-sample t-test
 
 Standardized mean difference using the pooled standard deviation. Conventional
 reading (Cohen, 1988): |d| ~0.2 small, ~0.5 medium, ~0.8 large.
@@ -109,10 +109,10 @@ print(f"Cohen's d = {cohens_d(group_a, group_b):.3f}")
 #   d = -3.742  (large; group_b mean is higher)
 ```
 
-The negative sign means `group_a` has the smaller mean — the magnitude is what
+The negative sign means `group_a` has the smaller mean, the magnitude is what
 you read against the cutoffs.
 
-### η² (eta-squared) — companion to one-way ANOVA
+### η² (eta-squared): companion to one-way ANOVA
 
 The proportion of total variance accounted for by group membership, derived from
 the F statistic. Range [0, 1]; ~0.01 small, ~0.06 medium, ~0.14 large.
@@ -129,7 +129,7 @@ print(f"eta^2 = {eta2:.3f}")
 #   eta^2 = 0.838  (very large; group membership explains ~84% of variance)
 ```
 
-### Cramér's V — companion to chi-square independence
+### Cramér's V: companion to chi-square independence
 
 Normalizes the chi-square statistic to [0, 1] using sample size and the smaller
 table dimension. 0 = no association, 1 = perfect; ~0.1 small, ~0.3 medium,
@@ -143,7 +143,7 @@ print(f"Cramer's V = {cramers_v(table):.3f}")
 #   V = 0.054  (negligible association, matching the large p-value in §4)
 ```
 
-### Bonferroni correction — for multiple comparisons
+### Bonferroni correction: for multiple comparisons
 
 When you run several tests on the same data, the chance of a false positive
 grows. The Bonferroni correction divides your family-wise alpha by the number of

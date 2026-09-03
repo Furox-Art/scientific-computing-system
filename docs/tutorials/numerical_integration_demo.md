@@ -24,7 +24,7 @@ print(romberg(f, 0, 1).value)  # Richardson extrapolation
 print(adaptive_simpson(f, 0, 1).value)  # tolerance-driven bisection
 ```
 
-**Why it matters:** you can watch error drop from `1e-7` (trapezoid) to `1e-16` (Gauss-Legendre) on the same problem — a clear lesson in quadrature convergence.
+**Why it matters:** you can watch error drop from `1e-7` (trapezoid) to `1e-16` (Gauss-Legendre) on the same problem, a clear lesson in quadrature convergence.
 
 ## 3. 2-D Tensor-Product Quadrature
 

@@ -1,7 +1,7 @@
 # Neural Networks + Visualization Tutorial
 
 `cds.ml` is a from-scratch neural network library (MLP, dense layers, Adam
-optimizer) — no PyTorch, no NumPy. Pair it with `cds.data_analysis` for
+optimizer), no PyTorch, no NumPy. Pair it with `cds.data_analysis` for
 terminal-native ASCII charts to inspect results without a plotting backend.
 
 ## 1. Build and train an MLP
@@ -55,7 +55,7 @@ decide programmatically whether to keep training.
 
 ## 2. Visualize results in the terminal
 
-`cds.data_analysis` ships `plot_bar` and `plot_line` — scale-aware ASCII charts
+`cds.data_analysis` ships `plot_bar` and `plot_line`, scale-aware ASCII charts
 that need no matplotlib.
 
 ```python
@@ -83,7 +83,7 @@ can eyeball loss curves or signal shapes straight from a terminal.
 ## 3. The pure-Python advantage
 
 Because every layer, optimizer step, and chart is readable Python, this is an
-ideal setup for **teaching** how backpropagation and Adam actually work — you
+ideal setup for **teaching** how backpropagation and Adam actually work, you
 can set breakpoints inside the training loop and watch gradients flow.
 
 Run the full demo:

@@ -4,7 +4,7 @@ Auto-generated reference for every public CDS module. Each entry below is render
 
 ## Core Data Models
 
-The shared `Domain`, `Hypothesis`, and `HypothesisStatus` types used throughout CDS — the foundation the hypothesis engine builds on.
+The shared `Domain`, `Hypothesis`, and `HypothesisStatus` types used throughout CDS, the foundation the hypothesis engine builds on.
 
 ::: cds.core
 
@@ -65,10 +65,10 @@ Pure-Python neural networks: an MLP with Adam-based training.
 ## Signal Processing
 
 A from-scratch Fourier toolkit (DFT/FFT/IFFT, convolution, power spectrum,
-frequency-domain low-pass) plus a classical digital-filter *design* suite —
+frequency-domain low-pass) plus a classical digital-filter *design* suite:
 Butterworth low/high/band-pass/band-stop via the analog-prototype + bilinear-
 transform recipe, applied in the time domain through a direct-form II
-difference equation — and a robust moving-median denoiser.
+difference equation, and a robust moving-median denoiser.
 
 ::: cds.signals
 
@@ -111,7 +111,7 @@ CSV loading, normalisation, smoothing, and ASCII visualisation.
 ### Pandas Interoperability (optional)
 
 A lossless bridge between CDS's [`DataSet`](#data-analysis) and a pandas
-`DataFrame` — `to_dataframe` / `from_dataframe`. Install with
+`DataFrame`: `to_dataframe` / `from_dataframe`. Install with
 `pip install ".[pandas]"`; the core package stays zero-dependency.
 
 ::: cds.data_analysis.pandas_io

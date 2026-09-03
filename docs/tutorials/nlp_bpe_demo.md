@@ -1,7 +1,7 @@
 # BPE Tokenizer & Embeddings Tutorial
 
 `cds.nlp` is an educational NLP stack built from scratch: a Byte-Pair-Encoding
-(BPE) tokenizer, sinusoidal positional encoding, and token embeddings — the
+(BPE) tokenizer, sinusoidal positional encoding, and token embeddings, the
 exact front-end a Transformer consumes. No HuggingFace, no NumPy.
 
 ## 1. Train a BPE tokenizer
@@ -46,7 +46,7 @@ print(f"tokens: {[tokenizer.id_to_token[i] for i in ids]}")
 print(f"decoded: {tokenizer.decode(ids)!r}")  # 'the quick brown fox'
 ```
 
-`decode` is a clean round-trip — verify with an assertion in your own code.
+`decode` is a clean round-trip, verify with an assertion in your own code.
 
 ## 3. Token + positional embeddings
 

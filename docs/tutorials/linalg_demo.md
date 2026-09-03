@@ -1,6 +1,6 @@
 # Linear Algebra Tutorial
 
-`cds.math_utils` provides from-scratch numerical linear algebra — QR and
+`cds.math_utils` provides from-scratch numerical linear algebra, QR and
 Cholesky decompositions, eigenvalues via power iteration, linear-system
 solving, and matrix inverse. All O(N³) implementations in readable pure Python.
 
@@ -63,7 +63,7 @@ print(f"Eigenvector:         [{eigvec[0]:.4f}, {eigvec[1]:.4f}]")
 
 ## 4. Solving a linear system
 
-`solve_linear` uses LU decomposition with partial pivoting (O(N³)) — far
+`solve_linear` uses LU decomposition with partial pivoting (O(N³)), far
 better than naive determinant expansion (O(N!)).
 
 ```python
@@ -92,7 +92,7 @@ A · A⁻¹ =
    0.0000   1.0000
 ```
 
-Composing these primitives is straightforward — `transpose`, `mat_mul`, and
+Composing these primitives is straightforward, `transpose`, `mat_mul`, and
 the solvers interoperate on plain `list[list[float]]` inputs. See
 [`math_utils_demo.md`](math_utils_demo.md) for the calculus side of the module.
 

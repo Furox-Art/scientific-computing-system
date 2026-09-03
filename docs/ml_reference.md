@@ -1,7 +1,7 @@
 # ML Reference Values
 
 `cds.ml` estimators are written from scratch in pure Python. To prove they
-are *correct* — not just runnable — `scripts/verify_ml_reference.py` runs
+are *correct*, not just runnable, `scripts/verify_ml_reference.py` runs
 each v1.6 estimator on a fixed seeded dataset and compares against reference
 outputs computed with **scikit-learn 1.9.0**:
 
@@ -63,30 +63,30 @@ print(r2_score(y_reg, lin.predict(X)))  # 0.981701975
 The numbers agree, but the implementations get there differently. Where
 behavior can legitimately differ:
 
-- **LogisticRegression** — CDS uses fixed-learning-rate full-batch gradient
+- **LogisticRegression**: CDS uses fixed-learning-rate full-batch gradient
   descent (`lr=0.5`, `epochs=2000`); sklearn uses LBFGS. Both land on the
   same decision boundary here, but on barely-separable data the optima (and
   therefore a handful of predictions) can differ. Tolerance: ±0.02 accuracy.
-- **DecisionTreeClassifier** — both are greedy Gini CART. Candidates tied on
+- **DecisionTreeClassifier**: both are greedy Gini CART. Candidates tied on
   Gini improvement are broken by scan order, which differs between the two
   implementations; accuracy-level agreement is expected, identical trees are
   not.
-- **KMeans** — CDS uses k-means++ seeding from a seeded RNG, assigns
+- **KMeans**: CDS uses k-means++ seeding from a seeded RNG, assigns
   distance ties to the *lowest* cluster index, and keeps the previous
   centroid for an empty cluster. sklearn runs `n_init=10` restarts and
   breaks ties differently. Both converge to the same basin on this dataset
-  (ARI difference ≈ 8×10⁻⁶), but label *indices* are arbitrary — compare
+  (ARI difference ≈ 8×10⁻⁶), but label *indices* are arbitrary, compare
   with ARI, never raw labels.
-- **PCA** — CDS diagonalizes the covariance matrix with cyclic Jacobi
+- **PCA**: CDS diagonalizes the covariance matrix with cyclic Jacobi
   rotations; sklearn uses LAPACK SVD. Explained-variance ratios are
   sign-invariant and match to ~10⁻⁷; individual component signs may be
   flipped between the two (a valid PCA convention difference).
-- **LinearRegression** — both solve the normal equations in closed form;
+- **LinearRegression**: both solve the normal equations in closed form;
   agreement is at floating-point rounding level (~10⁻¹⁰).
 
 ## When the table needs refreshing
 
 Update the frozen numbers only when the dataset generator, an estimator's
-algorithm, or the pinned sklearn version changes — and always re-run the
+algorithm, or the pinned sklearn version changes, and always re-run the
 full script afterwards. If a check starts failing, treat it as a regression
 signal first, not a tolerance problem.

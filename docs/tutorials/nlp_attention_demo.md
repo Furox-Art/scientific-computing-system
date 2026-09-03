@@ -1,7 +1,7 @@
 # Multi-Head Attention Tutorial
 
 This demo extends the BPE + embeddings pipeline with a real **multi-head
-self-attention block** — the core of the Transformer (Vaswani et al., 2017).
+self-attention block**, the core of the Transformer (Vaswani et al., 2017).
 Everything runs in pure Python; the attention weights are dumped as an ASCII
 heat map so the example is self-contained.
 
@@ -39,7 +39,7 @@ combined = add_positional(table.forward(ids), pe)
 ## 2. Run multi-head attention with a causal mask
 
 `multi_head_attention` takes linear projection weights (`w_q`, `w_k`, `w_v`,
-`w_o`) and the number of heads. The `mask` argument here is a **causal mask** —
+`w_o`) and the number of heads. The `mask` argument here is a **causal mask**:
 position `i` may only attend to positions `<= i`, which is what makes this a
 *decoder-style* attention (used in GPT).
 
@@ -72,7 +72,7 @@ attention weights, head 0 (rows = query position):
 ▂▂▁▁
 ```
 
-The lower-triangular pattern is the causal mask made visible — each row only
+The lower-triangular pattern is the causal mask made visible, each row only
 has non-zero weight up to its own column.
 
 ## 4. Verify the causal property

@@ -1,7 +1,7 @@
 # Time-Series Analysis Tutorial
 
 `cds.stats` provides a classical toolkit for ordered, equally-spaced
-observations — autocorrelation, partial autocorrelation, moving-average
+observations: autocorrelation, partial autocorrelation, moving-average
 smoothing, differencing, a KPSS-style stationarity test, seasonal
 decomposition, and the Ljung-Box portmanteau test. All routines are pure
 Python with no external dependencies.
@@ -41,7 +41,7 @@ print(acf)  # [1.0, 0.95, 0.90, 0.85, 0.79]
 
 The PACF isolates the *direct* correlation at each lag, removing the effect
 of intermediate lags via the Durbin-Levinson recursion. For a pure AR(1)
-process `x_t = 0.8·x_{t-1}`, the PACF spikes at lag 1 then cuts off to ~0 —
+process `x_t = 0.8·x_{t-1}`, the PACF spikes at lag 1 then cuts off to ~0,
 the hallmark signature for choosing ARIMA order `p`.
 
 ```python
@@ -72,7 +72,7 @@ print(f"SES variance  = {sum((x - 5) ** 2 for x in ses) / len(ses):.2f}")
 
 ## 4. Differencing
 
-Differencing removes trend and seasonality — the standard Box-Jenkins
+Differencing removes trend and seasonality, the standard Box-Jenkins
 preprocessing step before fitting ARIMA models. `order=k` applies the
 difference repeatedly.
 
@@ -92,7 +92,7 @@ print(difference(seasonal, lag=3, order=1))  # [0.0, 0.0, 0.0]
 The KPSS statistic tests the **null of stationarity** (the opposite of the
 ADF test). A small statistic means the series looks stationary; a large one
 suggests a unit root. `kpss_statistic` returns a heuristic decision and an
-approximate p-value — for formal inference consult the published asymptotic
+approximate p-value, for formal inference consult the published asymptotic
 critical values.
 
 ```python
@@ -127,7 +127,7 @@ print(f"max |residual| = {max(abs(r) for r in residual):.2f}")
 ## 7. Ljung-Box test for autocorrelation
 
 The Ljung-Box Q statistic tests whether *any* of the first `lags`
-autocorrelations differ from zero. A low p-value rejects independence —
+autocorrelations differ from zero. A low p-value rejects independence,
 useful for checking whether ARIMA residuals are white noise.
 
 ```python
@@ -142,4 +142,4 @@ print(f"autocorrelated? {lb.has_autocorrelation}")  # True
 
 These tools compose naturally: smooth a noisy signal, difference away a
 trend, test the result for stationarity, then decompose any remaining
-seasonality — all from `cds.stats`, no NumPy required.
+seasonality, all from `cds.stats`, no NumPy required.

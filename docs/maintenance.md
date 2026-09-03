@@ -27,7 +27,7 @@ pytest tests/
 
 ## Publishing to PyPI
 
-CDS publishes to PyPI automatically via **GitHub Actions** (`.github/workflows/release.yml`) using a scoped **PyPI API token** stored as the `PYPI_API_TOKEN` repository secret. The release pipeline is the **sole** publish authority — `scripts/publish.py` only builds, verifies, runs tests, pushes the tag (which triggers CI), and deploys docs; it never uploads to PyPI directly.
+CDS publishes to PyPI automatically via **GitHub Actions** (`.github/workflows/release.yml`) using a scoped **PyPI API token** stored as the `PYPI_API_TOKEN` repository secret. The release pipeline is the **sole** publish authority: `scripts/publish.py` only builds, verifies, runs tests, pushes the tag (which triggers CI), and deploys docs; it never uploads to PyPI directly.
 
 ### 0. One-time setup
 Create a PyPI API token scoped to `scientific-computing-system` (Account → API tokens) and add it as a repo secret:
@@ -58,4 +58,4 @@ The `attest.yml` workflow then fires on `release: published` to sign the artifac
 
 ## Documentation Deployment
 
-The MkDocs site is deployed to GitHub Pages via `scripts/publish.py`, which runs `mkdocs gh-deploy --force --no-history` locally after the release tag is pushed (use `--skip-docs` to opt out). The `CI` workflow (`tests.yml`) only runs `mkdocs build --strict` as a link/reference lint — it does **not** deploy. This keeps the canonical docs build on the local toolchain, matching `publish.py`'s role as the local half of the two-stage release.
+The MkDocs site is deployed to GitHub Pages via `scripts/publish.py`, which runs `mkdocs gh-deploy --force --no-history` locally after the release tag is pushed (use `--skip-docs` to opt out). The `CI` workflow (`tests.yml`) only runs `mkdocs build --strict` as a link/reference lint. It does **not** deploy. This keeps the canonical docs build on the local toolchain, matching `publish.py`'s role as the local half of the two-stage release.

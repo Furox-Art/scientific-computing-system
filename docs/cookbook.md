@@ -1,7 +1,7 @@
 # CDS Cookbook
 
 A problem-oriented recipe book. Each recipe solves one concrete task with
-copy-pasteable code that runs against the real CDS API — no toy stubs. The
+copy-pasteable code that runs against the real CDS API, no toy stubs. The
 recipes are grouped by domain, and every snippet is pure-Python: no NumPy,
 no pandas, no extra installs unless the recipe says so.
 
@@ -27,7 +27,7 @@ no pandas, no extra installs unless the recipe says so.
 - [Optimization](#optimization)
 - [Symbolic modeling](#symbolic-modeling)
 - [Machine learning](#machine-learning)
-- [NLP — tokenization & attention](#nlp)
+- [NLP: tokenization & attention](#nlp)
 - [Data analysis & visualization](#data-analysis)
 - [Matplotlib plotting (optional)](#matplotlib-plotting)
 - [Hypothesis generation](#hypothesis-generation)
@@ -480,7 +480,7 @@ print(sol.y[-1])  # settles near the carrying capacity 10
 
 ### A coupled system (predator–prey)
 
-`solve_system` returns `(times, states)` — a list of time points and a list
+`solve_system` returns `(times, states)`: a list of time points and a list
 of state vectors.
 
 ```python
@@ -662,7 +662,7 @@ print(out)  # 3x1 attended output
 ### Run a mini autograd computation
 
 `cds.nlp.Tensor` is a scalar autograd node: build one per scalar value and
-chain it with `*`, `+`, `relu`, ... `backward()` takes **no argument** — it
+chain it with `*`, `+`, `relu`, ... `backward()` takes **no argument**, it
 seeds the output gradient to `1.0` and walks the graph back to the leaves.
 
 ```python
@@ -719,7 +719,7 @@ ds2 = from_dataframe(df)  # and back, losslessly
 
 ## Matplotlib plotting
 
-Optional extra — core CDS stays zero-dependency.
+Optional extra: core CDS stays zero-dependency.
 
 ```bash
 pip install "scientific-computing-system[plot]"
@@ -792,7 +792,7 @@ for h in hypos:
 ### Evaluate a hypothesis against observed data
 
 `HypothesisEvaluator.evaluate(hypothesis, data)` takes a `Hypothesis` and an
-`EvaluationData` dict keyed by the dispatch you want to run — here
+`EvaluationData` dict keyed by the dispatch you want to run, here
 `"chi_square_gof"`, whose value is a `ChiSquareGofPayload` (`{"observed": ...,
 "expected": ...}`).
 

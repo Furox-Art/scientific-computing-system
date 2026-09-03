@@ -17,7 +17,7 @@
 ## Checklist
 
 <!-- Required before requesting review -->
-- [ ] Tests pass locally (`pytest`) — see the CI badge for the current count
+- [ ] Tests pass locally (`pytest`): see the CI badge for the current count
 - [ ] Lint + format pass (`ruff check src/ tests/` && `ruff format --check src/ tests/`)
 - [ ] New code has tests covering it
 - [ ] Public API additions are documented (docstrings + `docs/`)

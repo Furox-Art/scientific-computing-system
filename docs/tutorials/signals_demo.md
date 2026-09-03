@@ -3,7 +3,7 @@
 `cds.signals` provides a from-scratch Fourier toolkit (DFT/FFT, forward and
 inverse), convolution, power-spectrum estimation, a frequency-domain low-pass
 filter, and a classical digital-filter *design* suite (Butterworth low/high/
-band-pass/band-stop) with time-domain application — all pure Python with no
+band-pass/band-stop) with time-domain application, all pure Python with no
 NumPy dependency.
 
 ## 1. DFT and inverse
@@ -68,8 +68,8 @@ print("Filtered (first 4):", [f"{x.real:.2f}" for x in filtered[:4]])
 ```
 
 > The frequency-domain `low_pass_filter` above is convenient for offline
-> cleaning of a whole block. For real-time, sample-by-sample processing — or
-> when you need steeper rolloff, a band-pass, or a notch — use the IIR filter
+> cleaning of a whole block. For real-time, sample-by-sample processing, or
+> when you need steeper rolloff, a band-pass, or a notch, use the IIR filter
 > *design* suite below.
 
 ## 5. Butterworth filter design (IIR)
@@ -105,7 +105,7 @@ print("output amplitude:", round((max(smoothed[tail]) - min(smoothed[tail])) / 2
 # output amplitude: ~1.00  (jitter removed, slow trend preserved)
 ```
 
-High-pass is the mirror image — it removes the slow drift and keeps the fast
+High-pass is the mirror image, it removes the slow drift and keeps the fast
 component:
 
 ```python
@@ -137,13 +137,13 @@ notched = apply_filter(mixed_signal, bs)
 
 Each band filter has an overall order of `2 * order` (one `order`-section for
 each edge). Both accept the same `apply_filter` call as the single-section
-filters — the dispatch is handled for you.
+filters, the dispatch is handled for you.
 
 ## 6. Robust denoising with a moving median
 
 When the noise is *impulsive* (occasional large spikes, sensor glitches) a
 linear filter smears the spikes instead of removing them. `moving_median`
-replaces each sample with the median of a centred window — the classical
+replaces each sample with the median of a centred window, the classical
 order-statistic denoiser that erases salt-and-pepper outliers while keeping
 genuine step edges sharp.
 

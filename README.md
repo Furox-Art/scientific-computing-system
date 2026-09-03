@@ -4,7 +4,7 @@
 
 <h1 align="center">scientific-computing-system</h1>
 
-<p align="center"><b>An open-source computational science platform — quantum, stats, signals, optimization &amp; hypothesis generation, in one pure-Python package.</b></p>
+<p align="center"><b>An open-source computational science platform, quantum, stats, signals, optimization &amp; hypothesis generation, in one pure-Python package.</b></p>
 
 <p align="center">
   <a href="https://pypi.org/project/scientific-computing-system/"><img src="https://img.shields.io/pypi/v/scientific-computing-system.svg" alt="PyPI version"></a>
@@ -38,8 +38,8 @@
 
 ## Learning scientific Python?
 
-CDS was built for you. Every algorithm you'd normally call as a black box —
-numpy's FFT, scipy's integrators, sklearn's clustering — lives here as
+CDS was built for you. Every algorithm you'd normally call as a black box,
+numpy's FFT, scipy's integrators, sklearn's clustering, lives here as
 readable pure Python you can open, run, and modify line by line. And it is
 not just readable: the ML estimators are checked against scikit-learn
 reference outputs on every CI run and agree to within 10⁻⁶ (see
@@ -47,21 +47,21 @@ reference outputs on every CI run and agree to within 10⁻⁶ (see
 
 **Start here:**
 
-1. `pip install scientific-computing-system` — no NumPy, no compilers,
+1. `pip install scientific-computing-system`: no NumPy, no compilers,
    nothing to configure
-2. `cds modules` — see everything inside
+2. `cds modules`: see everything inside
 3. Run any demo: `python examples/quantum_demo.py`
-4. Follow the tutorials — zero-install via
+4. Follow the tutorials: zero-install via
    [Binder](https://mybinder.org/v2/gh/Furox-Art/scientific-computing-system/main?urlpath=lab/tree/examples/tour_of_numerical_methods.ipynb)
 
-> **One package, no heavy dependencies.** CDS brings together quantum circuit simulation, statistical analysis, signal processing, optimization, probability, ODE/numerical solvers, symbolic modeling, knowledge graphs, educational NLP, and **structured hypothesis generation** — all in readable pure Python. **No NumPy. No SciPy. No compiled extensions.** Just `pip install` and you can read every line of source.
+> **One package, no heavy dependencies.** CDS brings together quantum circuit simulation, statistical analysis, signal processing, optimization, probability, ODE/numerical solvers, symbolic modeling, knowledge graphs, educational NLP, and **structured hypothesis generation**, all in readable pure Python. **No NumPy. No SciPy. No compiled extensions.** Just `pip install` and you can read every line of source.
 
-**Why CDS exists** — for teaching, prototyping, scientific exploration, and edge deployments where a single, dependency-light, fully-readable Python package beats juggling six libraries. Every algorithm is implemented from scratch so you can *learn how it works*, not just call it.
+**Why CDS exists**: for teaching, prototyping, scientific exploration, and edge deployments where a single, dependency-light, fully-readable Python package beats juggling six libraries. Every algorithm is implemented from scratch so you can *learn how it works*, not just call it.
 
-> **If CDS saves you time, a star helps others find it — and keeps the project maintained.** Thank you!
+> **If CDS saves you time, a star helps others find it, and keeps the project maintained.** Thank you!
 
 ---
-**Latest Update (v1.7.0):** power analysis + sample-size solver (`power_t_test`, `power_proportion_test`), **VotingClassifier** (hard/soft ensembles), four new runnable demos (interpolation, PDE, ensembles, end-to-end discovery) — plus the 1.6.0 deepening: **PCA**, **k-NN/k-means/trees**, **StandardScaler + train/test split**, chi-square/Student-t/gamma/beta samplers, **implicit stiff ODE solvers**, **Nelder–Mead** / **simulated annealing**, Mann–Whitney U & Wilcoxon. `pip install -U "scientific-computing-system[plot]"`.
+**Latest Update (v1.7.0):** power analysis + sample-size solver (`power_t_test`, `power_proportion_test`), **VotingClassifier** (hard/soft ensembles), four new runnable demos (interpolation, PDE, ensembles, end-to-end discovery). Plus the 1.6.0 deepening: **PCA**, **k-NN/k-means/trees**, **StandardScaler + train/test split**, chi-square/Student-t/gamma/beta samplers, **implicit stiff ODE solvers**, **Nelder–Mead** / **simulated annealing**, Mann–Whitney U & Wilcoxon. `pip install -U "scientific-computing-system[plot]"`.
 ---
 
 ## Contents
@@ -133,7 +133,7 @@ throughput:
   then feed straight back into the statistical tests in the same package.
 
 If your priority is heavy numerical performance on arrays of >10⁷ elements,
-CDS is the wrong tool — use NumPy/SciPy. The [comparison table](#cds-vs-other-libraries)
+CDS is the wrong tool. Use NumPy/SciPy. The [comparison table](#cds-vs-other-libraries)
 below spells out exactly where each fits.
 
 <details>
@@ -144,7 +144,7 @@ These aren't the pitch, but they remove the usual reasons to hesitate:
 - The full test suite runs on every push across Linux, Windows, and macOS,
   Python 3.10–3.13. See the [CI badge](https://github.com/Furox-Art/scientific-computing-system/actions/workflows/tests.yml)
   for the live test count.
-- **100% code coverage (statement + branch)** is enforced as a gate — CI fails
+- **100% code coverage (statement + branch)** is enforced as a gate: CI fails
   if either drops. See the [codecov badge](https://codecov.io/gh/Furox-Art/scientific-computing-system).
 - `mypy --strict` passes clean across `src/` and `tests/`.
 - An interactive CLI with ASCII visualization is included, no plotting deps.
@@ -176,31 +176,31 @@ If CDS is useful in your research or publications, please cite it using the info
 
 | Module | Description |
 |--------|-------------|
-| `cds.core` | Shared data model — `Domain`, `Hypothesis`, `HypothesisStatus` types used across modules |
-| `cds.interpolate` | Interpolation — 1-D linear & nearest-neighbour evaluators, bilinear interpolation on regular 2-D grids |
-| `cds.quantum` | Single & multi-qubit simulation — Hadamard, Pauli, CNOT, SWAP, Toffoli, Bell/GHZ states, entanglement detection |
+| `cds.core` | Shared data model: `Domain`, `Hypothesis`, `HypothesisStatus` types used across modules |
+| `cds.interpolate` | Interpolation: 1-D linear & nearest-neighbour evaluators, bilinear interpolation on regular 2-D grids |
+| `cds.quantum` | Single & multi-qubit simulation: Hadamard, Pauli, CNOT, SWAP, Toffoli, Bell/GHZ states, entanglement detection |
 | `cds.optimization` | Gradient descent, Newton's method, Adam optimizer, golden section search, **Nelder–Mead simplex**, **simulated annealing** (box bounds, seeded), **projected gradient descent** & **quadratic-penalty constrained solves** |
-| `cds.ml` | Pure Python Neural Networks — MLP, dense layers, Adam-based training — plus **k-NN classifier/regressor**, **k-means clustering** (k-means++), **CART decision tree** (Gini), **logistic regression**, **vector OLS `LinearRegression`**, **PCA** (Jacobi eigen-solver), **StandardScaler** & seeded **train/test split**, **Random Forest**, **gradient-boosted trees**, **Gaussian Naive Bayes**, **VotingClassifier** (hard/soft), classification metrics (accuracy, P/R/F1, ROC-AUC) & **k-fold cross-validation** |
+| `cds.ml` | Pure Python Neural Networks: MLP, dense layers, Adam-based training, plus **k-NN classifier/regressor**, **k-means clustering** (k-means++), **CART decision tree** (Gini), **logistic regression**, **vector OLS `LinearRegression`**, **PCA** (Jacobi eigen-solver), **StandardScaler** & seeded **train/test split**, **Random Forest**, **gradient-boosted trees**, **Gaussian Naive Bayes**, **VotingClassifier** (hard/soft), classification metrics (accuracy, P/R/F1, ROC-AUC) & **k-fold cross-validation** |
 | `cds.signals` | DFT, radix-2 FFT/IFFT (O(N log N)), 2D FFT/IFFT, convolution, power spectrum, **Butterworth IIR filter design** (low/high/band), moving-median denoiser, **STFT** with overlapping frames (Hann/Hamming windows), **Haar wavelet DWT/IDWT** (multi-level) |
-| `cds.probability` | Gaussian, uniform, exponential, binomial, Poisson distributions — plus **chi-square / Student-t (pdf·cdf·ppf)**, **gamma / beta densities with seeded samplers** (Marsaglia–Tsang), **hypergeometric & negative-binomial pmf/cdf** |
+| `cds.probability` | Gaussian, uniform, exponential, binomial, Poisson distributions: plus **chi-square / Student-t (pdf·cdf·ppf)**, **gamma / beta densities with seeded samplers** (Marsaglia–Tsang), **hypergeometric & negative-binomial pmf/cdf** |
 | `cds.stats` | Descriptive stats, Pearson correlation, linear regression, t-test, chi-square, ANOVA, effect-size measures (Cohen's d, η², Cramér's V), Bonferroni correction, **time-series analysis** (ACF/PACF, KPSS, Ljung-Box, exponential smoothing, seasonal decomposition), **nonparametric tests** (Mann–Whitney U, Wilcoxon signed-rank with tie corrections), **bootstrap confidence intervals** (percentile method), **power analysis & sample-size solver** (t / proportion tests) |
 | `cds.math_utils` | Numerical calculus, O(N³) LU / QR / Cholesky, eigenvalue (power iteration), Gram-Schmidt, matrix inverse, **SVD via Jacobi rotations** (+ rank & condition number) |
 | `cds.data_analysis` | Mini-Pandas `DataSet` for filtering/grouping, CSV loading, ASCII visualization, optional pandas interop (`to_dataframe` / `from_dataframe` via `cds[pandas]`) |
 | `cds.scientific` | Physical constants, formulas (KE, gravity, gas law, Schwarzschild, de Broglie, escape velocity) |
 | `cds.graph` | BFS, DFS, Dijkstra shortest path, Kruskal MST, topological sort, cycle detection |
-| `cds.modeling` | Symbolic algebra — expressions, symbolic differentiation, simplification, LaTeX export, `MathModel` equation systems, root-finding & parameter fitting |
-| `cds.knowledge` | Knowledge organization — concept graph with typed relations, research notes notebook, ranked structured retrieval (JSON persistence), **TF-IDF ranked search** across concepts & notes |
+| `cds.modeling` | Symbolic algebra: expressions, symbolic differentiation, simplification, LaTeX export, `MathModel` equation systems, root-finding & parameter fitting |
+| `cds.knowledge` | Knowledge organization: concept graph with typed relations, research notes notebook, ranked structured retrieval (JSON persistence), **TF-IDF ranked search** across concepts & notes |
 | `cds.montecarlo` | Monte Carlo integration, π estimation, Buffon's needle, random walks (1D/2D), **Metropolis-Hastings MCMC sampler** |
-| `cds.diffeq` | Euler method, RK4, midpoint method, ODE system solver — plus **implicit stiff solvers**: backward Euler & Crank–Nicolson (scalar + systems, analytic or finite-difference Jacobian), **symplectic integrators** (semi-implicit Euler, velocity Verlet) |
-| `cds.numerical_integration` | Deterministic quadrature — trapezoid, Simpson 1/3 & 3/8, Romberg, Gauss-Legendre, adaptive Simpson, **2-D tensor-product quadrature** (Simpson + Gauss-Legendre) |
-| `cds.nlp` | Educational NLP from scratch — BPE tokenizer, sinusoidal embeddings, multi-head attention, Transformer block, scalar autograd (SGD/Adam), MiniGPT demo |
+| `cds.diffeq` | Euler method, RK4, midpoint method, ODE system solver: plus **implicit stiff solvers**: backward Euler & Crank–Nicolson (scalar + systems, analytic or finite-difference Jacobian), **symplectic integrators** (semi-implicit Euler, velocity Verlet) |
+| `cds.numerical_integration` | Deterministic quadrature: trapezoid, Simpson 1/3 & 3/8, Romberg, Gauss-Legendre, adaptive Simpson, **2-D tensor-product quadrature** (Simpson + Gauss-Legendre) |
+| `cds.nlp` | Educational NLP from scratch: BPE tokenizer, sinusoidal embeddings, multi-head attention, Transformer block, scalar autograd (SGD/Adam), MiniGPT demo |
 | `cds.hypothesis` | Structured hypothesis generation with prompt templates for custom research workflows, plus the **correlation-mining engine**: `mine_correlations` turns numeric datasets into falsifiable, statistically tested Hypothesis objects |
-| `cds.pde` | 1-D finite-difference PDE solvers — explicit FTCS heat equation (Dirichlet/Neumann, von Neumann stability guard) and wave equation (CFL-guarded) |
-| `cds.plot` | Optional matplotlib charts — series/multi-series, scatter, regression, histograms, waveforms, power spectra, ACF, seasonal decompose, heatmaps, loss curves (`pip install scientific-computing-system[plot]`) |
+| `cds.pde` | 1-D finite-difference PDE solvers: explicit FTCS heat equation (Dirichlet/Neumann, von Neumann stability guard) and wave equation (CFL-guarded) |
+| `cds.plot` | Optional matplotlib charts: series/multi-series, scatter, regression, histograms, waveforms, power spectra, ACF, seasonal decompose, heatmaps, loss curves (`pip install scientific-computing-system[plot]`) |
 
 ## Quick Start
 
-The fastest way in is from PyPI — no clone, no download needed:
+The fastest way in is from PyPI, no clone, no download needed:
 
 ```bash
 pip install scientific-computing-system
@@ -243,7 +243,7 @@ cds hypothesis "What causes the Hubble tension?"
 
 > **On Windows you don't need to download anything manually.**
 > Just `git clone` (or copy the repo folder) and the commands above set everything up.
-> No `.zip` to extract — clone gives you the live, up-to-date source that you can `git pull` anytime.
+> No `.zip` to extract. Clone gives you the live, up-to-date source that you can `git pull` anytime.
 > If you prefer not to use Git, you can also click **Code → Download ZIP** on GitHub,
 > but **cloning is recommended** so updates are a single `git pull`.
 
@@ -292,7 +292,7 @@ Explore how CDS is used to solve real-world research problems:
 
 ## Examples
 
-CDS ships **28 runnable demo scripts** in [`examples/`](examples/) — one per module.
+CDS ships **28 runnable demo scripts** in [`examples/`](examples/), one per module.
 Each is a self-contained `.py` you can run directly:
 
 ```bash
@@ -599,23 +599,23 @@ Run `cds modules` after installation to explore the current modules.
 
 ## Recent improvements
 
-**v1.2.0 (2026-06-25)** — horizontal expansion + hardening:
+**v1.2.0 (2026-06-25)**, horizontal expansion + hardening:
 
-- **Time-series analysis** (`cds.stats`) — ACF/PACF, KPSS & Ljung-Box tests, exponential smoothing, seasonal decomposition, differencing, moving average.
-- **Signal-filter design** (`cds.signals`) — Butterworth IIR low/high/band-pass coefficient design, direct-form `apply_filter`, edge-preserving `moving_median` denoiser.
-- **2-D quadrature** (`cds.numerical_integration`) — tensor-product Simpson and Gauss-Legendre rules over rectangular domains.
-- **`cds[pandas]` optional extra** — `to_dataframe` / `from_dataframe` round-trip for `DataSet`, guarded so the core stays zero-dependency.
-- **Docs overhaul** — new Cookbook (~48 verified recipes), Architecture guide (`docs/ARCHITECTURE.md`), expanded Tour of Numerical Methods.
-- **Refactors & stability** — `cds.modeling.expression` split into `_base`/`_nodes`; `cds.stats` distribution functions extracted to `_distributions`; numerical-stability fixes; no public API removed or renamed.
+- **Time-series analysis** (`cds.stats`): ACF/PACF, KPSS & Ljung-Box tests, exponential smoothing, seasonal decomposition, differencing, moving average.
+- **Signal-filter design** (`cds.signals`): Butterworth IIR low/high/band-pass coefficient design, direct-form `apply_filter`, edge-preserving `moving_median` denoiser.
+- **2-D quadrature** (`cds.numerical_integration`): tensor-product Simpson and Gauss-Legendre rules over rectangular domains.
+- **`cds[pandas]` optional extra**: `to_dataframe` / `from_dataframe` round-trip for `DataSet`, guarded so the core stays zero-dependency.
+- **Docs overhaul**: new Cookbook (~48 verified recipes), Architecture guide (`docs/ARCHITECTURE.md`), expanded Tour of Numerical Methods.
+- **Refactors & stability**: `cds.modeling.expression` split into `_base`/`_nodes`; `cds.stats` distribution functions extracted to `_distributions`; numerical-stability fixes; no public API removed or renamed.
 
 Earlier v1.1.x releases focused on reliability, type-safety, and a hardened release pipeline:
 
-- **100% blended coverage gate** (v1.1.5) — CI now fails unless both statement and branch coverage reach 100%; property-based invariant tests and shared fixtures were added.
-- **Python 3.13 support** (v1.1.5) — the full suite is green on 3.10–3.13.
-- **Automated release pipeline** (v1.1.6) — pushing a `v*` tag now builds, publishes to PyPI via a scoped API token, cuts a GitHub Release, and attests build provenance (sigstore). `release.yml` is the sole publish authority.
-- **PEP 639 SPDX license metadata** (v1.1.7) — the license declaration is now a valid SPDX expression recognized on both PyPI and GitHub.
-- **ODE backward integration bug fix** (v1.1.8) — the fixed-step and adaptive ODE solvers (`euler`/`rk4`/`midpoint`/`rk45`/`solve_system`) silently returned only the initial value when `t_end < t0`; integration direction is now derived from `sign(t_end - t0)` so backward integration actually works. Forward behavior is unchanged. Includes 7 new regression tests and corrected deep-verification scripts.
-- **Tutorials & architecture docs** (v1.1.5) — guided walkthroughs for optimization, signals, ML, statistics, and an architecture section in `CONTRIBUTING.md`.
+- **100% blended coverage gate** (v1.1.5): CI now fails unless both statement and branch coverage reach 100%; property-based invariant tests and shared fixtures were added.
+- **Python 3.13 support** (v1.1.5): the full suite is green on 3.10–3.13.
+- **Automated release pipeline** (v1.1.6): pushing a `v*` tag now builds, publishes to PyPI via a scoped API token, cuts a GitHub Release, and attests build provenance (sigstore). `release.yml` is the sole publish authority.
+- **PEP 639 SPDX license metadata** (v1.1.7): the license declaration is now a valid SPDX expression recognized on both PyPI and GitHub.
+- **ODE backward integration bug fix** (v1.1.8): the fixed-step and adaptive ODE solvers (`euler`/`rk4`/`midpoint`/`rk45`/`solve_system`) silently returned only the initial value when `t_end < t0`; integration direction is now derived from `sign(t_end - t0)` so backward integration actually works. Forward behavior is unchanged. Includes 7 new regression tests and corrected deep-verification scripts.
+- **Tutorials & architecture docs** (v1.1.5): guided walkthroughs for optimization, signals, ML, statistics, and an architecture section in `CONTRIBUTING.md`.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full release history.
 
@@ -644,7 +644,7 @@ See `.github/workflows/` for the current setup.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
 
 ## Contact
 
@@ -662,7 +662,7 @@ Found a vulnerability? **Please do not open a public issue.** Report it privatel
 Acknowledgement target: **48 hours** · Fix SLA: **7 days**. Full threat model,
 supported versions, and out-of-scope items are in [SECURITY.md](SECURITY.md).
 
-> **Why all the automation?** CDS is maintained solo. The workflows above (PR labeling, checklists, releases, dependency rotation) exist so routine housekeeping takes minutes, leaving the bulk of maintainer time for the actual science — improving the hypothesis tools, adding modules, and writing better examples.
+> **Why all the automation?** CDS is maintained solo. The workflows above (PR labeling, checklists, releases, dependency rotation) exist so routine housekeeping takes minutes, leaving the bulk of maintainer time for the actual science: improving the hypothesis tools, adding modules, and writing better examples.
 
 ---
 
@@ -670,9 +670,9 @@ supported versions, and out-of-scope items are in [SECURITY.md](SECURITY.md).
 
 CDS is built and maintained solo, for free. If it helped your research, teaching, or prototyping:
 
-- **Star the repo** — [github.com/Furox-Art/scientific-computing-system](https://github.com/Furox-Art/scientific-computing-system) — it costs nothing and is the single biggest signal that helps others discover CDS.
-- **Share it** — a post on X, Reddit, or with a colleague who'd find it useful.
-- **Cite it** — see [CITATION.cff](CITATION.cff) if CDS appears in your work.
-- **Contribute** — new modules, docs, examples, and issue triage are all welcome. See [Contributing](#contributing).
+- **Star the repo**, [github.com/Furox-Art/scientific-computing-system](https://github.com/Furox-Art/scientific-computing-system), it costs nothing and is the single biggest signal that helps others discover CDS.
+- **Share it**: a post on X, Reddit, or with a colleague who'd find it useful.
+- **Cite it**: see [CITATION.cff](CITATION.cff) if CDS appears in your work.
+- **Contribute**: new modules, docs, examples, and issue triage are all welcome. See [Contributing](#contributing).
 
 Thank you for using CDS.

@@ -1,8 +1,8 @@
 # Visualising NLP Internals
 
 The `cds.nlp.viz` module renders the three things a learner most wants to
-*see* when reading about transformers — attention, embeddings, and the
-training-loss curve — as ASCII, so you need no plotting backend. Every
+*see* when reading about transformers: attention, embeddings, and the
+training-loss curve, as ASCII, so you need no plotting backend. Every
 renderer returns a `str`, which means they compose under `print()`, log
 cleanly, and are trivially testable.
 
@@ -17,7 +17,7 @@ print(render_training_curve(losses, width=50, height=10))
 
 The curve is min-max normalised to the canvas. A single point or an
 all-equal series is handled safely (no divide-by-zero); narrow widths
-(`width < 10`) are also safe — the x-axis step label right-aligns rather
+(`width < 10`) are also safe, the x-axis step label right-aligns rather
 than raising a format error.
 
 ## 2. The attention heatmap
@@ -51,7 +51,7 @@ The projection is **real PCA**, not a placeholder: the covariance matrix of
 the embeddings is built in pure Python, then
 [`cds.math_utils.linalg.power_iteration`](../api.md#cds.math_utils.power_iteration)
 recovers the top-2 eigenvectors (the second via deflation). This is the
-project's signature "slow but honest" trade-off — the math is exactly what
+project's signature "slow but honest" trade-off, the math is exactly what
 `sklearn.decomposition.PCA` does, just without the BLAS.
 
 `top_n` keeps large vocabularies readable by plotting only the
@@ -71,6 +71,6 @@ Three reasons, in priority order:
 
 For publication-quality plots, export the matrices
 (`attn_weights`, the `_pca_2d` result, `losses`) and plot them with your
-own toolchain — the data path is the same. The runnable demo at
+own toolchain, the data path is the same. The runnable demo at
 [`examples/nlp_viz_demo.py`](https://github.com/Furox-Art/scientific-computing-system/blob/main/examples/nlp_viz_demo.py)
 wires all three renderers to a tiny live tokenizer + embedding pass.

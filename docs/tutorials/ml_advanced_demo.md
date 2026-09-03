@@ -1,4 +1,4 @@
-# Advanced ML Tutorial — PCA, Scaling, and Classic Models
+# Advanced ML Tutorial: PCA, Scaling, and Classic Models
 
 v1.6.0 rounds out `cds.ml` with the classic scikit-learn-style toolkit:
 preprocessing, dimensionality reduction, and four from-scratch estimators.

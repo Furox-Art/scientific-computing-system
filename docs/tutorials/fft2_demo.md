@@ -1,7 +1,7 @@
 # 2-D FFT Tutorial
 
 `cds.signals` extends its from-scratch Fourier toolkit to two dimensions with
-`fft2` / `ifft2` (row-column Cooley-Tukey) — pure Python, no NumPy.
+`fft2` / `ifft2` (row-column Cooley-Tukey), pure Python, no NumPy.
 
 ## 1. Forward transform of a small image
 

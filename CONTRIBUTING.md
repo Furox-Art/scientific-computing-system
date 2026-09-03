@@ -1,6 +1,6 @@
 # Contributing to Scientific Computing System
 
-Thank you for your interest! CDS is an open-source computational science platform. Your input — whether as a researcher, engineer, or domain expert — is valuable.
+Thank you for your interest! CDS is an open-source computational science platform. Your input, whether as a researcher, engineer, or domain expert, is valuable.
 
 ## How to Contribute
 
@@ -50,7 +50,7 @@ cds constants
 
 CDS is organized as a flat package of domain modules under `src/cds/`, each one
 self-contained and importable as `cds.<module>`. There is no deep inheritance
-hierarchy — a module exposes plain functions and small dataclasses. This keeps
+hierarchy: a module exposes plain functions and small dataclasses. This keeps
 the surface readable and the import cost low.
 
 ### Layers
@@ -81,17 +81,17 @@ src/cds/
 ```
 
 `core/` holds shared building blocks reused across modules; everything else is a
-peer. Cross-module dependencies point *toward* `core/` — a domain module may
+peer. Cross-module dependencies point *toward* `core/`: a domain module may
 import from `core/` but `core/` does not import domain modules.
 
 ### Dependency contract
 
-- **Zero runtime dependencies:** the whole `cds` package — including the CLI —
+- **Zero runtime dependencies:** the whole `cds` package, including the CLI,
   runs on the Python standard library alone (`pyproject.toml` declares
   `dependencies = []`). The CLI is built on `argparse` with small ANSI helpers
   replacing the former `typer`/`rich` implementation, and `pydantic` was dropped
   from the runtime in favour of stdlib `dataclasses`. The numerical modules are
-  **pure Python** — no NumPy, no SciPy. This is a hard constraint: do not add a
+  **pure Python**. No NumPy, no SciPy. This is a hard constraint: do not add a
   heavy dependency to a module in `src/cds/` to make a function "faster". If a
   feature genuinely needs one, gate it behind an optional extra (see
   `pyproject.toml` `[project.optional-dependencies]`, e.g. `cds[pandas]`).
@@ -111,14 +111,14 @@ prefer a frozen dataclass over a tuple.
 
 Tests live in `tests/` (one `test_<module>.py` per module, plus `conftest.py`
 for shared fixtures). Run the full suite with `pytest`. Property-based tests use
-[Hypothesis](https://hypothesis.readthedocs.io/) (see `tests/` for examples) —
+[Hypothesis](https://hypothesis.readthedocs.io/) (see `tests/` for examples),
 prefer a property test over a hand-picked example when an invariant holds across
 the input domain.
 
 ### CLI
 
 `cli.py` registers Typer commands. New commands take primitive arguments (parsed
-by Typer) and delegate to the relevant module — keep the CLI thin and push logic
+by Typer) and delegate to the relevant module, keep the CLI thin and push logic
 into the domain module so it stays callable from Python directly.
 
 ## Pre-commit Hooks
@@ -204,14 +204,14 @@ pip-compile pyproject.toml --extra dev --extra test --extra docs --output-file r
 
 The project is published as `scientific-computing-system` on both **PyPI** (`pip install scientific-computing-system`) and **GitHub**. The Python **import name** is the short `cds` (e.g. `import cds`); the long `scientific-computing-system` is only the install/distribution name.
 
-> **History note:** earlier releases were published under the PyPI name `cognitive-discovery-platform`. That name is preserved on PyPI for historical installs but is no longer updated — always install the active `scientific-computing-system` package.
+> **History note:** earlier releases were published under the PyPI name `cognitive-discovery-platform`. That name is preserved on PyPI for historical installs but is no longer updated. Always install the active `scientific-computing-system` package.
 
 ## Code Style
 
 - Ruff for linting (configured in `pyproject.toml`)
 - Line length: 100 characters
 - Prefer clarity and explicitness over cleverness
-- All modules are **pure Python** — avoid adding heavy dependencies (NumPy, SciPy)
+- All modules are **pure Python**: avoid adding heavy dependencies (NumPy, SciPy)
 - Include docstrings with Args/Returns/Raises sections
 - Add tests for new functionality
 

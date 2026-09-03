@@ -7,7 +7,7 @@ minimizer, the objective value, the iteration count, a convergence flag, and
 
 ## 1. Gradient Descent
 
-First-order minimization. Pass a scalar or vector starting point — the return
+First-order minimization. Pass a scalar or vector starting point, the return
 type tracks the input (`OptResult[float]` for a scalar `x0`,
 `OptResult[list[float]]` for a list).
 
@@ -38,7 +38,7 @@ print(f"cbrt(2) ≈ {res.x:.10f}  (true = {2 ** (1 / 3):.10f})")
 
 ## 3. Adam
 
-Adaptive learning-rate optimizer. Stateful — pass the returned `state` back in
+Adaptive learning-rate optimizer. Stateful: pass the returned `state` back in
 to resume a run, and supply an analytic gradient via `grad_f` when you have one.
 
 ```python

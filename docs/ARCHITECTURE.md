@@ -3,7 +3,7 @@
 This document describes how the Scientific Computing System (CDS) is
 organized: the module layers, what depends on what, and how data flows
 from a user call to a result. CDS is deliberately a **pure-Python,
-zero-heavy-dependency** library — every algorithm lives in `src/cds/` as
+zero-heavy-dependency** library, every algorithm lives in `src/cds/` as
 code you can read and step through. The architecture reflects that goal:
 layers are thin, the dependency graph points downward toward stable
 primitives, and no module reaches back up into a higher-level one.
@@ -22,12 +22,12 @@ through an `__init__.py` with an explicit `__all__`.
 | [`math_utils`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/math_utils) | Linear algebra, special functions, combinatorics, number theory. |
 | [`probability`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/probability) | Discrete/continuous distributions and sampling, plus chi-square/Student-t quantiles and gamma/beta (Marsaglia–Tsang) samplers. |
 | [`scientific`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/scientific) | Physical constants and closed-form scientific formulas. |
-| [`graph`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/graph) | Graph algorithms — BFS/DFS, Dijkstra, Kruskal MST, etc. |
+| [`graph`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/graph) | Graph algorithms: BFS/DFS, Dijkstra, Kruskal MST, etc. |
 | [`signals`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/signals) | DFT/FFT, convolution, power spectra, Butterworth filter design. |
 | [`stats`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/stats) | Descriptive stats, hypothesis tests, regression, time-series, nonparametric rank tests. |
 | [`montecarlo`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/montecarlo) | Stochastic estimation and integration (e.g. π by dart-throwing). |
-| [`numerical_integration`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/numerical_integration) | Deterministic quadrature — Newton-Cotes, Romberg, Gauss-Legendre, 2-D. |
-| [`diffeq`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/diffeq) | ODE solvers — Euler, RK4, RK45, plus implicit stiff methods (backward Euler, Crank–Nicolson). |
+| [`numerical_integration`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/numerical_integration) | Deterministic quadrature: Newton-Cotes, Romberg, Gauss-Legendre, 2-D. |
+| [`diffeq`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/diffeq) | ODE solvers: Euler, RK4, RK45, plus implicit stiff methods (backward Euler, Crank–Nicolson). |
 | [`optimization`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/optimization) | Gradient descent, Newton, Adam, line search, Nelder–Mead, simulated annealing. |
 | [`quantum`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/quantum) | Single- and multi-qubit circuit/state-vector simulation. |
 | [`ml`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/ml) | From-scratch neural networks plus k-NN, k-means, CART trees, logistic/linear regression, PCA, scaling and splitting. |
@@ -104,19 +104,19 @@ graph TD
 
 The three colors denote the layers:
 
-- **Blue (application)** — composes lower toolkits into a workflow
+- **Blue (application)**: composes lower toolkits into a workflow
   (turning `stats` into hypothesis generation, or into a data pipeline).
   Note these modules are at the *top* of the graph even though some have
   no incoming edges: their role is composition, not primitives.
-- **Green (domain toolkits)** — the scientific algorithms. Each is
+- **Green (domain toolkits)**: the scientific algorithms. Each is
   self-contained within its field and depends only on primitives or a
   sibling toolkit.
-- **Amber (primitives)** — `core` (shared models and numeric guards) and
+- **Amber (primitives)**: `core` (shared models and numeric guards) and
   `math_utils` (linear algebra and special functions). These change the
   least and are depended on the most.
 
-> **Leaf modules** with *no* internal dependencies — `core`, `probability`,
-> `scientific`, `graph`, `signals`, `montecarlo`, `knowledge` — form the
+> **Leaf modules** with *no* internal dependencies, `core`, `probability`,
+> `scientific`, `graph`, `signals`, `montecarlo`, `knowledge`, form the
 > foundation that everything else is built on. They can be imported with
 > zero cross-package coupling.
 >
@@ -136,7 +136,7 @@ The graph above is enforced by convention and encodes three rules:
    the system acyclic and each layer independently testable.
 2. **One concern per package.** Each subpackage owns a single scientific
    domain. Statistics lives in `stats`, signal processing in `signals`,
-   quadrature in `numerical_integration` — never mixed. Cross-domain
+   quadrature in `numerical_integration`, never mixed. Cross-domain
    needs are expressed as *dependencies*, not by sprawling a module.
 3. **Explicit public surface.** Every `__init__.py` declares `__all__`,
    so the public API is documented in code and verified by `mypy`. The
@@ -171,14 +171,14 @@ result ← │  typed result    │  plain floats, lists, or a frozen @dataclass
 
 Concretely, a call flows like this:
 
-1. **Input** arrives as native Python types — a `list[float]` signal, a
+1. **Input** arrives as native Python types: a `list[float]` signal, a
    2-D `list[list[float]]` matrix, a callable `f(x)`, or a
    `core.models.Dataset`. No DataFrame or array library is required.
 2. **Algorithm** runs in a domain toolkit. It is a pure function: same
    input always yields the same output, no hidden state, no I/O. When a
    routine needs a lower-level primitive (e.g. `kpss_statistic` needs a
    mean, `gradient_descent` needs a matrix solve) it imports it from the
-   layer below — that is the only cross-module coupling.
+   layer below, that is the only cross-module coupling.
 3. **Result** is either a native value (the integrated area, the
    optimized vector) or an immutable `@dataclass` that bundles the
    headline answer with diagnostics (`TestResult.p_value`,
@@ -246,7 +246,7 @@ finding the coverage for any module is a matter of matching the name.
 
 ## Where to go next
 
-- **[Cookbook](cookbook.md)** — copy-pasteable recipes for every module.
-- **[Tour of Numerical Methods](tour_of_numerical_methods.md)** — a guided
+- **[Cookbook](cookbook.md)**: copy-pasteable recipes for every module.
+- **[Tour of Numerical Methods](tour_of_numerical_methods.md)**: a guided
   end-to-end walkthrough.
-- **[API Reference](api.md)** — the authoritative signatures and defaults.
+- **[API Reference](api.md)**: the authoritative signatures and defaults.

@@ -9,55 +9,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Random Forest classifier** (`cds.ml`) — bagged CART trees with
+- **Random Forest classifier** (`cds.ml`): bagged CART trees with
   bootstrap resampling and per-split feature randomization (`sqrt`/`log2`
   / explicit count), fully deterministic under a seed.
-- **Metrics** (`cds.ml`) — `accuracy`, `confusion_matrix`,
+- **Metrics** (`cds.ml`): `accuracy`, `confusion_matrix`,
   `precision_recall_f1`, `macro_prf`, regression `mse`/`mae`/`r2_score`,
   and tie-aware rank-based `roc_auc`.
-- **Cross-validation** (`cds.ml.model_selection`) — `k_fold_indices` and
+- **Cross-validation** (`cds.ml.model_selection`): `k_fold_indices` and
   `cross_val_score` over the shared estimator interface.
-- **Interpolation module** (`cds.interpolate`) — `interp1d` (linear /
+- **Interpolation module** (`cds.interpolate`): `interp1d` (linear /
   nearest) and `interp2d` (bilinear on regular grids).
-- **SVD** (`cds.math_utils`) — one-sided Jacobi decomposition with
+- **SVD** (`cds.math_utils`): one-sided Jacobi decomposition with
   `svd`, `rank` and `condition_number`; full U/Vt factors.
-- **STFT / spectrogram** (`cds.signals`) — Hann/Hamming windows, framed
+- **STFT / spectrogram** (`cds.signals`): Hann/Hamming windows, framed
   zero-padded transforms reusing the radix-2 FFT, `STFTResult`.
-- **Gradient Boosting classifier** (`cds.ml`) — logistic-loss boosted
+- **Gradient Boosting classifier** (`cds.ml`): logistic-loss boosted
   regression trees with Newton leaf values; binary labels.
-- **Bootstrap confidence intervals** (`cds.stats`) — percentile-method
+- **Bootstrap confidence intervals** (`cds.stats`): percentile-method
   `bootstrap_ci` and two-sample `bootstrap_diff_ci`.
-- **Metropolis-Hastings sampler** (`cds.montecarlo`) — 1-D random-walk
+- **Metropolis-Hastings sampler** (`cds.montecarlo`): 1-D random-walk
   MCMC with burn-in/thinning and acceptance-rate reporting.
-- **Symplectic integrators** (`cds.diffeq`) — semi-implicit Euler and
+- **Symplectic integrators** (`cds.diffeq`): semi-implicit Euler and
   velocity Verlet with forward/backward integration.
-- **Constrained optimization** (`cds.optimization`) — projected gradient
+- **Constrained optimization** (`cds.optimization`): projected gradient
   descent for box bounds and quadratic-penalty constrained solves.
 - **Hypergeometric & negative-binomial distributions**
-  (`cds.probability`) — pmf + cdf for both.
-- **TF-IDF ranked retrieval** (`cds.knowledge`) — `rank_tfidf` across
+  (`cds.probability`), pmf + cdf for both.
+- **TF-IDF ranked retrieval** (`cds.knowledge`): `rank_tfidf` across
   concepts and notes with smoothed idf.
-- **Haar wavelet transform** (`cds.signals`) — `dwt` / `idwt` /
+- **Haar wavelet transform** (`cds.signals`): `dwt` / `idwt` /
   `dwt_multi_level`, orthonormal with perfect reconstruction.
-- **PDE solvers** (`cds.pde`) — explicit FTCS heat equation (Dirichlet /
+- **PDE solvers** (`cds.pde`): explicit FTCS heat equation (Dirichlet /
   Neumann, stability-guarded) and wave equation (CFL-guarded).
-- **Gaussian Naive Bayes** (`cds.ml`) — log-space scoring with variance
+- **Gaussian Naive Bayes** (`cds.ml`): log-space scoring with variance
   smoothing.
-- **Correlation-mining engine** (`cds.hypothesis`) — `mine_correlations`
+- **Correlation-mining engine** (`cds.hypothesis`): `mine_correlations`
   turns numeric datasets into statistically tested, falsifiable
   `Hypothesis` objects.
-- **Power analysis** (`cds.stats`) — `power_t_test`,
+- **Power analysis** (`cds.stats`): `power_t_test`,
   `power_proportion_test` and `required_n_per_group` sample-size solver.
-- **VotingClassifier** (`cds.ml`) — hard (majority vote) and soft
+- **VotingClassifier** (`cds.ml`): hard (majority vote) and soft
   (averaged probabilities) ensembles over the shared estimator interface.
-- Four new runnable demos under `examples/` — interpolation, PDE,
+- Four new runnable demos under `examples/`: interpolation, PDE,
   ensemble showcase and the end-to-end discovery pipeline.
-- **PCA end-to-end demo** (`examples/pca_demo.py`) — scaling vs raw
+- **PCA end-to-end demo** (`examples/pca_demo.py`): scaling vs raw
   variance comparison, component selection, 2-D ASCII projection,
   reconstruction error and train/test discipline, with a matching
   tutorial (`docs/tutorials/pca_demo.md`).
 - **ML correctness reference table** (`scripts/verify_ml_reference.py`,
-  `docs/ml_reference.md`) — LogisticRegression, DecisionTree, KMeans,
+  `docs/ml_reference.md`), LogisticRegression, DecisionTree, KMeans,
   PCA and LinearRegression checked against scikit-learn 1.9.0 outputs
   on a fixed seeded dataset; one-command, dependency-free verification.
 
@@ -67,7 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   random-forest-style split randomization (default behavior unchanged).
 - The README now displays the sklearn-parity badge and links the ML
   Reference table. (The matching `ml-reference` CI job is prepared but
-  not yet applied — it needs a push from a token with the `workflow`
+  not yet applied. It needs a push from a token with the `workflow`
   OAuth scope; see the `backup/pre-reorder` branch.)
 
 ## [v1.6.1] - 2026-08-21
@@ -76,7 +76,7 @@ A **patch** release completing the JSON round trip for core data models.
 
 ### Added
 
-- **`cds.core`**: `Hypothesis.from_dict()` — the inverse of `to_dict()`.
+- **`cds.core`**: `Hypothesis.from_dict()`: the inverse of `to_dict()`.
   CLI/JSON output can now be re-imported: enum strings are coerced back to
   `Domain` / `HypothesisStatus`, ISO-8601 timestamps are parsed, and missing
   optional keys fall back to constructor defaults. Invalid `status` values
@@ -84,7 +84,7 @@ A **patch** release completing the JSON round trip for core data models.
 
 ### Changed
 
-- Internal layering cleanup — shared special-function kernels moved to their
+- Internal layering cleanup: shared special-function kernels moved to their
   single home (`cds.math_utils.special`) so lower-level packages never depend
   on higher-level ones; a suite-level import-direction guard enforces this.
 - `cds.cli` is now a package (`_style` / `_handlers` / `_parser`) with
@@ -93,7 +93,7 @@ A **patch** release completing the JSON round trip for core data models.
 ## [v1.6.0] - 2026-08-21
 
 A **minor** release deepening the ML, probability, ODE, and optimization
-toolkits toward scikit-learn / SciPy teaching parity — still zero runtime
+toolkits toward scikit-learn / SciPy teaching parity, still zero runtime
 dependencies, still 100% blended coverage.
 
 ### Added
@@ -108,14 +108,14 @@ dependencies, still 100% blended coverage.
   (`chi2_pdf/cdf/ppf`, `t_pdf/cdf/ppf`), `gamma_pdf` + `sample_gamma`
   (Marsaglia–Tsang with shape<1 boost), `beta_pdf` + `sample_beta`
   (exact gamma-ratio identity)
-- **`cds.diffeq`**: implicit stiff solvers — `backward_euler`,
+- **`cds.diffeq`**: implicit stiff solvers: `backward_euler`,
   `trapezoid_method` (Crank–Nicolson) and their `_system` variants; unified
   θ-method core with Newton iteration over analytic or central-difference
   Jacobians via the shared PLU solver
 - **`cds.optimization`**: `nelder_mead` simplex (degenerate-simplex and
   symmetric false-convergence guards), `simulated_annealing` (Metropolis rule,
   box bounds, seeded)
-- **`cds.stats`**: nonparametric tests — `mann_whitney_u` and
+- **`cds.stats`**: nonparametric tests: `mann_whitney_u` and
   `wilcoxon_signed_rank` with tie/zero corrections (normal approximation)
 
 ### Fixed
@@ -131,7 +131,7 @@ dependencies, still 100% blended coverage.
 ## [v1.5.0] - 2026-07-20
 
 A **minor** release expanding algorithms across graph theory, Monte Carlo,
-linear algebra, and CLI — still zero runtime dependencies.
+linear algebra, and CLI, still zero runtime dependencies.
 
 ### Added
 
@@ -235,7 +235,7 @@ publish since v1.1.8.
 
 ## [v1.2.2] - 2026-06-29
 
-A **patch** release. No code changes — documentation-only refresh.
+A **patch** release. No code changes. Documentation-only refresh.
 
 ### Changed
 
@@ -249,7 +249,7 @@ A **patch** release. No code changes — documentation-only refresh.
 
 ## [v1.2.1] - 2026-06-28
 
-A **patch** release. No code changes — metadata-only refresh to improve
+A **patch** release. No code changes. Metadata-only refresh to improve
 PyPI discoverability.
 
 ### Changed
@@ -278,52 +278,52 @@ gated behind an optional extra so the zero-dependency core is untouched.
 
 ### Added
 
-- **`cds.stats` — time-series analysis** (`src/cds/stats/time_series.py`):
+- **`cds.stats`: time-series analysis** (`src/cds/stats/time_series.py`):
   - `moving_average`, `exponential_smoothing`, `difference`, `seasonal_decompose`
   - `autocorrelation_function` (sample ACF), `partial_autocorrelation_function` (PACF)
   - `kpss_statistic` (stationarity test) and `ljung_box` (autocorrelation test),
     both returning result objects with `.statistic` / `.p_value`
   - Exported from the top-level `cds.stats` namespace.
-- **`cds.signals` — filter design** (`src/cds/signals/filters.py`):
-  - `butter_lowpass(order, cutoff)` — Butterworth IIR low-pass coefficient design
-  - `apply_filter(signal, coeffs)` — direct-form IIR application
-  - `moving_median(signal, window)` — order-statistic denoiser (edge-preserving)
-- **`cds.numerical_integration` — 2-D quadrature** (`src/cds/numerical_integration/`):
-  - `simpson_2d(f, ax, bx, ay, by, nx, ny)` — 2-D tensor-product Simpson rule
-  - `gaussian_quadrature_2d(f, ax, bx, ay, by, n)` — 2-D tensor-product Gauss-Legendre
+- **`cds.signals`: filter design** (`src/cds/signals/filters.py`):
+  - `butter_lowpass(order, cutoff)`: Butterworth IIR low-pass coefficient design
+  - `apply_filter(signal, coeffs)`: direct-form IIR application
+  - `moving_median(signal, window)`: order-statistic denoiser (edge-preserving)
+- **`cds.numerical_integration`: 2-D quadrature** (`src/cds/numerical_integration/`):
+  - `simpson_2d(f, ax, bx, ay, by, nx, ny)`: 2-D tensor-product Simpson rule
+  - `gaussian_quadrature_2d(f, ax, bx, ay, by, n)`: 2-D tensor-product Gauss-Legendre
 - **`cds[pandas]` optional extra** (`src/cds/data_analysis/pandas_io.py`):
   - `to_dataframe(data_set)` / `from_dataframe(df)` round-trip a `DataSet` to/from
     a `pandas.DataFrame`, guarded so importing `cds` never requires pandas.
   - Declared as an optional dependency in `pyproject.toml` (`pandas = {version = ...}`).
 - **Documentation**:
-  - **`docs/cookbook.md`** — a new problem-oriented recipe book (~48 recipes, one
+  - **`docs/cookbook.md`**: a new problem-oriented recipe book (~48 recipes, one
     per concrete task), verified end-to-end against the real API by
     `_verify_cookbook.py`.
-  - **`docs/ARCHITECTURE.md`** — layered module dependency graph and data flow.
+  - **`docs/ARCHITECTURE.md`**: layered module dependency graph and data flow.
   - **Tour of Numerical Methods** expanded with 2-D quadrature, time-series, and
     filter-design stops.
   - `docs/index.md` Quick Navigation now links the Cookbook, Tour, and Architecture.
 
 ### Changed
 
-- **`cds.modeling` refactor** — `expression.py` (708 lines) split into
+- **`cds.modeling` refactor**: `expression.py` (708 lines) split into
   `_base.py` (AST base classes, visitors) and `_nodes.py` (operator/leaf node
   types). Pure reorganization; no public symbols moved or renamed.
-- **`cds.stats` refactor** — distribution functions (normal/t/chi²/F CDFs and
+- **`cds.stats` refactor**: distribution functions (normal/t/chi²/F CDFs and
   inverses) extracted from `hypothesis_tests.py` into the private
   `_distributions.py`, with `__all__` declared so the re-exports pass
   `mypy --strict`.
 
 ### Fixed
 
-- **`cds.math_utils.linalg` — numerical stability of pivoting.** Pivoting now
+- **`cds.math_utils.linalg`: numerical stability of pivoting.** Pivoting now
   uses a scale-relative threshold (`max(|row|) * epsilon`) instead of a fixed
   absolute epsilon, and rejects exact-zero pivots at sub-normal matrix scales.
   Prevents spurious singular-matrix errors and mis-pivoting on
   small-magnitude matrices. No change to well-scaled inputs.
-- **`cds.stats`** — `__all__` declared so the `_distributions` re-exports are
+- **`cds.stats`**: `__all__` declared so the `_distributions` re-exports are
   recognized as intentional public surface under `mypy --strict`.
-- **Tests** — stabilized a flaky mean-homogeneity property test by anchoring on
+- **Tests**: stabilized a flaky mean-homogeneity property test by anchoring on
   an absolute tolerance instead of a relative one.
 
 ## [v1.1.9] - 2026-06-24
@@ -332,22 +332,22 @@ gated behind an optional extra so the zero-dependency core is untouched.
 
 A backward-compatible feature release. Adds standardized **effect-size**
 measures to `cds.stats` so users can report the *magnitude* of an effect
-alongside its significance — closing the long-standing gap where a
+alongside its significance, closing the long-standing gap where a
 hypothesis test answered *"is there an effect?"* but not *"how large?"*.
 No existing API or behavior changes; all prior tests remain green.
 
 ### Added
 
-- **`cds.stats` — effect-size measures** (`src/cds/stats/hypothesis_tests.py`):
-  - `cohens_d(group_a, group_b)` — Cohen's *d* standardized mean difference
+- **`cds.stats`: effect-size measures** (`src/cds/stats/hypothesis_tests.py`):
+  - `cohens_d(group_a, group_b)`: Cohen's *d* standardized mean difference
     between two samples (pooled-SD denominator).
-  - `eta_squared_from_f(f, df1, df2)` — η² proportion of variance explained
+  - `eta_squared_from_f(f, df1, df2)`: η² proportion of variance explained
     by group membership, derived from a one-way ANOVA *F* statistic.
-  - `cramers_v(contingency_table)` — Cramér's *V* association strength for
+  - `cramers_v(contingency_table)`: Cramér's *V* association strength for
     an *r* × *c* contingency table (χ²-based, normalized to `[0, 1]`).
   All three functions are exported from the top-level `cds.stats` namespace and
   documented in the tutorial (`docs/tutorials/hypothesis_tests_demo.md`).
-- **Tutorial section** — *"Effect sizes"* walkthrough in
+- **Tutorial section**: *"Effect sizes"* walkthrough in
   `hypothesis_tests_demo.md` showing how `cohens_d` / `cramers_v` pair with
   the existing `t_test` / `chi_square_independence` tests.
 - **Getting-started snippets** (EN + TR) and `docs/index.md` now surface the
@@ -364,12 +364,12 @@ No existing API or behavior changes; all prior tests remain green.
 
 A user-facing **bug-fix release**. Forward integration is byte-identical
 to v1.1.7; only the previously-broken `t_end < t0` case changes behavior.
-Includes corrected deep-verification scripts and a docs sync — no new
+Includes corrected deep-verification scripts and a docs sync, no new
 modules, no API additions.
 
 ### Fixed
 
-- **`diffeq.solvers` — backward integration silently returned only the
+- **`diffeq.solvers`: backward integration silently returned only the
   initial value.** The fixed-step (`euler`, `rk4`, `midpoint`) and
   adaptive (`rk45`) ODE solvers, plus `solve_system`, used a forward-only
   loop guard `while t < t_end - LOOP_EPSILON`. When `t_end < t0` the
@@ -385,7 +385,7 @@ modules, no API additions.
   7 new `TestBackwardIntegration` regression tests cover all five
   solvers.
 
-- **`hypothesis.generator` — confidence overflow past `n >= 12`.** The
+- **`hypothesis.generator`: confidence overflow past `n >= 12`.** The
   generated-confidence formula `0.45 + i*0.05` overflowed the
   `Hypothesis.confidence` `le=1.0` constraint for 12+ hypotheses,
   raising `ValidationError`. Now clamped to `min(0.9, 0.4 + i*0.05)`.
@@ -393,7 +393,7 @@ modules, no API additions.
 ### Changed (verification tooling)
 
 - **`scripts/verify_d1_numerics.py`, `verify_d2_edge_cases.py`,
-  `verify_d4_hypothesis.py`** — stale reference values/thresholds that
+  `verify_d4_hypothesis.py`**, stale reference values/thresholds that
   produced spurious failures against correct code: D1.3 Romberg
   monotone-decrease check only asserted above `1e-13`; D1.4 RK45
   singularity now uses `t_end=2.0` (past the pole) so `RuntimeError` is
@@ -420,7 +420,7 @@ hardcoded numbers from the README.
 
 ### Changed
 
-- **`pyproject.toml`** — adopted [PEP 639](https://peps.python.org/pep-0639/):
+- **`pyproject.toml`**: adopted [PEP 639](https://peps.python.org/pep-0639/):
   replaced the legacy `license = {text = "MIT"}` table form with the
   SPDX `license = "MIT"` expression plus `license-files = ["LICENSE"]`.
   The wheel/sdist METADATA now emit `License-Expression: MIT` and
@@ -432,7 +432,7 @@ hardcoded numbers from the README.
 
 ### Documentation
 
-- **`README.md`** — removed hardcoded, drift-prone numbers (version
+- **`README.md`**: removed hardcoded, drift-prone numbers (version
   tag, test count, module count) in favor of the existing PyPI / CI /
   codecov badges, so the docs no longer go stale between releases.
 
@@ -447,27 +447,27 @@ the v1.1.5 tag push failed at the upload step with an `invalid-publisher`
 error. The pipeline now uses a scoped **PyPI API token** (stored as the
 `PYPI_API_TOKEN` repo secret), which is the sole publish authority.
 
-This is the first release actually published by the automated pipeline —
+This is the first release actually published by the automated pipeline,
 v1.1.4 and v1.1.5 were uploaded manually before the pipeline existed.
 
 ### Changed
 
-- **`release.yml`** — removed the `id-token: write` permission and the
+- **`release.yml`**: removed the `id-token: write` permission and the
   Trusted Publishing path; publishes via `pypa/gh-action-pypi-publish`
   with `password: ${{ secrets.PYPI_API_TOKEN }}`. The workflow now also
   creates the GitHub Release (previously done by the local script).
-- **`scripts/publish.py`** — no longer uploads to PyPI or creates the
+- **`scripts/publish.py`**: no longer uploads to PyPI or creates the
   GitHub release. It now builds, verified the built version against the
   tag, runs tests, and pushes the tag (which triggers CI). Removed the
   `--skip-release` flag and the local `~/.pypi-token` handling.
-- **`pyproject.toml`** — dropped `twine` from the `[all]` and `[dev]`
+- **`pyproject.toml`**: dropped `twine` from the `[all]` and `[dev]`
   extras (no longer needed locally).
 - **Version bump `1.1.5` → `1.1.6`** in `pyproject.toml`,
   `src/cds/_version.py`, and `CITATION.cff`.
 
 ### Documentation
 
-- **`README.md`** and **`docs/maintenance.md`** — updated the release
+- **`README.md`** and **`docs/maintenance.md`**: updated the release
   pipeline description to reflect the scoped-API-token flow and
   `release.yml` as the sole publish authority.
 
@@ -480,38 +480,38 @@ of refactoring (type-safety, code deduplication), deeper testing
 (property-based invariants, shared fixtures), expanded documentation
 (tutorials, architecture guide), and a hardening of CI to enforce full
 blended coverage. The result is the cleanest, most thoroughly verified
-release to date — **17 modules, 1230 tests, and 100% code coverage
+release to date: **17 modules, 1230 tests, and 100% code coverage
 (statement + branch)**.
 
 ### Added
 
-- **Python 3.13 support** — added 3.13 to the CI test matrix and the
+- **Python 3.13 support**: added 3.13 to the CI test matrix and the
   `pyproject.toml` classifiers; the full suite is now green on 3.10–3.13.
-- **Shared test fixtures** — `tests/conftest.py` plus `tests/test_core.py`
+- **Shared test fixtures**: `tests/conftest.py` plus `tests/test_core.py`
   centralize reusable fixtures and core invariants, reducing duplication
   across the suite.
-- **Property-based invariant suite (B5)** — a Hypothesis-driven test set
+- **Property-based invariant suite (B5)**: a Hypothesis-driven test set
   that exercises numerical invariants (associativity, identity,
   round-trip) over generated inputs, catching edge cases that
   example-based tests miss.
-- **Tutorials for optimization, signals, ML, and statistics (B3)** — new
+- **Tutorials for optimization, signals, ML, and statistics (B3)**: new
   guided walkthroughs under `docs/tutorials/` covering the four most-used
   subsystems.
-- **Contributing architecture section (B4)** — `CONTRIBUTING.md` now
+- **Contributing architecture section (B4)**: `CONTRIBUTING.md` now
   documents the module layout and the data flow between subsystems, with
   stale cross-references fixed.
-- **`examples/modeling_demo.py`** — a new end-to-end example demonstrating
+- **`examples/modeling_demo.py`**: a new end-to-end example demonstrating
   the modeling workflow referenced by the tutorials.
 
 ### Changed
 
-- **Closed remaining `Any` type escapes** — the last untyped boundaries in
+- **Closed remaining `Any` type escapes**: the last untyped boundaries in
   the core and hypothesis modules now carry concrete types; `mypy --strict`
   stays green.
-- **Generic `OptResult`** — the optimization result type is now generic
+- **Generic `OptResult`**: the optimization result type is now generic
   over its scalar type, and the narrowing casts that worked around the old
   concrete signature have been removed.
-- **Deduplicated scalar central-difference** — the scalar central-
+- **Deduplicated scalar central-difference**: the scalar central-
   difference implementation that existed in both `calculus` and
   `optimization` is now shared from a single source.
 - **Version bump `1.1.4` → `1.1.5`** in `pyproject.toml`,
@@ -519,17 +519,17 @@ release to date — **17 modules, 1230 tests, and 100% code coverage
 
 ### CI
 
-- **100% blended coverage gate** — CI now fails unless both statement and
+- **100% blended coverage gate**: CI now fails unless both statement and
   branch coverage reach 100%, locking in the coverage level as a
   non-regression boundary.
-- **Regenerated benchmark report** — the benchmark report and
+- **Regenerated benchmark report**: the benchmark report and
   `results.json` were regenerated against the current codebase.
 
 ### Documentation
 
-- **Synced stale test count and coverage** — corrected the documented test
+- **Synced stale test count and coverage**: corrected the documented test
   count (1165 → 1230) and coverage figure (~99.6% → 100%) to match CI.
-- **Roadmap items shipped** — roadmap entries #2 (modeling) and #3
+- **Roadmap items shipped**: roadmap entries #2 (modeling) and #3
   (knowledge organization) are marked released; the corresponding issues
   are closed.
 
@@ -544,22 +544,22 @@ shim code that was never exercised at runtime.
 
 ### Changed
 
-- **Issue templates** — removed decorative emojis from
+- **Issue templates**: removed decorative emojis from
   `bug_report.md`, `config.yml`, and `changelog.yml` for a cleaner,
   more professional appearance.
-- **`.github/labeler.yml`** — migrated to the `actions/labeler` v5
+- **`.github/labeler.yml`**: migrated to the `actions/labeler` v5
   configuration schema (`triage` → `labels` key).
-- **`.github/workflows/changelog.yml`** — fixed a missing trailing
+- **`.github/workflows/changelog.yml`**: fixed a missing trailing
   newline flagged by lint checks.
-- **Documentation** — stripped sprint-tracking references and
+- **Documentation**: stripped sprint-tracking references and
   ephemeral planning files (`docs/superpowers/plans/`,
   `docs/superpowers/specs/`); unified inline-code formatting across
   tutorials and case-study pages.
-- **Removed no-op autograd shims** — deleted `src/cds/nlp/autograd/`
+- **Removed no-op autograd shims**: deleted `src/cds/nlp/autograd/`
   shim functions (`_grad.py` stubs, pass-through wrappers in
   `ops.py` and `tensor.py`) that were placeholders and never
   participated in any real gradient computation. ~3 500 lines removed.
-- **Examples** — aligned `ruff` formatting in
+- **Examples**: aligned `ruff` formatting in
   `examples/data_analysis_demo.py` and
   `examples/ml_and_viz_demo.py`.
 - **Version bump `1.1.3` → `1.1.4`** in `pyproject.toml`,
@@ -579,21 +579,21 @@ the suite is unchanged.
 - **43 `mypy --strict` errors resolved** across `examples/`, `dashboard/`,
   and `scripts/`. The fixes fall into five categories, none of which
   alter runtime behavior:
-  - **`int` → `float` argument types** — numeric literals passed to APIs
+  - **`int` → `float` argument types**: numeric literals passed to APIs
     typed as `float` (e.g. integration tolerances, attention scaling)
     now use explicit `float` literals so the call matches the signature.
-  - **`Domain` enum usage** — iteration and membership checks against the
+  - **`Domain` enum usage**: iteration and membership checks against the
     `Domain` enum now go through `Domain.__members__.values()` / explicit
     member references, matching the pattern established in v1.1.2 for
     CodeQL compatibility.
-  - **Attention tensor rank** — reshape/transpose calls in
+  - **Attention tensor rank**: reshape/transpose calls in
     `examples/nlp_attention_demo.py` and `examples/nlp_mini_gpt_demo.py`
     annotated to reflect the actual tensor rank rather than an
     over-narrow `Any`/scalar guess.
-  - **Invariant list widening** — a few demo helper functions that
+  - **Invariant list widening**: a few demo helper functions that
     return heterogeneous sequences now declare `list[object]` (or the
     specific union) instead of an impossible precise element type.
-  - **`Protocol` signature alignment** — a duck-typed callback protocol
+  - **`Protocol` signature alignment**: a duck-typed callback protocol
     in `scripts/publish.py` had a signature that diverged from its
     concrete implementations; the protocol and call sites now agree.
 
@@ -615,17 +615,17 @@ positives).
 
 ### Security
 
-- **CodeQL `py/non-iterable-in-for-loop` — fix.** Enum iteration
+- **CodeQL `py/non-iterable-in-for-loop`: fix.** Enum iteration
   in `examples/core_demo.py` and `tests/test_hypothesis.py` now uses
   `Domain.__members__.values()` instead of `for x in Domain:`. This is the
   Enum API's standard member-collection view: functionally identical (same
-  members, same insertion order — all 1164 tests pass) but the return type
+  members, same insertion order, all 1164 tests pass) but the return type
   is an explicitly iterable mapping view that CodeQL's type resolver can
   follow. Previous attempts (idiomatic iteration, direct import from the
   defining module) did not satisfy the analyzer; this does, with no
   camouflage (`list()` wrapping) and no behavior change.
 - **`main` branch protection strengthened.** Added `required_status_checks`
-  for `CI` and `CodeQL` — a PR can no longer merge into `main` while those
+  for `CI` and `CodeQL`, a PR can no longer merge into `main` while those
   checks are red. `enforce_admins` is left disabled so the maintainer
   retains a direct-push path; everything else (linear history, conversation
   resolution, no force-pushes, no deletions) is unchanged.
@@ -649,22 +649,22 @@ verifiable, low-churn workflows.
 
 ### Security
 
-- **CodeQL static analysis** (`codeql.yml`) — runs `security-and-quality`
+- **CodeQL static analysis** (`codeql.yml`): runs `security-and-quality`
   query pack on every push/PR into `main` plus a weekly schedule; findings
   surface as code-scanning alerts under the Security tab. Complements
   `attest.yml` (which signs release artifacts with build provenance) and
   `dependabot.yml` (dependency CVEs).
-- **README security badge** — live CodeQL status added next to the CI badge.
+- **README security badge**: live CodeQL status added next to the CI badge.
 
 ### Changed
 
-- **`changelog.yml` made idempotent** — all dispatches now target a single
+- **`changelog.yml` made idempotent**: all dispatches now target a single
   fixed branch (`chore/changelog-regen`); `peter-evans/create-pull-request`
   updates the existing open PR instead of opening a duplicate per tag.
   Previously up to 6 stale changelog PRs accumulated; now only one is ever
   open. Also bumped the action `v6 → v7` and added a `concurrency` group to
   serialize simultaneous dispatches.
-- **`benchmarks.yml` respects branch protection** — switched from a direct
+- **`benchmarks.yml` respects branch protection**: switched from a direct
   bot push (rejected on protected `main`) to opening a PR via
   `peter-evans/create-pull-request@v7`, so regenerated artifacts merge
   through the normal review flow without breaking protection rules.
@@ -672,7 +672,7 @@ verifiable, low-churn workflows.
 ### Removed
 
 - 6 stale auto-generated changelog PRs (#10, #19, #20, #21, #22, #23) and
-  their per-tag branches — all superseded by the hand-curated CHANGELOG on
+  their per-tag branches, all superseded by the hand-curated CHANGELOG on
   `main`.
 
 ## [v1.1.0] - 2026-06-19
@@ -685,7 +685,7 @@ platform now spans **17 modules**, **1164 tests**, and **99.59%** coverage.
 
 ### Added
 
-- **`cds.modeling`** — symbolic algebra for equation development:
+- **`cds.modeling`**: symbolic algebra for equation development:
   - An expression tree (`+`, `-`, `*`, `/`, `**`, unary `-`, variables,
     numbers) built by overloading Python operators on a `Variable`/`Constant`
     AST.
@@ -696,7 +696,7 @@ platform now spans **17 modules**, **1164 tests**, and **99.59%** coverage.
     root finding) and `fit_parameters` (least-squares parameter fitting to
     observations).
   - Runnable demo (`examples/modeling_demo.py`) + tutorial.
-- **`cds.knowledge`** — a knowledge-organization layer in three pure-Python,
+- **`cds.knowledge`**: a knowledge-organization layer in three pure-Python,
   dependency-free files:
   - `graph.py`: `Concept`, `Relation` (typed directed edges), and a
     `KnowledgeGraph` with undirected traversal (shortest path via BFS,
@@ -712,7 +712,7 @@ platform now spans **17 modules**, **1164 tests**, and **99.59%** coverage.
 ### Maintenance
 
 - Docs: resync README, `docs/index.md`, getting-started (EN + TR), and
-  CITATION.cff to v1.1.0 — module count 16→17, test count 883→1164,
+  CITATION.cff to v1.1.0, module count 16→17, test count 883→1164,
   coverage 99.48%→99.59%. Keep `pyproject.toml` + `src/cds/_version.py`
   lockstepped at 1.1.0.
 - Chore(repo): ignore the `_demo_*.json` runtime artifacts the
@@ -732,7 +732,7 @@ had drifted after v1.0.0.
 
 - Chore(ci): add a `pip-audit` job to the CI workflow (`tests.yml`). Runs
   once on the reference cell (Linux + Python 3.12) against the PyPI Advisory
-  database. Currently `continue-on-error: true` — the dev/docs/test toolchain
+  database. Currently `continue-on-error: true`, the dev/docs/test toolchain
   (jupyter, mkdocs, build, twine, pillow, lxml, ...) carries transitive deps
   with open CVEs unrelated to the published runtime (typer/pydantic/rich,
   which audit clean). Surfacing them every run gives visibility without
@@ -743,7 +743,7 @@ had drifted after v1.0.0.
   0 errors). Dropping the escape hatch means a future un-stubbed dependency
   surfaces a real error instead of being silently typed as `Any`.
 - Chore(repo): delete a stray Windows `nul` artifact left in the working tree.
-- Docs: resync README + `docs/` after v1.0.0 — test count 845→878, version
+- Docs: resync README + `docs/` after v1.0.0: test count 845→878, version
   strings updated, `CITATION.cff` bumped to 1.0.4. Keep `pyproject.toml` +
   `src/cds/_version.py` lockstepped at 1.0.4.
 
@@ -761,7 +761,7 @@ post-release lint/test/publish findings caught after v1.0.2 shipped.
 - Test(types): clear all remaining mypy errors across `tests/` (39 files,
   0 errors). Fixes list-variance issues (`Parameter <: Tensor`), redundant
   `type: ignore` comments, and intentional error-path `**` operands.
-- Test(benchmarks): isolate benchmark test artifacts — `run_all()` /
+- Test(benchmarks): isolate benchmark test artifacts: `run_all()` /
   `_write_json()` accept an `output_dir` parameter so `pytest` no longer
   clobbers the committed `benchmarks/results.json`.
 
@@ -797,7 +797,7 @@ benchmark test suite silently clobbered the committed
 ### Features
 
 - Feat(benchmarks): `run_all(output_dir=None)` and
-  `_write_json(record, output_dir=None)` — new optional parameter for
+  `_write_json(record, output_dir=None)`, new optional parameter for
   redirecting artifact output. Defaults preserve existing CLI behaviour.
 
 ## [v1.0.1] - 2026-06-18
@@ -810,14 +810,14 @@ compatible.
 
 ### Features
 
-- Feat(packaging): declare PEP 561 type information — ship `src/cds/py.typed`
+- Feat(packaging): declare PEP 561 type information: ship `src/cds/py.typed`
   marker and force-include it in the wheel so downstream users get full
   static type-checking support out of the box.
 - Feat(docs): add "type checked" badge to the README.
 
 ### Testing
 
-- Test(invariants): add `tests/test_numerical_invariants.py` — 32
+- Test(invariants): add `tests/test_numerical_invariants.py`: 32
   property-based numerical invariants across 8 modules (linalg, signals,
   stats, quadrature, quantum, diffeq, monte carlo, probability). Fixed
   seed, fully reproducible, zero new dev dependencies.
@@ -842,19 +842,19 @@ errors, clean ruff, and a strict mkdocs build.
 
 ### Features
 
-- Feat(nlp): NLP visualisation module — attention heatmap, PCA projection, training curve ([7956597](7956597))
+- Feat(nlp): NLP visualisation module: attention heatmap, PCA projection, training curve ([7956597](7956597))
 - Feat(benchmarks): emit results.json with timestamp + git SHA provenance, add CI workflow ([4e18500](4e18500))
 
 ### Testing
 
-- Test(coverage): close NLP edge-case gaps — tensor/ops/optim/bpe/layers/model/attention; reach 99.16% statement coverage ([6f0a487](6f0a487))
-- Style(tests): ruff format cleanup — collapse over-split listcomp, expand train() signature, remove duplicate inline imports ([36f4ee4](36f4ee4))
+- Test(coverage): close NLP edge-case gaps: tensor/ops/optim/bpe/layers/model/attention; reach 99.16% statement coverage ([6f0a487](6f0a487))
+- Style(tests): ruff format cleanup: collapse over-split listcomp, expand train() signature, remove duplicate inline imports ([36f4ee4](36f4ee4))
 
 ### Documentation
 
 - Docs(examples): add 9 module demos + matching tutorials ([9f00fc5](9f00fc5))
 - Docs(api): restructure mkdocs nav, add api.md lead-ins, fix stale test counts ([4cad8be](4cad8be))
-- Docs(nlp): fix griffe warnings — split combined params in docstrings ([3aedff4](3aedff4))
+- Docs(nlp): fix griffe warnings: split combined params in docstrings ([3aedff4](3aedff4))
 - Docs(benchmarks): regenerate results.json with current SHA provenance ([69c5a88](69c5a88))
 
 ### Bug Fixes
@@ -931,7 +931,7 @@ errors, clean ruff, and a strict mkdocs build.
 ### Features
 
 
-- Feat(nlp): add cds.nlp module — BPE tokenizer + sinusoidal embeddings ([045b9d1](045b9d1))
+- Feat(nlp): add cds.nlp module: BPE tokenizer + sinusoidal embeddings ([045b9d1](045b9d1))
 
 
 ### Other

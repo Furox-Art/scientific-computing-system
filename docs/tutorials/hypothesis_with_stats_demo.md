@@ -28,7 +28,7 @@ Predictions: ['A measurable deviation in observable O at scale S with amplitude 
 
 > The generator is domain-aware but uses template-driven statements, so the
 > text reads generically. The value is the **structure**: statement,
-> predictions, assumptions, confidence — ready to attach data to.
+> predictions, assumptions, confidence, ready to attach data to.
 
 ## 2. Validate against experimental data
 
@@ -66,7 +66,7 @@ in one script:
 1. **Generate** candidate explanations with explicit predictions.
 2. **Collect** data (simulated here, real in practice).
 3. **Test** with the appropriate statistical procedure.
-4. **Decide** — keep or reject the hypothesis.
+4. **Decide**: keep or reject the hypothesis.
 
 This is the "cognitive discovery" loop CDS is built around: structure the
 thinking, then close it with numbers. See

@@ -1,6 +1,6 @@
 # PCA + Preprocessing Tutorial
 
-`cds.ml` ships a from-scratch `PCA` (cyclic Jacobi eigendecomposition —
+`cds.ml` ships a from-scratch `PCA` (cyclic Jacobi eigendecomposition,
 deterministic, no RNG) alongside sklearn-flavored `StandardScaler` and
 `train_test_split`. This tutorial walks the full pipeline: why scaling
 matters, how to read explained variance, projecting to 2-D, reconstructing,
@@ -20,7 +20,7 @@ print(raw_model.explained_variance_ratio_)
 # [1.0, 0.0, 0.0, 0.0, 0.0]  <- one column owns ALL the variance
 ```
 
-The cluster structure is invisible — PC1 just re-states the millimeter column.
+The cluster structure is invisible. PC1 just re-states the millimeter column.
 
 ## 2. Scale first, then decompose
 
@@ -58,7 +58,7 @@ Z = model2.transform(Xs)  # 2-D projections
 X_rec = model2.inverse_transform(Z)  # approximate reconstruction
 ```
 
-Plotting `Z` against the true labels shows PC1 separating the two clusters —
+Plotting `Z` against the true labels shows PC1 separating the two clusters,
 ASCII scatter, no matplotlib needed. The mean reconstruction error
 (`|x - reconstruct(x)|`) quantifies exactly how much detail the 2-D view kept.
 
@@ -78,7 +78,7 @@ Z_test = pca_t.transform(scaler_t.transform(X_test))
 ```
 
 The reconstruction error on the test split should be close to the training
-one — a quick sanity check that the projection generalizes.
+one, a quick sanity check that the projection generalizes.
 
 Run the full demo:
 
