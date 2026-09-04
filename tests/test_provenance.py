@@ -32,7 +32,9 @@ def test_manifest_creation_recording_and_roundtrip() -> None:
     digest = sha256_text("dataset")
     manifest.record_data_hash("raw-data", digest.upper())
     manifest.record_tool("scipy", "1.14.0")
-    manifest.record_decision("use robust loss", "outliers affect least squares", approved_by_user=True)
+    manifest.record_decision(
+        "use robust loss", "outliers affect least squares", approved_by_user=True
+    )
     manifest.metadata["language"] = "both"
 
     assert manifest.data_hashes["raw-data"] == digest
