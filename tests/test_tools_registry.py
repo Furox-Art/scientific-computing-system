@@ -116,6 +116,17 @@ def test_load_requires_installation_and_imports_on_explicit_request(
 
 def test_default_registry_declares_scientific_backends() -> None:
     registry = default_registry()
-    assert registry.names() == ("numpy", "scipy", "sklearn", "statsmodels", "sympy", "z3")
+    assert registry.names() == (
+        "h5py",
+        "netcdf4",
+        "numpy",
+        "scipy",
+        "sklearn",
+        "statsmodels",
+        "sympy",
+        "z3",
+    )
     assert "optimization" in registry.spec("scipy").capabilities
     assert "formal-verification" in registry.spec("z3").capabilities
+    assert "hdf5" in registry.spec("h5py").capabilities
+    assert "netcdf" in registry.spec("netcdf4").capabilities
