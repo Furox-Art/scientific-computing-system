@@ -11,6 +11,8 @@ Key features:
 - Optimization, statistics, probability, linear algebra
 - Hypothesis generation for structured research ideas
 - Workflow orchestration with approval gates and validation
+- Uncertainty propagation and reproducibility provenance
+- Optional scientific-tool capability discovery
 - CLI for quick calculations and discovery workflows
 
 All modules are designed to be readable, testable, and usable
@@ -47,10 +49,13 @@ from cds import (
     optimization,
     plot,
     probability,
+    provenance,
     quantum,
     scientific,
     signals,
     stats,
+    tools,
+    uncertainty,
     validation,
     wavelets,
     workflow,
@@ -107,10 +112,13 @@ __all__ = [
     "optimization",
     "plot",
     "probability",
+    "provenance",
     "quantum",
     "scientific",
     "signals",
     "stats",
+    "tools",
+    "uncertainty",
     "validation",
     "wavelets",
     "workflow",
