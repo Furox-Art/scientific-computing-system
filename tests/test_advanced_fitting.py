@@ -9,6 +9,7 @@ import pytest
 from cds.modeling import MathModel, Variable, fit_parameters_advanced
 from cds.modeling.fitting import (
     FitOptimizer,
+    _invert_matrix,
     _loss_value,
     _make_starts,
     _select_optimizer,
@@ -55,6 +56,25 @@ def test_make_starts_is_seeded_and_respects_bounds() -> None:
     bounded = _make_starts([0.5], 4, [(0.0, 1.0)], 11)
     assert bounded[0] == [0.5]
     assert all(0.0 <= row[0] <= 1.0 for row in bounded)
+
+
+def test_local_matrix_inverse_validation_and_pivoting() -> None:
+    with pytest.raises(ValueError, match="non-empty"):
+        _invert_matrix([])
+    with pytest.raises(ValueError, match="square"):
+        _invert_matrix([[1.0, 2.0], [3.0]])
+    with pytest.raises(ValueError, match="singular"):
+        _invert_matrix([[1.0, 2.0], [2.0, 4.0]])
+
+    identity = _invert_matrix([[1.0, 0.0], [0.0, 1.0]])
+    assert identity == [[1.0, 0.0], [0.0, 1.0]]
+
+    swapped = _invert_matrix([[0.0, 1.0], [1.0, 0.0]])
+    assert swapped == [[0.0, 1.0], [1.0, 0.0]]
+
+    inverse = _invert_matrix([[2.0, 1.0], [1.0, 2.0]])
+    assert inverse[0] == pytest.approx([2.0 / 3.0, -1.0 / 3.0])
+    assert inverse[1] == pytest.approx([-1.0 / 3.0, 2.0 / 3.0])
 
 
 def test_advanced_fit_input_validation() -> None:
@@ -107,6 +127,7 @@ def test_advanced_fit_input_validation() -> None:
 @pytest.mark.parametrize("optimizer", ["gradient_descent", "adam", "nelder_mead"])
 def test_unconstrained_optimizers_recover_linear_model(optimizer: FitOptimizer) -> None:
     model = _linear_model()
+    fit_lr = 0.01 if optimizer == "gradient_descent" else 0.05
     result = fit_parameters_advanced(
         model,
         _linear_observations(),
@@ -115,7 +136,7 @@ def test_unconstrained_optimizers_recover_linear_model(optimizer: FitOptimizer) 
         optimizer=optimizer,
         multi_start=2,
         seed=4,
-        lr=0.05,
+        lr=fit_lr,
         max_iter=3000,
     )
     assert result.optimizer == optimizer
