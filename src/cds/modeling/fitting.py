@@ -10,7 +10,6 @@ from statistics import NormalDist
 from typing import Literal
 
 from cds.core._numeric import DEFAULT_TOLERANCE, GD_DEFAULT_LR
-from cds.math_utils.linalg import matrix_inverse
 from cds.modeling.model import MathModel
 from cds.optimization import adam, gradient_descent, nelder_mead, projected_gradient_descent
 
@@ -86,6 +85,40 @@ def _make_starts(
     return starts
 
 
+def _invert_matrix(matrix: Sequence[Sequence[float]]) -> list[list[float]]:
+    """Invert a small dense matrix with Gauss-Jordan elimination.
+
+    Parameter-covariance matrices are typically only ``p x p`` where ``p`` is
+    the number of fitted parameters. Keeping this helper local avoids making
+    the modeling layer depend on the lower-level public linear-algebra module.
+    """
+    n = len(matrix)
+    if n == 0:
+        raise ValueError("matrix must be non-empty")
+    if any(len(row) != n for row in matrix):
+        raise ValueError("matrix must be square")
+
+    augmented = [
+        [float(value) for value in row] + [1.0 if row_index == col else 0.0 for col in range(n)]
+        for row_index, row in enumerate(matrix)
+    ]
+    for col in range(n):
+        pivot = max(range(col, n), key=lambda row_index: abs(augmented[row_index][col]))
+        if abs(augmented[pivot][col]) <= 1e-15:
+            raise ValueError("matrix is singular")
+        augmented[col], augmented[pivot] = augmented[pivot], augmented[col]
+        pivot_value = augmented[col][col]
+        augmented[col] = [value / pivot_value for value in augmented[col]]
+        for row_index in range(n):
+            if row_index != col:
+                factor = augmented[row_index][col]
+                augmented[row_index] = [
+                    value - factor * pivot_component
+                    for value, pivot_component in zip(augmented[row_index], augmented[col])
+                ]
+    return [row[n:] for row in augmented]
+
+
 def _prediction_residuals(
     model: MathModel,
     observations: Sequence[tuple[dict[str, float], float]],
@@ -122,7 +155,7 @@ def _uncertainty(
     ]
     jtj = [[sum(row[i] * row[j] for row in jacobian) for j in range(p)] for i in range(p)]
     try:
-        inverse = matrix_inverse(jtj)
+        inverse = _invert_matrix(jtj)
     except ValueError:
         return None, None, False
 
