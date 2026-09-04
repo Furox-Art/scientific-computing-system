@@ -82,9 +82,7 @@ def _make_starts(
         if bounds is not None:
             starts.append([rng.uniform(lower, upper) for lower, upper in bounds])
         else:
-            starts.append(
-                [value + rng.gauss(0.0, 0.25 * max(1.0, abs(value))) for value in x0]
-            )
+            starts.append([value + rng.gauss(0.0, 0.25 * max(1.0, abs(value))) for value in x0])
     return starts
 
 
@@ -98,8 +96,7 @@ def _prediction_residuals(
     target = model.equation(target_label)
     params = {**model.parameters, **dict(zip(names, values))}
     return [
-        target.evaluate({**env, **params}) - observed_value
-        for env, observed_value in observations
+        target.evaluate({**env, **params}) - observed_value for env, observed_value in observations
     ]
 
 
@@ -123,10 +120,7 @@ def _uncertainty(
         [derivative.evaluate({**env, **params}) for derivative in derivatives]
         for env, _ in observations
     ]
-    jtj = [
-        [sum(row[i] * row[j] for row in jacobian) for j in range(p)]
-        for i in range(p)
-    ]
+    jtj = [[sum(row[i] * row[j] for row in jacobian) for j in range(p)] for i in range(p)]
     try:
         inverse = matrix_inverse(jtj)
     except ValueError:
