@@ -142,6 +142,20 @@ def default_registry() -> ToolRegistry:
             capabilities=("formal-verification", "constraints", "logic"),
             purpose="SMT-based logical and constraint verification",
         ),
+        ToolSpec(
+            name="h5py",
+            module="h5py",
+            distribution="h5py",
+            capabilities=("hdf5", "scientific-io", "large-data"),
+            purpose="chunked HDF5 datasets and hierarchical scientific storage",
+        ),
+        ToolSpec(
+            name="netcdf4",
+            module="netCDF4",
+            distribution="netCDF4",
+            capabilities=("netcdf", "scientific-io", "large-data"),
+            purpose="NetCDF scientific datasets and multidimensional array storage",
+        ),
     ):
         registry.register(spec)
     return registry

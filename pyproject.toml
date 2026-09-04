@@ -3,7 +3,7 @@
 # the import name stays `cds`. Keep the old PyPI project alive as an alias.
 name = "scientific-computing-system"
 version = "1.8.0"
-description = "A 21-module pure-Python computational science platform — quantum circuits, ML, NLP, signal processing, optimization, statistics & time-series, probability CDFs/sampling, ODE & PDE solvers, Monte Carlo, symbolic math, knowledge graphs, hypothesis generation and mining, interpolation, plus optional matplotlib plotting (scientific-computing-system[plot]). Zero runtime dependencies."
+description = "A pure-Python computational science platform for numerical methods, modeling, validation, uncertainty, scientific workflows, dimensional analysis, and optional research-data backends. Zero runtime dependencies."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -46,6 +46,8 @@ all = [
     "mkdocstrings[python]>=0.24.0",
     "hypothesis>=6.100",
     "pandas>=2.0",
+    "h5py>=3.10",
+    "netCDF4>=1.6",
 ]
 dashboard = [
     "streamlit>=1.30.0",
@@ -57,6 +59,12 @@ dashboard = [
 # `pip install ".[pandas]"` or via `[all]`.
 pandas = [
     "pandas>=2.0",
+]
+# Optional scientific file backends. Core streaming/CSV I/O remains stdlib-only;
+# HDF5 and NetCDF support is loaded lazily only when requested.
+io = [
+    "h5py>=3.10",
+    "netCDF4>=1.6",
 ]
 # Optional matplotlib plotting helpers (cds.plot). Core stays zero-dependency;
 # opt in with `pip install ".[plot]"` or via `[all]`.
