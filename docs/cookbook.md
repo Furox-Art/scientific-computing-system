@@ -529,12 +529,10 @@ def harmonic(t, y):
     return [y[1], -y[0]]  # x'' = -x as a first-order system
 
 
-_, y_be = backward_euler_system(harmonic, 0.0, [1.0, 0.0],
-                                t_end=4 * math.pi, dt=0.05)
+_, y_be = backward_euler_system(harmonic, 0.0, [1.0, 0.0], t_end=4 * math.pi, dt=0.05)
 print(math.hypot(*y_be[-1]))  # ~0.73 - damped
 
-_, y_tr = trapezoid_method_system(harmonic, 0.0, [1.0, 0.0],
-                                  t_end=4 * math.pi, dt=0.05)
+_, y_tr = trapezoid_method_system(harmonic, 0.0, [1.0, 0.0], t_end=4 * math.pi, dt=0.05)
 print(math.hypot(*y_tr[-1]))  # ~1.0 - energy nearly conserved
 ```
 
