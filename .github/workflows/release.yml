@@ -1,21 +1,19 @@
 name: Release
 
 # Fully automated publish: pushing a `v*` tag builds the sdist + wheel,
-# uploads them to PyPI using a scoped API token (PYPI_API_TOKEN repo
-# secret), and creates a GitHub Release with the artifacts attached. The
-# Attest Release Artifacts workflow then fires on `release: published`
-# and signs them.
+# verifies package metadata and the installed CLI, uploads the artifacts to
+# PyPI using a scoped API token (PYPI_API_TOKEN repo secret), and creates a
+# GitHub Release with the same artifacts attached. The Attest Release Artifacts
+# workflow then fires on `release: published` and signs them.
 #
 # Setup (one-time): create a PyPI API token scoped to
 # `scientific-computing-system` (Account → API tokens), then add it as a
 # repository secret named `PYPI_API_TOKEN`:
 #   gh secret set PYPI_API_TOKEN < ~/.pypi-token
 #
-# This is the sole publish authority: `scripts/publish.py` no longer
-# uploads to PyPI or creates the GitHub release — it only builds, tests,
-# pushes the tag (which triggers this workflow), and deploys docs.
-# Reference: https://docs.pypi.org/trusted-publishers/using-no-api-key/
-#            (token path: https://packaging.python.org/en/latest/tutorials/packaging-projects/#uploading-the-distribution-archives)
+# This is the sole publish authority: `scripts/publish.py` no longer uploads to
+# PyPI or creates the GitHub release — it only builds, tests, pushes the tag
+# (which triggers this workflow), and deploys docs.
 
 on:
   push:
@@ -23,8 +21,8 @@ on:
       - "v*"
 
 permissions:
-  contents: write   # create the GitHub Release + upload artifacts
-  deployments: write   # create + status the pypi deployment record
+  contents: write
+  deployments: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -32,7 +30,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build sdist + wheel
+    name: Build + verify sdist/wheel + installed CLI
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -52,26 +50,51 @@ jobs:
       - name: Build sdist + wheel
         run: python -m build
 
-      - name: Verify the built package name
+      - name: Verify package name and tag/version agreement
         run: |
           python - <<'PY'
-          import zipfile, pathlib, sys
+          import os
+          import pathlib
+          import sys
+          import zipfile
+
           wheels = list(pathlib.Path("dist").glob("*.whl"))
-          if not wheels:
-              sys.exit("No wheel produced")
-          meta = zipfile.ZipFile(wheels[0]).read(next(
-              n for n in zipfile.ZipFile(wheels[0]).namelist()
-              if n.endswith("METADATA")
-          )).decode()
-          name = dict(
-              line.split(": ", 1) for line in meta.splitlines()
+          if len(wheels) != 1:
+              sys.exit(f"Expected exactly one wheel, found {len(wheels)}")
+
+          with zipfile.ZipFile(wheels[0]) as archive:
+              metadata_name = next(name for name in archive.namelist() if name.endswith("METADATA"))
+              metadata = archive.read(metadata_name).decode()
+
+          package = dict(
+              line.split(": ", 1)
+              for line in metadata.splitlines()
               if ": " in line and line.split(": ", 1)[0] in {"Name", "Version"}
           )
-          print(f"Built: {name}")
-          if name["Name"] != "scientific-computing-system":
-              sys.exit(f"Unexpected package name: {name['Name']!r}")
-          print("Package name OK.")
+          print(f"Built package metadata: {package}")
+          if package["Name"] != "scientific-computing-system":
+              sys.exit(f"Unexpected package name: {package['Name']!r}")
+
+          tag = os.environ["GITHUB_REF_NAME"]
+          expected_version = tag.removeprefix("v")
+          if package["Version"] != expected_version:
+              sys.exit(
+                  f"Tag/package version mismatch: tag={tag!r}, package={package['Version']!r}"
+              )
+          print(f"Tag and package version agree: {expected_version}")
           PY
+
+      - name: Install built wheel
+        shell: bash
+        run: |
+          set -euo pipefail
+          wheel="$(find dist -maxdepth 1 -name '*.whl' -print -quit)"
+          test -n "$wheel"
+          python -m pip install --force-reinstall --no-deps "$wheel"
+
+      - name: Smoke-test installed CLI before publish
+        run: python scripts/verify_cli_install.py --expected-version "${GITHUB_REF_NAME#v}"
+        shell: bash
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
@@ -83,14 +106,6 @@ jobs:
     name: Publish to PyPI + GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    # NOTE: we intentionally do NOT use `environment: pypi` here. That key
-    # makes GitHub auto-create a deployment record on every release, but
-    # neither `pypa/gh-action-pypi-publish` nor `gh release create` emits a
-    # deployment_status event, so the record is never closed and eventually
-    # shows up as "failed" on the Deployments page. Instead we create the
-    # deployment explicitly below and mark it success/failure with
-    # `if: always()`, so each release produces exactly one green (or red)
-    # pypi deployment entry.
     steps:
       - name: Create pypi deployment record
         id: deployment
