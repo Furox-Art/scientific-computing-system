@@ -193,7 +193,7 @@ def test_uncertainty_detects_underdetermined_and_singular_models() -> None:
 def test_constant_target_r_squared_branches_and_nonfinite_attempts() -> None:
     constant = MathModel(name="constant", parameters={"a": 2.0})
     constant.add_equation("y", Variable("a"))
-    observed = [({}, 2.0), ({}, 2.0)]
+    observed: list[tuple[dict[str, float], float]] = [({}, 2.0), ({}, 2.0)]
 
     exact = fit_parameters_advanced(
         constant,
