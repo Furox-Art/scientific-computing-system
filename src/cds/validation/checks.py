@@ -57,7 +57,12 @@ def cross_method_agreement(
         name=name,
         status=status,
         message=message,
-        details={"primary": primary, "secondary": secondary, "delta": delta, "tolerance": tolerance},
+        details={
+            "primary": primary,
+            "secondary": secondary,
+            "delta": delta,
+            "tolerance": tolerance,
+        },
     )
 
 
