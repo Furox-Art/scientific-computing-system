@@ -156,10 +156,7 @@ def fit_parameters(
 
     start = list(x0) if x0 is not None else [0.0] * len(names)
     if len(start) != len(names):
-        raise ValueError(
-            "x0 length must exactly match parameter_names "
-            f"({len(start)} != {len(names)})"
-        )
+        raise ValueError("x0 length must exactly match parameter_names")
 
     # Resolve the target equation once, after validating that the model has at
     # least one equation so the default-target path cannot leak an IndexError.
