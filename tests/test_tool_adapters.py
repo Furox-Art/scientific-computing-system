@@ -185,3 +185,13 @@ def test_z3_satisfiability_states(
 
     assert z3_satisfiability(build, registry=registry) is expected
     assert seen and seen[0].__name__ == "z3"
+
+
+def test_adapter_uses_default_registry(monkeypatch: pytest.MonkeyPatch) -> None:
+    registry = _registry_with_module(monkeypatch, _z3_module("sat"))
+
+    def fake_default_registry() -> ToolRegistry:
+        return registry
+
+    monkeypatch.setattr("cds.tools.adapters.default_registry", fake_default_registry)
+    assert z3_satisfiability(lambda _module: ()) is Satisfiability.SAT
