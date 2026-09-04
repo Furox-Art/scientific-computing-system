@@ -497,6 +497,76 @@ ts, ys = solve_system(lotka, t0=0.0, y0=[10.0, 5.0], t_end=40.0, dt=0.05)
 print(len(ys))  # two trajectories oscillating out of phase
 ```
 
+### Stiff decay with backward Euler (explicit Euler diverges)
+
+For `dy/dt = -1000*(y - 1)` explicit Euler needs `dt < 2/1000`.
+Backward Euler stays stable at a much larger step:
+
+```python
+from cds.diffeq import backward_euler, euler_method
+
+k = 1000.0
+stiff = lambda t, y: -k * (y - 1.0)
+
+imp = backward_euler(stiff, t0=0.0, y0=0.0, t_end=0.05, dt=0.01)
+print(imp.y[-1])  # ~1.0 (exact: 1 - e^-50)
+
+exp = euler_method(stiff, t0=0.0, y0=0.0, t_end=0.05, dt=0.01)
+print(exp.y[-1])  # ~59050.0 - diverged at the same step
+```
+
+### Oscillator energy with trapezoid_method_system
+
+Backward Euler damps oscillations; the trapezoidal (Crank-Nicolson)
+rule conserves amplitude on `x'' = -x`:
+
+```python
+import math
+from cds.diffeq import backward_euler_system, trapezoid_method_system
+
+
+def harmonic(t, y):
+    return [y[1], -y[0]]  # x'' = -x as a first-order system
+
+
+_, y_be = backward_euler_system(harmonic, 0.0, [1.0, 0.0],
+                                t_end=4 * math.pi, dt=0.05)
+print(math.hypot(*y_be[-1]))  # ~0.73 - damped
+
+_, y_tr = trapezoid_method_system(harmonic, 0.0, [1.0, 0.0],
+                                  t_end=4 * math.pi, dt=0.05)
+print(math.hypot(*y_tr[-1]))  # ~1.0 - energy nearly conserved
+```
+
+### RK45 vs implicit solvers, with analytic check
+
+Rule of thumb: RK45 for smooth non-stiff problems, implicit for stiff
+ones. Verify accuracy against the analytic solution and halve `dt`:
+backward Euler error halves (~first order), trapezoid error quarters (~second order):
+
+```python
+import math
+from cds.diffeq import backward_euler, rk45, trapezoid_method
+
+# Non-stiff: dy/dt = -y, y(0) = 1  =>  y(2) = e^-2
+exact = math.exp(-2.0)
+for dt in (0.1, 0.05):
+    be = backward_euler(lambda t, y: -y, 0.0, 1.0, 2.0, dt=dt).y[-1]
+    cn = trapezoid_method(lambda t, y: -y, 0.0, 1.0, 2.0, dt=dt).y[-1]
+    print(abs(be - exact), abs(cn - exact))  # BE ~2x, CN ~4x smaller
+
+# RK45 shines here: logistic growth in a handful of adaptive steps.
+logistic = lambda t, y: 0.5 * y * (1 - y / 10)
+sol = rk45(logistic, t0=0.0, y0=0.5, t_end=20.0, rtol=1e-6)
+print(sol.y[-1])  # near the carrying capacity 10
+```
+
+| Problem | Pick |
+|---|---|
+| Smooth, non-stiff (decay, logistic, Lotka-Volterra) | `rk4` / `rk45` |
+| Stiff decay (`dy/dt = -k*(y - c)`, large `k`) | `backward_euler` |
+| Oscillatory system where energy matters | `trapezoid_method_system` |
+
 ---
 
 ## Optimization
