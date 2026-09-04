@@ -142,6 +142,11 @@ jobs:
     name: Publish to PyPI + GitHub Release
     needs: build
     runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: write
+      deployments: write
+      id-token: write
     steps:
       - uses: actions/checkout@v5
         with:
