@@ -9,7 +9,7 @@ import platform
 import sys
 import tempfile
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import cast
 from uuid import uuid4
@@ -53,7 +53,7 @@ class RunManifest:
         return cls(
             question=question,
             run_id=run_id or str(uuid4()),
-            created_utc=created_utc or datetime.now(UTC).isoformat(),
+            created_utc=created_utc or datetime.now(timezone.utc).isoformat(),
             seed=seed,
             environment={
                 "python": platform.python_version(),
@@ -151,7 +151,7 @@ class RunManifest:
             question=question,
             run_id=run_id,
             created_utc=created_utc,
-            seed=cast(int | None, seed),
+            seed=seed,
             data_hashes=string_map("data_hashes"),
             tool_versions=string_map("tool_versions"),
             environment=string_map("environment"),
