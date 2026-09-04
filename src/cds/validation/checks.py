@@ -143,9 +143,7 @@ def check_conservation(
     tolerance = atol + rtol * max(abs(before), abs(after))
     status = CheckStatus.PASS if delta <= tolerance else CheckStatus.FAIL
     message = (
-        "conservation law satisfied"
-        if status is CheckStatus.PASS
-        else "conservation law violated"
+        "conservation law satisfied" if status is CheckStatus.PASS else "conservation law violated"
     )
     return ValidationCheck(
         name=name,
@@ -169,9 +167,7 @@ def check_monotonic(
     valid_pair: Callable[[float, float], bool]
     if strict:
         valid_pair = (
-            (lambda left, right: left < right)
-            if increasing
-            else (lambda left, right: left > right)
+            (lambda left, right: left < right) if increasing else (lambda left, right: left > right)
         )
     else:
         valid_pair = (
