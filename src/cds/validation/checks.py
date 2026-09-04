@@ -94,6 +94,97 @@ def check_bounds(
     )
 
 
+def check_positive(
+    values: Sequence[float],
+    *,
+    allow_zero: bool = False,
+    name: str = "positive-domain",
+) -> ValidationCheck:
+    """Validate positivity constraints common to physical/biological quantities."""
+    violations = [
+        index
+        for index, value in enumerate(values)
+        if (value < 0 if allow_zero else value <= 0) or not math.isfinite(value)
+    ]
+    if violations:
+        return ValidationCheck(
+            name=name,
+            status=CheckStatus.FAIL,
+            message=f"positivity violations at indices {violations}",
+            details={"violations": violations, "allow_zero": allow_zero},
+        )
+    return ValidationCheck(
+        name=name,
+        status=CheckStatus.PASS,
+        message="all values satisfy the positivity constraint",
+        details={"allow_zero": allow_zero},
+    )
+
+
+def check_conservation(
+    before: float,
+    after: float,
+    *,
+    rtol: float = 1e-9,
+    atol: float = 1e-12,
+    name: str = "conservation",
+) -> ValidationCheck:
+    """Check a scalar conservation law such as mass, charge, or energy."""
+    if rtol < 0 or atol < 0:
+        raise ValueError("rtol and atol must be non-negative")
+    if not (math.isfinite(before) and math.isfinite(after)):
+        return ValidationCheck(
+            name=name,
+            status=CheckStatus.FAIL,
+            message="cannot evaluate conservation with non-finite values",
+            details={"before": before, "after": after},
+        )
+    delta = abs(after - before)
+    tolerance = atol + rtol * max(abs(before), abs(after))
+    status = CheckStatus.PASS if delta <= tolerance else CheckStatus.FAIL
+    return ValidationCheck(
+        name=name,
+        status=status,
+        message="conservation law satisfied" if status is CheckStatus.PASS else "conservation law violated",
+        details={"before": before, "after": after, "delta": delta, "tolerance": tolerance},
+    )
+
+
+def check_monotonic(
+    values: Sequence[float],
+    *,
+    increasing: bool = True,
+    strict: bool = False,
+    name: str = "monotonic-domain",
+) -> ValidationCheck:
+    """Check monotonic trends required by a declared domain model."""
+    finite = check_finite(values, name=name)
+    if finite.status is CheckStatus.FAIL:
+        return finite
+    if strict:
+        valid_pair = (lambda left, right: left < right) if increasing else (lambda left, right: left > right)
+    else:
+        valid_pair = (lambda left, right: left <= right) if increasing else (lambda left, right: left >= right)
+    violations = [
+        index
+        for index, (left, right) in enumerate(zip(values, values[1:]))
+        if not valid_pair(left, right)
+    ]
+    if violations:
+        return ValidationCheck(
+            name=name,
+            status=CheckStatus.FAIL,
+            message=f"monotonicity violations after indices {violations}",
+            details={"violations": violations, "increasing": increasing, "strict": strict},
+        )
+    return ValidationCheck(
+        name=name,
+        status=CheckStatus.PASS,
+        message="values satisfy the monotonicity constraint",
+        details={"increasing": increasing, "strict": strict},
+    )
+
+
 def check_duplicate_rows(
     train_rows: Sequence[Sequence[object]],
     test_rows: Sequence[Sequence[object]],
