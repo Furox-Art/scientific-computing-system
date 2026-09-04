@@ -207,29 +207,29 @@ def fit_parameters_advanced(
 
     for candidate in starts:
         if chosen == "gradient_descent":
-            result = gradient_descent(objective, candidate, lr=lr, tol=tol, max_iter=max_iter)
-            values = list(result.x)
-            score = result.value
-            iterations = result.iterations
-            converged = result.converged
+            gd_result = gradient_descent(objective, candidate, lr=lr, tol=tol, max_iter=max_iter)
+            values = list(gd_result.x)
+            score = gd_result.value
+            iterations = gd_result.iterations
+            converged = gd_result.converged
         elif chosen == "adam":
-            result = adam(objective, candidate, lr=lr, tol=tol, max_iter=max_iter)
-            values = list(result.x)
-            score = result.value
-            iterations = result.iterations
-            converged = result.converged
+            adam_result = adam(objective, candidate, lr=lr, tol=tol, max_iter=max_iter)
+            values = list(adam_result.x)
+            score = adam_result.value
+            iterations = adam_result.iterations
+            converged = adam_result.converged
         elif chosen == "nelder_mead":
-            result = nelder_mead(objective, candidate, max_iter=max_iter)
-            values = list(result.x)
-            score = result.value
-            iterations = result.iterations
-            converged = result.converged
+            nm_result = nelder_mead(objective, candidate, max_iter=max_iter)
+            values = list(nm_result.x)
+            score = nm_result.value
+            iterations = nm_result.iterations
+            converged = nm_result.converged
         else:
             if bounds is None:
                 raise ValueError("projected_gradient requires bounds")
             lower = [pair[0] for pair in bounds]
             upper = [pair[1] for pair in bounds]
-            result = projected_gradient_descent(
+            pg_result = projected_gradient_descent(
                 objective,
                 candidate,
                 lower,
@@ -238,10 +238,10 @@ def fit_parameters_advanced(
                 tol=tol,
                 max_iter=max_iter,
             )
-            values = list(result.x)
-            score = result.fun
-            iterations = result.iterations
-            converged = result.converged
+            values = list(pg_result.x)
+            score = pg_result.fun
+            iterations = pg_result.iterations
+            converged = pg_result.converged
 
         if math.isfinite(score) and score < best_objective:
             best_values = values
