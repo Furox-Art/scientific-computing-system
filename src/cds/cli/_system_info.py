@@ -67,4 +67,5 @@ def _cmd_modules(args: argparse.Namespace) -> int:
     _print(_format_table("System Scientific Modules", ["Module", "Key Capabilities"], rows))
     _print(_render("\n[dim]Core remains pure Python with zero runtime dependencies.[/]"))
     _print("Optional backends: pip install 'scientific-computing-system[scientific,io,plot]'")
+    _print("See examples/ for runnable scientific workflows and demonstrations.")
     return 0
