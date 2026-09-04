@@ -10,6 +10,7 @@ import pytest
 from cds.provenance import RunManifest
 from cds.tools import ToolRegistry, ToolSpec
 from cds.workflow import AnalysisPlan, AnalysisRequest, PlanStep, ResearchWorkflow
+from cds.workflow import tooling as workflow_tooling
 from cds.workflow.engine import ExecutionContext
 from cds.workflow.tooling import register_tool_step, select_tool
 
@@ -169,7 +170,7 @@ def test_default_registry_plan_approval_and_manifest_free_execution(
     def fake_default_registry() -> ToolRegistry:
         return registry
 
-    monkeypatch.setattr("cds.workflow.tooling.default_registry", fake_default_registry)
+    monkeypatch.setattr(workflow_tooling, "default_registry", fake_default_registry)
     selection = select_tool("fit")
     assert selection.tool == "alpha"
     assert selection.alternatives == ()
