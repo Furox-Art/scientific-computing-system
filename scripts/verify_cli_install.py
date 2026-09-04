@@ -15,7 +15,6 @@ import tempfile
 from importlib.metadata import version
 from pathlib import Path
 
-
 DIST_NAME = "scientific-computing-system"
 
 
@@ -39,9 +38,7 @@ def _run(
     )
     output = result.stdout + result.stderr
     if result.returncode != 0:
-        raise RuntimeError(
-            f"command failed ({result.returncode}): {' '.join(command)}\n{output}"
-        )
+        raise RuntimeError(f"command failed ({result.returncode}): {' '.join(command)}\n{output}")
     if expected_text is not None and expected_text not in output:
         raise RuntimeError(
             f"command output did not contain {expected_text!r}: {' '.join(command)}\n{output}"
@@ -53,9 +50,7 @@ def verify_cli(expected_version: str | None = None) -> None:
     """Run representative commands against the installed distribution."""
     installed_version = version(DIST_NAME)
     if expected_version is not None and installed_version != expected_version:
-        raise RuntimeError(
-            f"installed version is {installed_version}, expected {expected_version}"
-        )
+        raise RuntimeError(f"installed version is {installed_version}, expected {expected_version}")
 
     with tempfile.TemporaryDirectory(prefix="cds-cli-smoke-") as temp_dir:
         cwd = Path(temp_dir)
