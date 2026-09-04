@@ -62,7 +62,9 @@ class _Optimize:
             return _OptimizeResult([math.inf], objective)
         iterations: object = True if method == "boolnit" else 4
         message = str(options or {})
-        return _OptimizeResult([value / 2.0 for value in x0], objective / 2.0, message=message, iterations=iterations)
+        return _OptimizeResult(
+            [value / 2.0 for value in x0], objective / 2.0, message=message, iterations=iterations
+        )
 
 
 def test_scipy_minimize_normalizes_backend_result(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -78,7 +80,9 @@ def test_scipy_minimize_normalizes_backend_result(monkeypatch: pytest.MonkeyPatc
     )
     assert result == OptimizationResult((1.0, 2.0), 10.0, True, "{'maxiter': 10}", 4)
 
-    bool_nit = scipy_minimize(lambda values: sum(values), [2.0], method="boolnit", registry=registry)
+    bool_nit = scipy_minimize(
+        lambda values: sum(values), [2.0], method="boolnit", registry=registry
+    )
     assert bool_nit.iterations is None
 
 
