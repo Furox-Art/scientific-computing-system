@@ -142,10 +142,15 @@ def check_conservation(
     delta = abs(after - before)
     tolerance = atol + rtol * max(abs(before), abs(after))
     status = CheckStatus.PASS if delta <= tolerance else CheckStatus.FAIL
+    message = (
+        "conservation law satisfied"
+        if status is CheckStatus.PASS
+        else "conservation law violated"
+    )
     return ValidationCheck(
         name=name,
         status=status,
-        message="conservation law satisfied" if status is CheckStatus.PASS else "conservation law violated",
+        message=message,
         details={"before": before, "after": after, "delta": delta, "tolerance": tolerance},
     )
 
@@ -161,10 +166,19 @@ def check_monotonic(
     finite = check_finite(values, name=name)
     if finite.status is CheckStatus.FAIL:
         return finite
+    valid_pair: Callable[[float, float], bool]
     if strict:
-        valid_pair = (lambda left, right: left < right) if increasing else (lambda left, right: left > right)
+        valid_pair = (
+            (lambda left, right: left < right)
+            if increasing
+            else (lambda left, right: left > right)
+        )
     else:
-        valid_pair = (lambda left, right: left <= right) if increasing else (lambda left, right: left >= right)
+        valid_pair = (
+            (lambda left, right: left <= right)
+            if increasing
+            else (lambda left, right: left >= right)
+        )
     violations = [
         index
         for index, (left, right) in enumerate(zip(values, values[1:]))
