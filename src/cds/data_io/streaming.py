@@ -10,7 +10,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
-from typing import IO, Any
+from typing import Any
 
 
 @dataclass(frozen=True)
