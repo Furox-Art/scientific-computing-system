@@ -48,6 +48,12 @@ all = [
     "pandas>=2.0",
     "h5py>=3.10",
     "netCDF4>=1.6",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "statsmodels>=0.14",
+    "scikit-learn>=1.4",
+    "sympy>=1.12",
+    "z3-solver>=4.12.2",
 ]
 dashboard = [
     "streamlit>=1.30.0",
@@ -65,6 +71,16 @@ pandas = [
 io = [
     "h5py>=3.10",
     "netCDF4>=1.6",
+]
+# Reference scientific backends used by `cds.tools` adapters and capability
+# orchestration. None are imported by the core unless explicitly requested.
+scientific = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "statsmodels>=0.14",
+    "scikit-learn>=1.4",
+    "sympy>=1.12",
+    "z3-solver>=4.12.2",
 ]
 # Optional matplotlib plotting helpers (cds.plot). Core stays zero-dependency;
 # opt in with `pip install ".[plot]"` or via `[all]`.
