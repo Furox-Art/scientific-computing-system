@@ -2,9 +2,12 @@
 
 from cds.validation.checks import (
     check_bounds,
+    check_conservation,
     check_duplicate_rows,
     check_finite,
+    check_monotonic,
     check_numerical_stability,
+    check_positive,
     cross_method_agreement,
     final_audit,
 )
@@ -15,9 +18,12 @@ __all__ = [
     "ValidationCheck",
     "ValidationReport",
     "check_bounds",
+    "check_conservation",
     "check_duplicate_rows",
     "check_finite",
+    "check_monotonic",
     "check_numerical_stability",
+    "check_positive",
     "cross_method_agreement",
     "final_audit",
 ]
