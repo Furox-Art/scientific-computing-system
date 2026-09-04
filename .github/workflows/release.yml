@@ -5,7 +5,7 @@ name: Release
 # Normal path: bump the package version in pyproject.toml and
 # src/cds/_version.py, merge to main, and this workflow builds and verifies the
 # wheel, creates the matching vX.Y.Z tag, publishes the exact artifacts to
-# PyPI, and creates the matching GitHub Release.
+# PyPI via Trusted Publishing (OIDC), and creates the matching GitHub Release.
 #
 # A manually pushed v* tag is also supported, but it must exactly match the
 # package metadata. In both paths the installed CLI must pass before publishing.
@@ -23,6 +23,7 @@ on:
 permissions:
   contents: write
   deployments: write
+  id-token: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -183,10 +184,8 @@ jobs:
           name: dist
           path: dist/
 
-      - name: Publish to PyPI (API token)
+      - name: Publish to PyPI (Trusted Publishing)
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Create GitHub Release with artifacts
         env:
