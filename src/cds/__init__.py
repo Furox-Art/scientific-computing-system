@@ -10,6 +10,7 @@ Key features:
 - Signal processing (FFT, 2D FFT, convolution, filtering)
 - Optimization, statistics, probability, linear algebra
 - Hypothesis generation for structured research ideas
+- Workflow orchestration with approval gates and validation
 - CLI for quick calculations and discovery workflows
 
 All modules are designed to be readable, testable, and usable
@@ -50,7 +51,9 @@ from cds import (
     scientific,
     signals,
     stats,
+    validation,
     wavelets,
+    workflow,
 )
 from cds._version import __version__
 from cds.scientific.constants import CONSTANTS, get_constant
@@ -108,5 +111,7 @@ __all__ = [
     "scientific",
     "signals",
     "stats",
+    "validation",
     "wavelets",
+    "workflow",
 ]
