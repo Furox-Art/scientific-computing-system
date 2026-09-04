@@ -1,5 +1,12 @@
-"""Capability discovery for optional scientific computing backends."""
+"""Capability discovery and adapters for optional scientific computing backends."""
 
+from cds.tools.adapters import (
+    OptimizationResult,
+    Satisfiability,
+    scipy_minimize,
+    sympy_verify_identity,
+    z3_satisfiability,
+)
 from cds.tools.registry import (
     ToolRegistry,
     ToolSpec,
@@ -7,4 +14,14 @@ from cds.tools.registry import (
     default_registry,
 )
 
-__all__ = ["ToolRegistry", "ToolSpec", "ToolStatus", "default_registry"]
+__all__ = [
+    "OptimizationResult",
+    "Satisfiability",
+    "ToolRegistry",
+    "ToolSpec",
+    "ToolStatus",
+    "default_registry",
+    "scipy_minimize",
+    "sympy_verify_identity",
+    "z3_satisfiability",
+]

@@ -1,6 +1,7 @@
 """Scientific workflow orchestration and approval-gated execution."""
 
 from cds.workflow.engine import ExecutionContext, ResearchWorkflow
+from cds.workflow.tooling import ToolSelection, register_tool_step, select_tool
 from cds.workflow.types import (
     AnalysisPlan,
     AnalysisRequest,
@@ -25,4 +26,7 @@ __all__ = [
     "ResearchWorkflow",
     "ScientificResult",
     "StepStatus",
+    "ToolSelection",
+    "register_tool_step",
+    "select_tool",
 ]
