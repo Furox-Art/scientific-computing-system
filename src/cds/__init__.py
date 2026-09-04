@@ -12,6 +12,7 @@ Key features:
 - Hypothesis generation for structured research ideas
 - Workflow orchestration with approval gates and validation
 - Uncertainty propagation and reproducibility provenance
+- SI units, dimensional analysis, and scalable local data I/O
 - Optional scientific-tool capability discovery
 - CLI for quick calculations and discovery workflows
 
@@ -33,6 +34,7 @@ from cds import (
     bayes,
     core,
     data_analysis,
+    data_io,
     diffeq,
     fractals,
     genetics,
@@ -56,6 +58,7 @@ from cds import (
     stats,
     tools,
     uncertainty,
+    units,
     validation,
     wavelets,
     workflow,
@@ -96,6 +99,7 @@ __all__ = [
     "bayes",
     "core",
     "data_analysis",
+    "data_io",
     "diffeq",
     "fractals",
     "genetics",
@@ -119,6 +123,7 @@ __all__ = [
     "stats",
     "tools",
     "uncertainty",
+    "units",
     "validation",
     "wavelets",
     "workflow",
