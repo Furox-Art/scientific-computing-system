@@ -67,7 +67,9 @@ class RunManifest:
         """Associate a logical dataset/input name with a SHA-256 digest."""
         if not name.strip():
             raise ValueError("data hash name must not be empty")
-        if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest.lower()):
+        if len(digest) != 64 or any(
+            character not in "0123456789abcdef" for character in digest.lower()
+        ):
             raise ValueError("digest must be a SHA-256 hex digest")
         self.data_hashes[name] = digest.lower()
 
@@ -116,7 +118,11 @@ class RunManifest:
             action = decision.get("action")
             rationale = decision.get("rationale")
             approved = decision.get("approved_by_user")
-            if not isinstance(action, str) or not isinstance(rationale, str) or not isinstance(approved, bool):
+            if (
+                not isinstance(action, str)
+                or not isinstance(rationale, str)
+                or not isinstance(approved, bool)
+            ):
                 raise ValueError("invalid decision record")
             decisions.append(DecisionRecord(action, rationale, approved))
 
@@ -132,7 +138,11 @@ class RunManifest:
         run_id = obj.get("run_id")
         created_utc = obj.get("created_utc")
         seed = obj.get("seed")
-        if not isinstance(question, str) or not isinstance(run_id, str) or not isinstance(created_utc, str):
+        if (
+            not isinstance(question, str)
+            or not isinstance(run_id, str)
+            or not isinstance(created_utc, str)
+        ):
             raise ValueError("manifest identity fields must be strings")
         if seed is not None and (not isinstance(seed, int) or isinstance(seed, bool)):
             raise ValueError("seed must be an integer or null")
