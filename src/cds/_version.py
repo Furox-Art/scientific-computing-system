@@ -1,5 +1,6 @@
 ﻿# Static version source. Kept in lockstep with `version` in `pyproject.toml`.
-# Bump both before tagging a release. See `pyproject.toml` for the release
+# Bump both for a release; merging the version bump to main triggers the
+# verified GitHub + PyPI publish workflow. See `pyproject.toml` for the release
 # checklist. This file is committed (not generated) so mypy has a concrete
 # `__version__: str` to resolve in fresh checkouts without git history.
 from __future__ import annotations
