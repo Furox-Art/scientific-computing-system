@@ -11,9 +11,9 @@ Key features:
 - Optimization, statistics, probability, linear algebra
 - Hypothesis generation for structured research ideas
 - Workflow orchestration with approval gates and validation
-- Uncertainty propagation and reproducibility provenance
+- Uncertainty propagation, sensitivity analysis, and reproducibility provenance
 - SI units, dimensional analysis, and scalable local data I/O
-- Optional scientific-tool capability discovery
+- Optional scientific-tool capability discovery and normalized adapters
 - CLI for quick calculations and discovery workflows
 
 All modules are designed to be readable, testable, and usable
@@ -54,6 +54,7 @@ from cds import (
     provenance,
     quantum,
     scientific,
+    sensitivity,
     signals,
     stats,
     tools,
@@ -119,6 +120,7 @@ __all__ = [
     "provenance",
     "quantum",
     "scientific",
+    "sensitivity",
     "signals",
     "stats",
     "tools",
