@@ -78,15 +78,9 @@ def test_status_available_unavailable_and_missing_distribution(
 
 def test_recommend_filters_and_orders_backends(monkeypatch: pytest.MonkeyPatch) -> None:
     registry = ToolRegistry()
-    registry.register(
-        ToolSpec("b", "b_module", "b-dist", ("fit",), "b")
-    )
-    registry.register(
-        ToolSpec("a", "a_module", "a-dist", ("fit", "other"), "a")
-    )
-    registry.register(
-        ToolSpec("c", "c_module", "c-dist", ("other",), "c")
-    )
+    registry.register(ToolSpec("b", "b_module", "b-dist", ("fit",), "b"))
+    registry.register(ToolSpec("a", "a_module", "a-dist", ("fit", "other"), "a"))
+    registry.register(ToolSpec("c", "c_module", "c-dist", ("other",), "c"))
 
     monkeypatch.setattr(
         "cds.tools.registry.importlib.util.find_spec",
