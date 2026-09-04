@@ -159,3 +159,30 @@ def test_register_tool_step_unknown_version_and_unapproved_policy(
 
     with pytest.raises(KeyError, match="unknown workflow step"):
         register_tool_step(workflow, "missing", "fit", action, registry=registry)
+
+
+def test_default_registry_plan_approval_and_manifest_free_execution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    registry = _tool_registry(monkeypatch, available={"alpha"}, versions={"alpha": "3.0"})
+
+    def fake_default_registry() -> ToolRegistry:
+        return registry
+
+    monkeypatch.setattr("cds.workflow.tooling.default_registry", fake_default_registry)
+    selection = select_tool("fit")
+    assert selection.tool == "alpha"
+    assert selection.alternatives == ()
+
+    workflow = ResearchWorkflow(_plan(plan_approval=True, step_approval=False))
+
+    def action(_context: ExecutionContext, module: ModuleType) -> object:
+        return module.__name__
+
+    register_tool_step(workflow, "fit", "fit", action)
+
+    def approve(_step: PlanStep | None) -> bool:
+        return True
+
+    result = workflow.execute(approve=approve)
+    assert result.details["fit"] == "alpha_module"
