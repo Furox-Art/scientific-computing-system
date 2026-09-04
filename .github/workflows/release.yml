@@ -1,11 +1,14 @@
 name: Release
 
-# Single publish authority for GitHub + PyPI.
+# Single publish authority for PyPI + GitHub release metadata.
 #
 # Normal path: bump the package version in pyproject.toml and
 # src/cds/_version.py, merge to main, and this workflow builds and verifies the
-# wheel, creates the matching vX.Y.Z tag, publishes the exact artifacts to
-# PyPI via Trusted Publishing (OIDC), and creates the matching GitHub Release.
+# wheel/sdist, creates the matching vX.Y.Z tag, publishes the verified files to
+# PyPI via Trusted Publishing (OIDC), and creates an assets-free GitHub Release.
+# Distribution files are never uploaded as GitHub Actions artifacts or GitHub
+# Release assets; they exist only in the ephemeral runner workspace while being
+# verified and published to PyPI.
 #
 # A manually pushed v* tag is also supported, but it must exactly match the
 # package metadata. In both paths the installed CLI must pass before publishing.
@@ -30,12 +33,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build + verify sdist/wheel + installed CLI
+  publish:
+    name: Build + verify + publish to PyPI + GitHub Release
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.release.outputs.version }}
-      tag: ${{ steps.release.outputs.tag }}
+    environment: pypi
+    permissions:
+      contents: write
+      deployments: write
+      id-token: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -91,11 +96,16 @@ jobs:
           import os
           import pathlib
           import sys
+          import tarfile
           import zipfile
 
-          wheels = list(pathlib.Path("dist").glob("*.whl"))
+          dist = pathlib.Path("dist")
+          wheels = list(dist.glob("*.whl"))
+          sdists = list(dist.glob("*.tar.gz"))
           if len(wheels) != 1:
               sys.exit(f"Expected exactly one wheel, found {len(wheels)}")
+          if len(sdists) != 1:
+              sys.exit(f"Expected exactly one sdist, found {len(sdists)}")
 
           with zipfile.ZipFile(wheels[0]) as archive:
               metadata_name = next(name for name in archive.namelist() if name.endswith("METADATA"))
@@ -106,17 +116,22 @@ jobs:
               for line in metadata.splitlines()
               if ": " in line and line.split(": ", 1)[0] in {"Name", "Version"}
           )
-          print(f"Built package metadata: {package}")
-          if package["Name"] != "scientific-computing-system":
-              sys.exit(f"Unexpected package name: {package['Name']!r}")
-
           expected_version = os.environ["EXPECTED_VERSION"]
-          if package["Version"] != expected_version:
+          if package.get("Name") != "scientific-computing-system":
+              sys.exit(f"Unexpected package name: {package.get('Name')!r}")
+          if package.get("Version") != expected_version:
               sys.exit(
                   f"Package version mismatch: expected={expected_version!r}, "
-                  f"built={package['Version']!r}"
+                  f"built={package.get('Version')!r}"
               )
-          print(f"Package version verified: {expected_version}")
+
+          expected_prefix = f"scientific_computing_system-{expected_version}/"
+          with tarfile.open(sdists[0], "r:gz") as archive:
+              names = archive.getnames()
+          if not names or not all(name == expected_prefix.rstrip("/") or name.startswith(expected_prefix) for name in names):
+              sys.exit("sdist root directory does not match the release version")
+
+          print(f"Package metadata verified: scientific-computing-system {expected_version}")
           PY
 
       - name: Install built wheel
@@ -132,30 +147,10 @@ jobs:
           EXPECTED_VERSION: ${{ steps.release.outputs.version }}
         run: python scripts/verify_cli_install.py --expected-version "$EXPECTED_VERSION"
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: dist
-          path: dist/
-
-  publish:
-    name: Publish to PyPI + GitHub Release
-    needs: build
-    runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      contents: write
-      deployments: write
-      id-token: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
       - name: Create release tag for a main-branch version bump
         if: github.ref_type == 'branch'
         env:
-          RELEASE_TAG: ${{ needs.build.outputs.tag }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -163,11 +158,11 @@ jobs:
           git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
           git push origin "$RELEASE_TAG"
 
-      - name: Create pypi deployment record
+      - name: Create PyPI deployment record
         id: deployment
         uses: actions/github-script@v8
         env:
-          RELEASE_TAG: ${{ needs.build.outputs.tag }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         with:
           script: |
             const deployment = await github.rest.repos.createDeployment({
@@ -183,29 +178,23 @@ jobs:
             core.info(`Created deployment #${deployment.data.id} for ${process.env.RELEASE_TAG}`);
             core.setOutput("id", deployment.data.id);
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: dist
-          path: dist/
-
       - name: Publish to PyPI (Trusted Publishing)
         uses: pypa/gh-action-pypi-publish@release/v1
 
-      - name: Create GitHub Release with artifacts
+      - name: Create GitHub Release without distribution assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ needs.build.outputs.tag }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
+          set -euo pipefail
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG exists; uploading artifacts."
-            gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" dist/* --clobber
+            echo "Release $RELEASE_TAG already exists; leaving it asset-free."
           else
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-              --generate-notes --title "$RELEASE_TAG" dist/*
+              --generate-notes --title "$RELEASE_TAG"
           fi
 
-      - name: Set pypi deployment status
+      - name: Set PyPI deployment status
         if: always() && steps.deployment.outputs.id != ''
         uses: actions/github-script@v8
         with:
