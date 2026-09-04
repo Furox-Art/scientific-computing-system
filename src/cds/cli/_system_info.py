@@ -68,7 +68,8 @@ def _cmd_modules(args: argparse.Namespace) -> int:
     _print(_render("\n[dim]Core remains pure Python with zero runtime dependencies.[/]"))
     _print(
         _render(
-            "[dim]Optional backends: pip install scientific-computing-system[scientific,io,plot][/ ]"
-        ).replace("[/ ]", "[/]")
+            "[dim]Optional backends: "
+            "pip install scientific-computing-system[scientific,io,plot][/]"
+        )
     )
     return 0
