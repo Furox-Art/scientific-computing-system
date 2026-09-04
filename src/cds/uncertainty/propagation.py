@@ -87,7 +87,9 @@ def _covariance_matrix(
         if matrix[row][row] < 0:
             raise ValueError("covariance diagonal entries must be non-negative")
         for column in range(row + 1, size):
-            if not math.isclose(matrix[row][column], matrix[column][row], rel_tol=1e-12, abs_tol=1e-15):
+            if not math.isclose(
+                matrix[row][column], matrix[column][row], rel_tol=1e-12, abs_tol=1e-15
+            ):
                 raise ValueError("covariance must be symmetric")
     return matrix
 
