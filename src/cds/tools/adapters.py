@@ -7,7 +7,7 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from types import ModuleType
-from typing import Protocol, cast
+from typing import Protocol, SupportsFloat, cast
 
 from cds.tools.registry import ToolRegistry, default_registry
 
@@ -87,7 +87,7 @@ def scipy_minimize(
 
     raw = optimize.minimize(wrapped, x0, method=method, options=options)
     raw_parameters: object = getattr(raw, "x")
-    parameters = tuple(float(value) for value in cast(Iterable[object], raw_parameters))
+    parameters = tuple(float(value) for value in cast(Iterable[SupportsFloat], raw_parameters))
     objective_value = float(getattr(raw, "fun"))
     if any(not math.isfinite(value) for value in parameters) or not math.isfinite(objective_value):
         raise ValueError("SciPy returned non-finite optimization output")
