@@ -2,7 +2,7 @@
 # Distribution name. Formerly published as "cognitive-discovery-system";
 # the import name stays `cds`. Keep the old PyPI project alive as an alias.
 name = "scientific-computing-system"
-version = "1.7.1"
+version = "1.7.2"
 description = "A 21-module pure-Python computational science platform — quantum circuits, ML, NLP, signal processing, optimization, statistics & time-series, probability CDFs/sampling, ODE & PDE solvers, Monte Carlo, symbolic math, knowledge graphs, hypothesis generation and mining, interpolation, plus optional matplotlib plotting (scientific-computing-system[plot]). Zero runtime dependencies."
 readme = "README.md"
 license = "MIT"
@@ -171,9 +171,11 @@ only-include = [
 #
 # Release checklist:
 #   1. Bump `version` above AND `__version__` in `src/cds/_version.py`
-#   2. Commit, push, wait for CI + Installed CLI Smoke to be green
-#   3. Push `vX.Y.Z`; `.github/workflows/release.yml` builds and verifies the wheel
-#   4. Only after installed-CLI verification passes, publish to PyPI + GitHub Release
+#   2. Commit, push, and wait for CI + Installed CLI Smoke to be green
+#   3. Merge the verified version bump to `main`; release.yml builds the wheel
+#      and creates the matching `vX.Y.Z` tag automatically
+#   4. Trusted Publishing uploads that exact build to PyPI, then GitHub Release
+#      is created only after the PyPI publish succeeds
 
 [tool.ruff]
 line-length = 100
