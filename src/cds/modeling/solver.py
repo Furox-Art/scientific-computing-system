@@ -123,10 +123,11 @@ def fit_parameters(
         observed: a sequence of ``(env, value)`` pairs; each ``env`` provides
             the free-variable values for one observation and ``value`` the
             measured outcome to fit.
-        parameter_names: parameter names to fit (order matches ``x0`` and the
-            returned :attr:`FitResult.parameters`).
+        parameter_names: unique parameter names to fit (order matches ``x0``
+            and the returned :attr:`FitResult.parameters`).
         x0: starting guesses, positionally aligned with ``parameter_names``.
-            Defaults to all-zeros.
+            Defaults to all-zeros. When provided, its length must exactly
+            match ``parameter_names``.
         target_label: which equation's output to fit. If ``None``, the first
             equation in ``model.equations`` is used.
         lr: gradient-descent learning rate.
@@ -137,17 +138,31 @@ def fit_parameters(
         a :class:`FitResult` with the fitted parameters.
 
     Raises:
-        ValueError: if ``parameter_names`` is empty, if ``target_label`` is
-            unknown, or if there are no observations.
+        ValueError: if ``parameter_names`` is empty or contains duplicates,
+            if the model has no equations, if there are no observations, if
+            ``x0`` has the wrong length, or if ``target_label`` is unknown.
     """
     names = list(parameter_names)
     if not names:
         raise ValueError("parameter_names must list at least one parameter to fit")
+    if len(set(names)) != len(names):
+        raise ValueError("parameter_names must contain unique names")
+    if not model.equations:
+        raise ValueError("model must contain at least one equation to fit")
+
     observations = list(observed)
     if not observations:
         raise ValueError("observed must contain at least one (env, value) pair")
 
-    # Resolve the target equation once.
+    start = list(x0) if x0 is not None else [0.0] * len(names)
+    if len(start) != len(names):
+        raise ValueError(
+            "x0 length must exactly match parameter_names "
+            f"({len(start)} != {len(names)})"
+        )
+
+    # Resolve the target equation once, after validating that the model has at
+    # least one equation so the default-target path cannot leak an IndexError.
     if target_label is None:
         target_label = model.equations[0][0]
     target_expr = model.equation(target_label)
@@ -164,7 +179,6 @@ def fit_parameters(
             total += residual * residual
         return total
 
-    start = list(x0) if x0 is not None else [0.0] * len(names)
     opt = gradient_descent(objective, x0=start, lr=lr, tol=tol, max_iter=max_iter)
     # gradient_descent's list-input overload returns OptResult[list[float]], so
     # opt.x is statically a list[float] — no runtime narrowing needed.
