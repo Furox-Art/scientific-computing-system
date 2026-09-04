@@ -15,6 +15,7 @@ from cds.modeling.expression import (
     Sub,
     Variable,
 )
+from cds.modeling.fitting import AdvancedFitResult, FitDiagnostics, fit_parameters_advanced
 from cds.modeling.model import MathModel
 from cds.modeling.solver import FitResult, SolveResult, fit_parameters, solve_equation
 
@@ -35,6 +36,9 @@ __all__ = [
     "MathModel",
     "SolveResult",
     "FitResult",
+    "FitDiagnostics",
+    "AdvancedFitResult",
     "solve_equation",
     "fit_parameters",
+    "fit_parameters_advanced",
 ]
