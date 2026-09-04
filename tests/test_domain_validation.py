@@ -51,8 +51,7 @@ def test_check_monotonic_all_directions_and_strictness() -> None:
     assert check_monotonic([1.0, 1.0, 2.0], strict=True).status is CheckStatus.FAIL
     assert check_monotonic([3.0, 2.0, 2.0], increasing=False).status is CheckStatus.PASS
     assert (
-        check_monotonic([3.0, 2.0, 2.0], increasing=False, strict=True).status
-        is CheckStatus.FAIL
+        check_monotonic([3.0, 2.0, 2.0], increasing=False, strict=True).status is CheckStatus.FAIL
     )
     assert check_monotonic([1.0, 3.0, 2.0]).details["violations"] == [1]
 
