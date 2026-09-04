@@ -124,7 +124,13 @@ def test_failure_stops_workflow_and_records_error() -> None:
 def test_custom_context_is_reused_without_plan_approval() -> None:
     workflow = ResearchWorkflow(_plan(require_approval=False))
     context = ExecutionContext(values={"seed": 7})
-    workflow.register("load", lambda ctx: int(ctx.values["seed"]) + 1)
+
+    def use_seed(ctx: ExecutionContext) -> int:
+        seed = ctx.values["seed"]
+        assert isinstance(seed, int)
+        return seed + 1
+
+    workflow.register("load", use_seed)
     result = workflow.execute(context=context)
     assert result.details["seed"] == 7
     assert result.details["load"] == 8
