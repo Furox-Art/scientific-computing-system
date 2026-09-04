@@ -1,24 +1,24 @@
 name: Release
 
-# Fully automated publish: pushing a `v*` tag builds the sdist + wheel,
-# verifies package metadata and the installed CLI, uploads the artifacts to
-# PyPI using a scoped API token (PYPI_API_TOKEN repo secret), and creates a
-# GitHub Release with the same artifacts attached. The Attest Release Artifacts
-# workflow then fires on `release: published` and signs them.
+# Single publish authority for GitHub + PyPI.
 #
-# Setup (one-time): create a PyPI API token scoped to
-# `scientific-computing-system` (Account → API tokens), then add it as a
-# repository secret named `PYPI_API_TOKEN`:
-#   gh secret set PYPI_API_TOKEN < ~/.pypi-token
+# Normal path: bump the package version in pyproject.toml and
+# src/cds/_version.py, merge to main, and this workflow builds and verifies the
+# wheel, creates the matching vX.Y.Z tag, publishes the exact artifacts to
+# PyPI, and creates the matching GitHub Release.
 #
-# This is the sole publish authority: `scripts/publish.py` no longer uploads to
-# PyPI or creates the GitHub release — it only builds, tests, pushes the tag
-# (which triggers this workflow), and deploys docs.
+# A manually pushed v* tag is also supported, but it must exactly match the
+# package metadata. In both paths the installed CLI must pass before publishing.
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
+    paths:
+      - "pyproject.toml"
+      - "src/cds/_version.py"
 
 permissions:
   contents: write
@@ -32,6 +32,9 @@ jobs:
   build:
     name: Build + verify sdist/wheel + installed CLI
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -42,6 +45,35 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Resolve release version
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(python - <<'PY'
+          import tomllib
+          from pathlib import Path
+
+          project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]
+          print(project["version"])
+          PY
+          )"
+          tag="v${version}"
+
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$GITHUB_REF_NAME" != "$tag" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package version $version."
+            exit 1
+          fi
+
+          if [ "$GITHUB_REF_TYPE" = "branch" ] && git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "::error::Version $version is already tagged as $tag. Bump the package version before publishing again."
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Release candidate: $tag"
+
       - name: Install build backend
         run: |
           python -m pip install --upgrade pip
@@ -50,7 +82,9 @@ jobs:
       - name: Build sdist + wheel
         run: python -m build
 
-      - name: Verify package name and tag/version agreement
+      - name: Verify package name and release version
+        env:
+          EXPECTED_VERSION: ${{ steps.release.outputs.version }}
         run: |
           python - <<'PY'
           import os
@@ -75,13 +109,13 @@ jobs:
           if package["Name"] != "scientific-computing-system":
               sys.exit(f"Unexpected package name: {package['Name']!r}")
 
-          tag = os.environ["GITHUB_REF_NAME"]
-          expected_version = tag.removeprefix("v")
+          expected_version = os.environ["EXPECTED_VERSION"]
           if package["Version"] != expected_version:
               sys.exit(
-                  f"Tag/package version mismatch: tag={tag!r}, package={package['Version']!r}"
+                  f"Package version mismatch: expected={expected_version!r}, "
+                  f"built={package['Version']!r}"
               )
-          print(f"Tag and package version agree: {expected_version}")
+          print(f"Package version verified: {expected_version}")
           PY
 
       - name: Install built wheel
@@ -93,8 +127,9 @@ jobs:
           python -m pip install --force-reinstall --no-deps "$wheel"
 
       - name: Smoke-test installed CLI before publish
-        run: python scripts/verify_cli_install.py --expected-version "${GITHUB_REF_NAME#v}"
-        shell: bash
+        env:
+          EXPECTED_VERSION: ${{ steps.release.outputs.version }}
+        run: python scripts/verify_cli_install.py --expected-version "$EXPECTED_VERSION"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
@@ -107,22 +142,39 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Create release tag for a main-branch version bump
+        if: github.ref_type == 'branch'
+        env:
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+
       - name: Create pypi deployment record
         id: deployment
         uses: actions/github-script@v8
+        env:
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
         with:
           script: |
             const deployment = await github.rest.repos.createDeployment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: context.ref,
+              ref: process.env.RELEASE_TAG,
               environment: "pypi",
               transient_environment: false,
               production_environment: false,
               auto_merge: false,
               required_contexts: []
             });
-            core.info(`Created deployment #${deployment.data.id} for ${context.ref}`);
+            core.info(`Created deployment #${deployment.data.id} for ${process.env.RELEASE_TAG}`);
             core.setOutput("id", deployment.data.id);
 
       - name: Download build artifacts
@@ -139,14 +191,14 @@ jobs:
       - name: Create GitHub Release with artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
         run: |
-          tag="${GITHUB_REF_NAME}"
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release $tag exists; uploading artifacts."
-            gh release upload "$tag" --repo "$GITHUB_REPOSITORY" dist/* --clobber
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG exists; uploading artifacts."
+            gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" dist/* --clobber
           else
-            gh release create "$tag" --repo "$GITHUB_REPOSITORY" \
-              --generate-notes --title "$tag" dist/*
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+              --generate-notes --title "$RELEASE_TAG" dist/*
           fi
 
       - name: Set pypi deployment status
