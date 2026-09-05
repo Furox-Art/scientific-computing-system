@@ -226,7 +226,7 @@ def check_group_leakage(
 ) -> ValidationCheck:
     """Detect entity/group identifiers crossing train/test boundaries."""
     train = set(train_groups)
-    overlap = tuple(sorted((repr(group) for group in train.intersection(test_groups))))
+    overlap = tuple(sorted(repr(group) for group in train.intersection(test_groups)))
     if overlap:
         return ValidationCheck(
             name=name,
@@ -344,9 +344,7 @@ def check_distribution_drift(
         variance_ratio = math.inf
     else:
         variance_ratio = max(ref_var, cur_var) / min(ref_var, cur_var)
-    drifted = (
-        mean_shift > max_standardized_mean_shift or variance_ratio > max_variance_ratio
-    )
+    drifted = mean_shift > max_standardized_mean_shift or variance_ratio > max_variance_ratio
     return ValidationCheck(
         name=name,
         status=CheckStatus.WARNING if drifted else CheckStatus.PASS,
@@ -414,9 +412,7 @@ def check_residual_diagnostics(
         variance_ratio = max(first_var, second_var) / min(first_var, second_var)
 
     suspicious = (
-        bias_z > max_bias_z
-        or abs(lag1) > max_abs_lag1
-        or variance_ratio > max_variance_ratio
+        bias_z > max_bias_z or abs(lag1) > max_abs_lag1 or variance_ratio > max_variance_ratio
     )
     return ValidationCheck(
         name=name,
