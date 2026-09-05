@@ -2,13 +2,14 @@ name: Release
 
 # Single publish authority for PyPI + GitHub release metadata.
 #
-# Normal path: bump the package version in pyproject.toml and
+# Normal path: bump the package version in BOTH pyproject.toml and
 # src/cds/_version.py, merge to main, and this workflow builds and verifies the
-# wheel/sdist, creates the matching vX.Y.Z tag, publishes the verified files to
-# PyPI via Trusted Publishing (OIDC), and creates an assets-free GitHub Release.
-# Distribution files are never uploaded as GitHub Actions artifacts or GitHub
-# Release assets; they exist only in the ephemeral runner workspace while being
-# verified and published to PyPI.
+# wheel/sdist, publishes the verified files to PyPI via Trusted Publishing
+# (OIDC), then creates the matching vX.Y.Z tag and an assets-free GitHub Release.
+# The _version.py change is the branch-release trigger; ordinary pyproject.toml
+# packaging edits do not publish a release. Distribution files are never
+# uploaded as GitHub Actions artifacts or GitHub Release assets; they exist only
+# in the ephemeral runner workspace while being verified and published to PyPI.
 #
 # A manually pushed v* tag is also supported, but it must exactly match the
 # package metadata. In both paths the installed CLI must pass before publishing.
@@ -20,7 +21,6 @@ on:
     tags:
       - "v*"
     paths:
-      - "pyproject.toml"
       - "src/cds/_version.py"
 
 permissions:
@@ -147,17 +147,6 @@ jobs:
           EXPECTED_VERSION: ${{ steps.release.outputs.version }}
         run: python scripts/verify_cli_install.py --expected-version "$EXPECTED_VERSION"
 
-      - name: Create release tag for a main-branch version bump
-        if: github.ref_type == 'branch'
-        env:
-          RELEASE_TAG: ${{ steps.release.outputs.tag }}
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
-          git push origin "$RELEASE_TAG"
-
       - name: Create PyPI deployment record
         id: deployment
         uses: actions/github-script@v8
@@ -168,7 +157,7 @@ jobs:
             const deployment = await github.rest.repos.createDeployment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: process.env.RELEASE_TAG,
+              ref: context.sha,
               environment: "pypi",
               transient_environment: false,
               production_environment: false,
@@ -180,6 +169,17 @@ jobs:
 
       - name: Publish to PyPI (Trusted Publishing)
         uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Create release tag after successful PyPI publish
+        if: github.ref_type == 'branch'
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
 
       - name: Create GitHub Release without distribution assets
         env:

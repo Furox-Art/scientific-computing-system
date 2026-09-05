@@ -78,35 +78,6 @@ def _cmd_prompt(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_info(args: argparse.Namespace) -> int:
-    """Show System info, module status, and System health."""
-    from cds import __version__
-
-    _print(_render("[bold]System (CDS)[/]"))
-    _print(_render("[dim]Pure Python scientific computing system[/]"))
-    _print("")
-    _print(_render("[bold green]Status:[/] Stable"))
-    _print(_render("[bold blue]Tests:[/] full suite green in CI (see badge)"))
-    _print(_render("[bold magenta]Deps:[/] 0 External (Pure Python core)"))
-    _print(_render(f"[bold cyan]Version:[/] {__version__}"))
-    _print("")
-    _print(_render("[bold]Architecture:[/]"))
-    _print(_render("[bold]Core Modules:[/]"))
-    for line in (
-        "quantum       signals",
-        "math_utils    stats",
-        "optimization  montecarlo",
-        "hypothesis    diffeq",
-        "graph         data_analysis",
-        "ml            probability",
-        "scientific    numerical_integration",
-        "modeling      knowledge",
-        "nlp           plot (optional matplotlib)",
-    ):
-        _print(f"  • {line}")
-    return 0
-
-
 def _cmd_stats(args: argparse.Namespace) -> int:
     """Descriptive statistics for a comma-separated number list."""
     from cds.stats import mean, median, percentile, stdev, variance
@@ -349,57 +320,4 @@ def _cmd_calc(args: argparse.Namespace) -> int:
     except Exception as e:  # noqa: BLE001 — CLI surface, keep the message readable
         _print(_render(f"[red]Error:[/] {str(e)}"))
         return 1
-    return 0
-
-
-def _cmd_modules(args: argparse.Namespace) -> int:
-    """List all scientific modules available in the System."""
-    module_info = [
-        ("cds.quantum", "Single & multi-qubit circuits, Bell/GHZ states, entanglement"),
-        ("cds.signals", "DFT, radix-2 FFT, 2D FFT, convolution, filtering"),
-        ("cds.math_utils", "LU/QR/Cholesky, power iteration, Gram-Schmidt, calculus"),
-        (
-            "cds.optimization",
-            "Gradient descent, Newton, Adam, golden section, Nelder-Mead, simulated annealing",
-        ),
-        (
-            "cds.stats",
-            "Descriptive stats, regression, t-tests, ANOVA, time-series, Mann-Whitney U, Wilcoxon",
-        ),
-        (
-            "cds.probability",
-            "Gaussian/binomial/Poisson plus chi-square/t quantiles, gamma/beta samplers",
-        ),
-        ("cds.montecarlo", "π estimation, integration, random walks"),
-        (
-            "cds.diffeq",
-            "Euler, RK4, RK45 + implicit stiff solvers (backward Euler, Crank-Nicolson)",
-        ),
-        ("cds.graph", "BFS/DFS, Dijkstra, Kruskal MST, topological sort"),
-        (
-            "cds.modeling",
-            "Symbolic math: expressions, MathModel, equation solving, parameter fitting",
-        ),
-        ("cds.knowledge", "Knowledge graph, concept mapping, research notes, structured retrieval"),
-        ("cds.ml", "MLP, k-NN, k-means, decision tree, logistic/linear regression, PCA, scaler"),
-        ("cds.scientific", "Physical constants + common formulas"),
-        ("cds.data_analysis", "CSV loading, normalization, z-score, moving average"),
-        ("cds.nlp", "Educational NLP: BPE tokenizer, embeddings, attention, autograd, MiniGPT"),
-        (
-            "cds.hypothesis",
-            "Structured hypothesis generation with prompt templates for custom research workflows",
-        ),
-        (
-            "cds.plot",
-            "Optional matplotlib charts (series, spectrum, ACF/PACF, optimizer paths) — pip install cds[plot]",
-        ),
-        (
-            "cds.numerical_integration",
-            "Trapezoid, Simpson, Romberg, Gauss-Legendre, adaptive + 2-D quadrature",
-        ),
-    ]
-    rows = [[name, desc] for name, desc in module_info]
-    _print(_format_table("System Scientific Modules", ["Module", "Key Capabilities"], rows))
-    _print(_render("\n[dim]All modules are pure Python with no heavy dependencies.[/]"))
-    _print(_render("[dim]See examples/ for runnable demos of each module.[/]\n"))
     return 0

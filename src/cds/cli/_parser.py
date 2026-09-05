@@ -10,15 +10,14 @@ from cds.cli._handlers import (
     _cmd_constants,
     _cmd_dashboard,
     _cmd_hypothesis,
-    _cmd_info,
     _cmd_integrate,
-    _cmd_modules,
     _cmd_plot,
     _cmd_prompt,
     _cmd_sample,
     _cmd_stats,
     _cmd_version,
 )
+from cds.cli._system_info import _cmd_info, _cmd_modules
 
 _DOMAIN_CHOICES = ["physics", "cosmology", "mathematics", "biology", "chemistry", "general_science"]
 
