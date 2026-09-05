@@ -40,7 +40,9 @@ def test_release_order_is_publish_then_tag_then_metadata_release_then_integrity(
     release = _text(RELEASE_WORKFLOW)
     publish = release.index("Publish to PyPI (Trusted Publishing)")
     tag = release.index("Create or verify release tag after successful PyPI state")
-    github_release = release.index("Create metadata-only GitHub Release and remove distribution assets")
+    github_release = release.index(
+        "Create metadata-only GitHub Release and remove distribution assets"
+    )
     integrity = release.index("Verify PyPI publication and metadata-only GitHub Release policy")
     assert publish < tag < github_release < integrity
 
