@@ -3,38 +3,92 @@ name: Release
 # Single publish authority for PyPI + GitHub release metadata.
 #
 # Normal path: bump the package version in BOTH pyproject.toml and
-# src/cds/_version.py, merge to main, and this workflow builds and verifies the
-# wheel/sdist, attests those exact runner-local files, publishes them to PyPI
-# via Trusted Publishing (OIDC), then creates the matching vX.Y.Z tag and a
-# metadata-only GitHub Release. Distribution files remain on PyPI only; GitHub
-# Release assets must never contain .whl or .tar.gz files.
+# src/cds/_version.py, merge to main, and let the full CI workflow complete.
+# This workflow starts only from a successful CI *push* run on main, verifies
+# that the exact CI-tested commit changed src/cds/_version.py, then builds and
+# verifies the wheel/sdist, attests those exact runner-local files, publishes
+# them to PyPI via Trusted Publishing (OIDC), and finally creates the matching
+# vX.Y.Z tag plus a metadata-only GitHub Release.
+#
+# This CI hand-off is deliberate defense in depth: even if branch protection is
+# accidentally disabled, a direct version bump cannot publish before the same
+# commit has passed CI. Branch/ruleset protection is still required as the
+# primary repository-control boundary because a writer could otherwise modify
+# the CI/release workflows themselves.
 #
 # The workflow is intentionally idempotent after a partial release failure. If
 # the exact version already exists on PyPI, its filenames, sizes, and SHA-256
 # digests must match the locally verified build; only then is the upload skipped
 # and the workflow allowed to recover the GitHub tag/release. An existing tag is
-# accepted only when it resolves to the current release commit.
+# accepted only when it resolves to the exact CI-tested release commit.
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "src/cds/_version.py"
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
 
 permissions:
-  contents: write
-  deployments: write
-  id-token: write
-  attestations: write
+  contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: false
 
 jobs:
+  gate:
+    name: Verify successful main CI release candidate
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      release_sha: ${{ steps.candidate.outputs.release_sha }}
+      should_release: ${{ steps.candidate.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 2
+
+      - name: Bind release to the exact CI-tested commit
+        id: candidate
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          checked_out="$(git rev-parse HEAD)"
+          if [ "$checked_out" != "$RELEASE_SHA" ]; then
+            echo "::error::Checkout SHA $checked_out does not match CI head SHA $RELEASE_SHA."
+            exit 1
+          fi
+
+          echo "release_sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
+
+          if git rev-parse -q --verify "${RELEASE_SHA}^1" >/dev/null; then
+            if git diff --quiet "${RELEASE_SHA}^1" "$RELEASE_SHA" -- src/cds/_version.py; then
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              echo "CI-tested commit did not change src/cds/_version.py; no release required."
+            else
+              echo "should_release=true" >> "$GITHUB_OUTPUT"
+              echo "CI-tested commit changed src/cds/_version.py; release authorized."
+            fi
+          elif git ls-tree -r --name-only "$RELEASE_SHA" | grep -Fxq "src/cds/_version.py"; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "Root commit contains src/cds/_version.py; release authorized."
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "Root commit has no src/cds/_version.py; no release required."
+          fi
+
   publish:
     name: Build + verify + publish to PyPI + metadata-only GitHub Release
+    needs: gate
+    if: needs.gate.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -42,10 +96,23 @@ jobs:
       deployments: write
       id-token: write
       attestations: write
+    env:
+      RELEASE_SHA: ${{ needs.gate.outputs.release_sha }}
     steps:
       - uses: actions/checkout@v5
         with:
+          ref: ${{ env.RELEASE_SHA }}
           fetch-depth: 0
+
+      - name: Re-verify checkout identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          checked_out="$(git rev-parse HEAD)"
+          if [ "$checked_out" != "$RELEASE_SHA" ]; then
+            echo "::error::Publish checkout $checked_out does not match authorized SHA $RELEASE_SHA."
+            exit 1
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -68,7 +135,7 @@ jobs:
           tag="v${version}"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "Release candidate: $tag"
+          echo "Release candidate: $tag from $RELEASE_SHA"
 
       - name: Install build backend
         run: |
@@ -220,14 +287,14 @@ jobs:
             const deployment = await github.rest.repos.createDeployment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: context.sha,
+              ref: process.env.RELEASE_SHA,
               environment: "pypi",
               transient_environment: false,
               production_environment: false,
               auto_merge: false,
               required_contexts: []
             });
-            core.info(`Created deployment #${deployment.data.id} for ${process.env.RELEASE_TAG}`);
+            core.info(`Created deployment #${deployment.data.id} for ${process.env.RELEASE_TAG} at ${process.env.RELEASE_SHA}`);
             core.setOutput("id", deployment.data.id);
 
       - name: Publish to PyPI (Trusted Publishing)
@@ -241,15 +308,15 @@ jobs:
           set -euo pipefail
           if git rev-parse -q --verify "refs/tags/$RELEASE_TAG" >/dev/null; then
             tag_target="$(git rev-list -n 1 "$RELEASE_TAG")"
-            if [ "$tag_target" != "$GITHUB_SHA" ]; then
-              echo "::error::Existing $RELEASE_TAG points to $tag_target, expected $GITHUB_SHA. Refusing to rewrite a release tag."
+            if [ "$tag_target" != "$RELEASE_SHA" ]; then
+              echo "::error::Existing $RELEASE_TAG points to $tag_target, expected $RELEASE_SHA. Refusing to rewrite a release tag."
               exit 1
             fi
-            echo "Existing $RELEASE_TAG already resolves to the current release commit; recovery is safe."
+            echo "Existing $RELEASE_TAG already resolves to the authorized release commit; recovery is safe."
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
+            git tag -a "$RELEASE_TAG" "$RELEASE_SHA" -m "Release $RELEASE_TAG"
             git push origin "$RELEASE_TAG"
           fi
 
