@@ -123,7 +123,9 @@ jobs:
         pip check
 
     - name: Audit resolved scientific and I/O environment
-      run: pip-audit --local --strict
+      run: |
+        python -m pip freeze --exclude scientific-computing-system > /tmp/scientific-io-resolved.txt
+        pip-audit -r /tmp/scientific-io-resolved.txt --strict
 
     - name: Exercise real HDF5 and NetCDF pipelines
       run: pytest tests/test_data_io_optional_backends.py -v
