@@ -1,10 +1,10 @@
 """Empirical evaluation of structured scientific hypotheses.
 
 Dispatch is explicit and fail-closed. Paired observations use a true paired
-analysis rather than an independent two-sample test. ``EvaluationResult`` also
-separates statistical evidence interpretation from the legacy hypothesis
-lifecycle status, avoiding the claim that one p-value proves or disproves a
-scientific hypothesis.
+analysis rather than an independent two-sample test. ``EvaluationResult``
+reports statistical evidence without mutating the hypothesis lifecycle: one
+p-value is evidence about a tested prediction, not proof or refutation of the
+full scientific hypothesis.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import math
 from dataclasses import dataclass
 from typing import TypedDict
 
-from cds.core.models import Hypothesis, HypothesisStatus
+from cds.core.models import Hypothesis
 from cds.stats.descriptive import mean as _mean
 from cds.stats.descriptive import stdev as _stdev
 from cds.stats.hypothesis_tests import (
@@ -95,6 +95,15 @@ class HypothesisEvaluator:
         method_name: str | None = None,
     ) -> EvaluationResult:
         effective_alpha = self.alpha if alpha is None else alpha
+        if not math.isfinite(effective_alpha) or not 0.0 < effective_alpha < 1.0:
+            raise ValueError("effective alpha must be finite and in the open interval (0, 1)")
+        if math.isnan(statistic):
+            raise ValueError("test statistic must not be NaN")
+        if not math.isfinite(p_value) or not 0.0 <= p_value <= 1.0:
+            raise ValueError("p-value must be finite and in the closed interval [0, 1]")
+        if effect_size is not None and math.isnan(effect_size):
+            raise ValueError("effect size must not be NaN")
+
         is_significant = p_value < effective_alpha
         effect_clause = ""
         if effect_size is not None and effect_size_label is not None:
@@ -107,7 +116,6 @@ class HypothesisEvaluator:
                 f"({method_name or test_name}). A single test does not validate the full scientific "
                 f"hypothesis.{effect_clause}"
             )
-            hypothesis.status = HypothesisStatus.VALIDATED
         else:
             interpretation = "inconclusive"
             conclusion = (
@@ -115,7 +123,6 @@ class HypothesisEvaluator:
                 f"({method_name or test_name}). Non-significance does not demonstrate that the "
                 f"scientific hypothesis is false.{effect_clause}"
             )
-            hypothesis.status = HypothesisStatus.REJECTED
 
         return EvaluationResult(
             hypothesis_id=hypothesis.id,
@@ -197,12 +204,11 @@ class HypothesisEvaluator:
         effect = paired_cohens_d(first, second)
         return self._build_result(
             hypothesis,
-            "Two-sample t-test",
+            "Paired t-test",
             result.statistic,
             result.p_value,
             effect,
-            "Cohen's d",
-            method_name="Paired t-test",
+            "Cohen's dz",
         )
 
     def goodness_of_fit(
