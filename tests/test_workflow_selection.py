@@ -215,9 +215,21 @@ def test_condition_returns_unknown_for_missing_or_incomparable_fact() -> None:
 
 
 def test_context_fact_and_deterministic_mapping_conversion() -> None:
-    context = MethodSelectionContext.from_facts({"z": 1, "a": 2})
+    context = MethodSelectionContext.from_facts(
+        {"z": 1, "a": 2},
+        required_capabilities=("fit",),
+        preferred_capabilities=("interpretable",),
+        available_tools=("python",),
+        prohibited_traits=("remote",),
+        preferred_traits=("local",),
+    )
     assert context.facts == (("a", 2), ("z", 1))
     assert context.fact("a") == 2
+    assert context.required_capabilities == ("fit",)
+    assert context.preferred_capabilities == ("interpretable",)
+    assert context.available_tools == ("python",)
+    assert context.prohibited_traits == ("remote",)
+    assert context.preferred_traits == ("local",)
     assert context.fact("missing") is not None
 
 
@@ -229,39 +241,32 @@ def test_ranking_ties_are_deterministic_by_name() -> None:
     assert [item.candidate.name for item in selection.ranked] == ["alpha", "zeta"]
 
 
-@pytest.mark.parametrize(
-    "candidate",
-    [
-        MethodCandidate(name="", rationale="rationale"),
-        pytest.param(None, id="placeholder"),
-    ],
-)
-def test_candidate_validation_placeholder(candidate: MethodCandidate | None) -> None:
-    if candidate is not None:
-        return
+def test_candidate_rejects_empty_name_and_rationale() -> None:
+    with pytest.raises(ValueError, match="method name"):
+        MethodCandidate(name="", rationale="rationale")
     with pytest.raises(ValueError, match="method rationale"):
         MethodCandidate(name="method", rationale="")
 
 
-@pytest.mark.parametrize(
-    ("field", "values", "message"),
-    [
-        ("capabilities", ("",), "capabilities"),
-        ("capabilities", ("a", "a"), "capabilities"),
-        ("traits", ("",), "traits"),
-        ("traits", ("a", "a"), "traits"),
-        ("required_tools", ("",), "required tools"),
-        ("required_tools", ("a", "a"), "required tools"),
-    ],
-)
-def test_candidate_rejects_invalid_metadata(
-    field: str,
-    values: tuple[str, ...],
-    message: str,
-) -> None:
-    kwargs: dict[str, object] = {field: values}
-    with pytest.raises(ValueError, match=message):
-        MethodCandidate(name="method", rationale="rationale", **kwargs)  # type: ignore[arg-type]
+def test_candidate_rejects_invalid_capabilities() -> None:
+    with pytest.raises(ValueError, match="capabilities"):
+        MethodCandidate(name="method", rationale="rationale", capabilities=("",))
+    with pytest.raises(ValueError, match="capabilities"):
+        MethodCandidate(name="method", rationale="rationale", capabilities=("a", "a"))
+
+
+def test_candidate_rejects_invalid_traits() -> None:
+    with pytest.raises(ValueError, match="traits"):
+        MethodCandidate(name="method", rationale="rationale", traits=("",))
+    with pytest.raises(ValueError, match="traits"):
+        MethodCandidate(name="method", rationale="rationale", traits=("a", "a"))
+
+
+def test_candidate_rejects_invalid_required_tools() -> None:
+    with pytest.raises(ValueError, match="required tools"):
+        MethodCandidate(name="method", rationale="rationale", required_tools=("",))
+    with pytest.raises(ValueError, match="required tools"):
+        MethodCandidate(name="method", rationale="rationale", required_tools=("a", "a"))
 
 
 def test_selection_input_validation() -> None:
