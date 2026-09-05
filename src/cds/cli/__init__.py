@@ -9,7 +9,8 @@ preserved verbatim where the test suite asserts on it.
 The package is split for maintainability:
 
 - :mod:`cds.cli._style` — ANSI colour + ASCII table rendering
-- :mod:`cds.cli._handlers` — one function per subcommand
+- :mod:`cds.cli._handlers` — one function per computational subcommand
+- :mod:`cds.cli._system_info` — current architecture and module catalog
 - :mod:`cds.cli._parser` — argument-parser wiring
 
 The entry point :func:`main` accepts an optional ``argv`` so tests can drive a
@@ -28,9 +29,7 @@ from cds.cli._handlers import (
     _cmd_constants,
     _cmd_dashboard,
     _cmd_hypothesis,
-    _cmd_info,
     _cmd_integrate,
-    _cmd_modules,
     _cmd_plot,
     _cmd_prompt,
     _cmd_sample,
@@ -45,6 +44,7 @@ from cds.cli._style import (
     _supports_color,
     _wrap,
 )
+from cds.cli._system_info import _cmd_info, _cmd_modules
 
 __all__ = [
     "main",
