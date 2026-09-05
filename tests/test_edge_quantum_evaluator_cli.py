@@ -104,6 +104,7 @@ def _make_hypothesis() -> Hypothesis:
 
 def test_evaluator_one_sample_significant() -> None:
     hypo = _make_hypothesis()
+    initial_status = hypo.status
     evaluator = HypothesisEvaluator()
     result = evaluator.evaluate(
         hypo,
@@ -111,18 +112,21 @@ def test_evaluator_one_sample_significant() -> None:
     )
     assert result.test_name == "One-sample t-test"
     assert result.is_significant
-    assert hypo.status == HypothesisStatus.VALIDATED
+    assert result.evidence_interpretation == "supported"
+    assert hypo.status is initial_status is HypothesisStatus.NEW
 
 
 def test_evaluator_one_sample_not_significant() -> None:
     hypo = _make_hypothesis()
+    initial_status = hypo.status
     evaluator = HypothesisEvaluator()
     result = evaluator.evaluate(
         hypo,
         {"one_sample": [10.0, 10.1, 9.9, 10.0, 10.1], "popmean": 10.0},
     )
     assert not result.is_significant
-    assert hypo.status == HypothesisStatus.REJECTED
+    assert result.evidence_interpretation == "inconclusive"
+    assert hypo.status is initial_status is HypothesisStatus.NEW
 
 
 def test_evaluator_chi_square_gof() -> None:
@@ -152,7 +156,7 @@ def test_evaluator_paired() -> None:
         hypo,
         {"paired": ([1.0, 2.0, 3.0, 4.0], [10.0, 11.0, 12.0, 13.0])},
     )
-    assert result.test_name == "Two-sample t-test"
+    assert result.test_name == "Paired t-test"
     assert result.is_significant
 
 
@@ -285,9 +289,9 @@ def test_evaluator_paired_reports_cohens_d() -> None:
         hypo,
         {"paired": ([1.0, 2.0, 3.0, 4.0], [10.0, 11.0, 12.0, 13.0])},
     )
-    assert result.test_name == "Two-sample t-test"
+    assert result.test_name == "Paired t-test"
     assert result.effect_size is not None
-    assert result.effect_size_label == "Cohen's d"
+    assert result.effect_size_label == "Cohen's dz"
 
 
 # ---------------------------------------------------------------------------
