@@ -20,8 +20,8 @@ from cds.workflow import (
     MethodCandidate,
     MethodSelection,
     MethodSelectionContext,
-    PlanStep,
     PlannedAction,
+    PlanStep,
     ProblemProfile,
     ResearchBlueprint,
     ResearchOrchestrator,
@@ -209,14 +209,14 @@ def test_tool_step_is_selected_loaded_and_recorded() -> None:
         validators=(IndependentValidator("independent", _pass_report),),
         registry=registry,
     )
-    result = orchestrator.run(
-        AnalysisRequest("tool calculation", require_plan_approval=False)
-    )
+    result = orchestrator.run(AnalysisRequest("tool calculation", require_plan_approval=False))
     record = result.details["_orchestration"]
 
     assert result.details["calculate"] == 9.0
     assert record.manifest.tool_versions == {"math": "unknown"}
-    assert any(decision.action == "select math for calculation" for decision in record.manifest.decisions)
+    assert any(
+        decision.action == "select math for calculation" for decision in record.manifest.decisions
+    )
 
 
 def test_missing_tool_blocks_before_execution() -> None:
@@ -245,7 +245,9 @@ def test_missing_tool_blocks_before_execution() -> None:
     record = result.details["_orchestration"]
 
     assert record.gate.status is GateStatus.BLOCKED
-    assert result.summary == "Analysis is blocked because a required scientific tool is unavailable."
+    assert (
+        result.summary == "Analysis is blocked because a required scientific tool is unavailable."
+    )
     assert "tool registration failed" in result.warnings[0]
 
 
@@ -299,9 +301,7 @@ def test_step_approval_without_callback_is_fail_closed() -> None:
         classifier=_profile,
         planner=planner,
     )
-    result = orchestrator.run(
-        AnalysisRequest("step approval", require_plan_approval=False)
-    )
+    result = orchestrator.run(AnalysisRequest("step approval", require_plan_approval=False))
 
     assert result.details["_orchestration"].gate.status is GateStatus.BLOCKED
     assert "consequential" not in result.details
@@ -323,9 +323,7 @@ def test_validator_failure_and_invalid_return_are_converted_to_blocking_checks()
             IndependentValidator("wrong-type", cast(ValidatorAction, wrong_type)),
         ),
     )
-    result = orchestrator.run(
-        AnalysisRequest("validator failures", require_plan_approval=False)
-    )
+    result = orchestrator.run(AnalysisRequest("validator failures", require_plan_approval=False))
     record = result.details["_orchestration"]
 
     assert record.gate.status is GateStatus.BLOCKED
@@ -349,9 +347,7 @@ def test_warning_validator_produces_review() -> None:
         planner=_normal_planner,
         validators=(IndependentValidator("warning", warning),),
     )
-    result = orchestrator.run(
-        AnalysisRequest("warning case", require_plan_approval=False)
-    )
+    result = orchestrator.run(AnalysisRequest("warning case", require_plan_approval=False))
 
     assert result.details["_orchestration"].gate.status is GateStatus.REVIEW
     assert result.summary == "Scientific analysis completed but requires review before conclusion."
@@ -377,9 +373,7 @@ def test_review_method_cannot_be_promoted_to_ready_by_clean_validation() -> None
         validators=(IndependentValidator("independent", _pass_report),),
         gate_policy=GatePolicy(require_alternatives=False),
     )
-    result = orchestrator.run(
-        AnalysisRequest("provisional case", require_plan_approval=False)
-    )
+    result = orchestrator.run(AnalysisRequest("provisional case", require_plan_approval=False))
     record = result.details["_orchestration"]
 
     assert record.gate.status is GateStatus.REVIEW
@@ -401,9 +395,7 @@ def test_review_method_reason_is_appended_to_existing_review() -> None:
         planner=_normal_planner,
         validators=(IndependentValidator("independent", _pass_report),),
     )
-    result = orchestrator.run(
-        AnalysisRequest("double review", require_plan_approval=False)
-    )
+    result = orchestrator.run(AnalysisRequest("double review", require_plan_approval=False))
     reasons = result.details["_orchestration"].gate.reasons
 
     assert reasons[0] == "recommended method has no visible alternatives"
