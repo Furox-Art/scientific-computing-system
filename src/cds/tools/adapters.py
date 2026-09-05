@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import math
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
@@ -58,8 +59,102 @@ class _Solver(Protocol):
     def check(self) -> object: ...
 
 
+_SAFE_SYMPY_CALLS = frozenset(
+    {
+        "Abs",
+        "acos",
+        "acosh",
+        "asin",
+        "asinh",
+        "atan",
+        "atanh",
+        "ceiling",
+        "cos",
+        "cosh",
+        "erf",
+        "exp",
+        "factorial",
+        "floor",
+        "gamma",
+        "log",
+        "sin",
+        "sinh",
+        "sqrt",
+        "tan",
+        "tanh",
+    }
+)
+_MAX_SYMBOLIC_EXPRESSION_LENGTH = 4096
+
+
 def _registry(registry: ToolRegistry | None) -> ToolRegistry:
     return registry if registry is not None else default_registry()
+
+
+def _validate_symbolic_expression(expression: str) -> None:
+    """Accept a small mathematical Python-expression subset before SymPy parsing.
+
+    ``sympy.sympify`` evaluates string input internally, so public adapter
+    strings must be screened before they ever reach SymPy. The accepted grammar
+    deliberately covers scalar algebra and common elementary functions while
+    rejecting Python attributes, subscripts, comprehensions, lambdas, container
+    literals, keyword arguments, and arbitrary function calls.
+    """
+    if len(expression) > _MAX_SYMBOLIC_EXPRESSION_LENGTH:
+        raise ValueError(
+            f"symbolic expression exceeds {_MAX_SYMBOLIC_EXPRESSION_LENGTH} characters"
+        )
+    try:
+        tree = ast.parse(expression, mode="eval")
+    except (SyntaxError, ValueError) as exc:
+        raise ValueError("symbolic expression is not valid safe expression syntax") from exc
+
+    def visit(node: ast.AST) -> None:
+        if isinstance(node, ast.Constant):
+            value = node.value
+            if isinstance(value, bool) or not isinstance(value, (int, float, complex)):
+                raise ValueError("symbolic expression constants must be numeric")
+            return
+
+        if isinstance(node, ast.Name):
+            if node.id.startswith("_"):
+                raise ValueError("symbolic expression names must not start with underscore")
+            return
+
+        if isinstance(node, ast.BinOp):
+            if not isinstance(
+                node.op,
+                (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.FloorDiv, ast.Mod, ast.Pow, ast.BitXor),
+            ):
+                raise ValueError("symbolic expression contains a disallowed binary operator")
+            visit(node.left)
+            visit(node.right)
+            return
+
+        if isinstance(node, ast.UnaryOp):
+            if not isinstance(node.op, (ast.UAdd, ast.USub)):
+                raise ValueError("symbolic expression contains a disallowed unary operator")
+            visit(node.operand)
+            return
+
+        if isinstance(node, ast.Call):
+            if not isinstance(node.func, ast.Name) or node.func.id not in _SAFE_SYMPY_CALLS:
+                raise ValueError("symbolic expression contains a disallowed function call")
+            if node.keywords:
+                raise ValueError("symbolic expression function calls cannot use keyword arguments")
+            for argument in node.args:
+                visit(argument)
+            return
+
+        if isinstance(node, ast.Expression):
+            visit(node.body)
+            return
+
+        raise ValueError(
+            f"symbolic expression contains disallowed syntax: {type(node).__name__}"
+        )
+
+    visit(tree)
 
 
 def scipy_minimize(
@@ -113,9 +208,16 @@ def sympy_verify_identity(
     *,
     registry: ToolRegistry | None = None,
 ) -> bool:
-    """Return whether SymPy can simplify ``left - right`` exactly to zero."""
+    """Safely parse a scalar-expression subset and test exact SymPy identity.
+
+    String inputs are restricted to scalar algebra, ordinary symbol names, and
+    an allowlist of common mathematical functions before they reach
+    :func:`sympy.sympify`.
+    """
     if not left.strip() or not right.strip():
         raise ValueError("identity expressions must not be empty")
+    _validate_symbolic_expression(left)
+    _validate_symbolic_expression(right)
     sympy = cast(_SympyModule, _registry(registry).load("sympy"))
     left_expr = sympy.sympify(left)
     right_expr = sympy.sympify(right)
