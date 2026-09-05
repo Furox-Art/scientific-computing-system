@@ -19,8 +19,7 @@ def _model() -> MathModel:
 def _observations() -> list[tuple[dict[str, float], float]]:
     noise = [0.0, 0.2, -0.1, 0.1, -0.2]
     return [
-        ({"x": float(index)}, 2.0 * index + 1.0 + noise[index % len(noise)])
-        for index in range(20)
+        ({"x": float(index)}, 2.0 * index + 1.0 + noise[index % len(noise)]) for index in range(20)
     ]
 
 
@@ -37,7 +36,9 @@ def test_bootstrap_uncertainty_is_seeded_and_contains_fit() -> None:
     second = fit_parameters_advanced(_model(), _observations(), ["a", "b"], **kwargs)
     assert first.diagnostics.uncertainty_method == "bootstrap"
     assert first.diagnostics.bootstrap_successes >= 20
-    assert first.diagnostics.confidence_intervals == first.diagnostics.bootstrap_confidence_intervals
+    assert (
+        first.diagnostics.confidence_intervals == first.diagnostics.bootstrap_confidence_intervals
+    )
     assert first.diagnostics.confidence_intervals == second.diagnostics.confidence_intervals
     assert first.diagnostics.standard_errors is not None
     assert first.diagnostics.identifiable
@@ -110,9 +111,7 @@ def test_uncertainty_configuration_validation() -> None:
     with pytest.raises(ValueError, match="bootstrap_samples"):
         fit_parameters_advanced(model, observed, ["a", "b"], bootstrap_samples=1)
     with pytest.raises(ValueError, match="min_bootstrap"):
-        fit_parameters_advanced(
-            model, observed, ["a", "b"], min_bootstrap_success_fraction=0.0
-        )
+        fit_parameters_advanced(model, observed, ["a", "b"], min_bootstrap_success_fraction=0.0)
     with pytest.raises(ValueError, match="squared loss"):
         fit_parameters_advanced(
             model,
@@ -164,7 +163,9 @@ def test_bootstrap_failure_is_reported_not_fabricated(monkeypatch: pytest.Monkey
     assert not result.diagnostics.identifiable
 
 
-def test_bootstrap_ignores_nonfinite_parameter_replications(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_bootstrap_ignores_nonfinite_parameter_replications(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import cds.modeling.fitting as fitting
 
     class FakeResult:
