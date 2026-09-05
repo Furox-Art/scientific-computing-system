@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import cds.workflow.orchestrator as orchestrator_module
 import pytest
 
+import cds.workflow.orchestrator as orchestrator_module
 from cds.validation import ValidationReport
 from cds.workflow import (
     AnalysisPlan,
