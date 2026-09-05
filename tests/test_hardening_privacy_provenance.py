@@ -262,9 +262,7 @@ def test_provenance_canonical_hash_and_environment_binding(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    assert canonical_sha256({"b": [2, 3], "a": 1}) == canonical_sha256(
-        {"a": 1, "b": (2, 3)}
-    )
+    assert canonical_sha256({"b": [2, 3], "a": 1}) == canonical_sha256({"a": 1, "b": (2, 3)})
     with pytest.raises(TypeError, match="unsupported canonical provenance value"):
         canonical_sha256(object())
     with pytest.raises(ValueError):
