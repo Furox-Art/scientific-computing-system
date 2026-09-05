@@ -1,10 +1,4 @@
-"""Transparent, policy-driven scientific method selection.
-
-The selector deliberately avoids hard-coded universal scientific thresholds.
-Callers describe each candidate's requirements and soft preferences explicitly;
-the engine then evaluates those rules against supplied facts, records uncertainty,
-and returns a deterministic ranking with visible alternatives.
-"""
+"""Transparent, policy-driven scientific method selection."""
 
 from __future__ import annotations
 
@@ -12,14 +6,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 
+from cds.policy import DataHandling, ExecutionLocation
 from cds.workflow.types import Recommendation
 
 _MISSING = object()
 
 
 class ConditionOperator(str, Enum):
-    """Supported declarative comparisons for method-selection facts."""
-
     EQ = "eq"
     NE = "ne"
     LT = "lt"
@@ -31,16 +24,12 @@ class ConditionOperator(str, Enum):
 
 
 class ConditionStatus(str, Enum):
-    """Outcome of evaluating one explicit condition."""
-
     PASS = "pass"
     FAIL = "fail"
     UNKNOWN = "unknown"
 
 
 class MethodStatus(str, Enum):
-    """Eligibility state of one candidate method."""
-
     ELIGIBLE = "eligible"
     REVIEW = "review"
     BLOCKED = "blocked"
@@ -48,7 +37,7 @@ class MethodStatus(str, Enum):
 
 @dataclass(frozen=True)
 class MethodSelectionContext:
-    """Observed facts and explicit analysis constraints used for ranking."""
+    """Observed facts and explicit analysis/data-boundary constraints."""
 
     facts: tuple[tuple[str, object], ...] = ()
     required_capabilities: tuple[str, ...] = ()
@@ -56,6 +45,8 @@ class MethodSelectionContext:
     available_tools: tuple[str, ...] = ()
     prohibited_traits: tuple[str, ...] = ()
     preferred_traits: tuple[str, ...] = ()
+    prefer_local: bool = False
+    sensitive_data: bool = False
 
     @classmethod
     def from_facts(
@@ -67,8 +58,9 @@ class MethodSelectionContext:
         available_tools: tuple[str, ...] = (),
         prohibited_traits: tuple[str, ...] = (),
         preferred_traits: tuple[str, ...] = (),
+        prefer_local: bool = False,
+        sensitive_data: bool = False,
     ) -> MethodSelectionContext:
-        """Create a deterministic context from a mapping of observed facts."""
         return cls(
             facts=tuple(sorted(facts.items())),
             required_capabilities=required_capabilities,
@@ -76,10 +68,11 @@ class MethodSelectionContext:
             available_tools=available_tools,
             prohibited_traits=prohibited_traits,
             preferred_traits=preferred_traits,
+            prefer_local=prefer_local,
+            sensitive_data=sensitive_data,
         )
 
     def fact(self, key: str) -> object:
-        """Return a fact value or an internal missing sentinel."""
         for name, value in self.facts:
             if name == key:
                 return value
@@ -88,8 +81,6 @@ class MethodSelectionContext:
 
 @dataclass(frozen=True)
 class SelectionCondition:
-    """One declarative requirement or preference condition."""
-
     key: str
     operator: ConditionOperator
     expected: object
@@ -105,15 +96,12 @@ class SelectionCondition:
 
     @property
     def label(self) -> str:
-        """Human-readable label for audit output."""
         return self.description or self.key
 
     def evaluate(self, context: MethodSelectionContext) -> ConditionStatus:
-        """Evaluate this condition without converting missing data into failure."""
         value = context.fact(self.key)
         if value is _MISSING:
             return ConditionStatus.UNKNOWN
-
         try:
             matched = _compare(value, self.operator, self.expected)
         except TypeError:
@@ -123,8 +111,6 @@ class SelectionCondition:
 
 @dataclass(frozen=True)
 class MethodPreference:
-    """Soft criterion that contributes transparent weight when satisfied."""
-
     condition: SelectionCondition
     weight: float = 1.0
 
@@ -135,7 +121,7 @@ class MethodPreference:
 
 @dataclass(frozen=True)
 class MethodCandidate:
-    """Method metadata and caller-defined scientific suitability rules."""
+    """Scientific method metadata, suitability rules, and data boundary."""
 
     name: str
     rationale: str
@@ -145,6 +131,8 @@ class MethodCandidate:
     requirements: tuple[SelectionCondition, ...] = ()
     preferences: tuple[MethodPreference, ...] = ()
     base_score: float = 0.0
+    execution_location: ExecutionLocation = ExecutionLocation.LOCAL
+    data_handling: DataHandling = DataHandling.LOCAL_ONLY
 
     def __post_init__(self) -> None:
         if not self.name:
@@ -164,10 +152,9 @@ class MethodCandidate:
 
 @dataclass(frozen=True)
 class SelectionPolicy:
-    """Weights and uncertainty policy for deterministic ranking."""
-
     preferred_capability_weight: float = 1.0
     preferred_trait_weight: float = 0.5
+    local_preference_weight: float = 2.0
     unknown_requirements_block: bool = False
 
     def __post_init__(self) -> None:
@@ -175,12 +162,12 @@ class SelectionPolicy:
             raise ValueError("preferred capability weight must not be negative")
         if self.preferred_trait_weight < 0:
             raise ValueError("preferred trait weight must not be negative")
+        if self.local_preference_weight < 0:
+            raise ValueError("local preference weight must not be negative")
 
 
 @dataclass(frozen=True)
 class RankedMethod:
-    """Auditable score and eligibility explanation for one candidate."""
-
     candidate: MethodCandidate
     status: MethodStatus
     score: float
@@ -192,22 +179,19 @@ class RankedMethod:
     missing_capabilities: tuple[str, ...] = ()
     missing_tools: tuple[str, ...] = ()
     prohibited_traits: tuple[str, ...] = ()
+    policy_blocked: bool = False
 
 
 @dataclass(frozen=True)
 class MethodSelection:
-    """Full ranking, including blocked candidates and visible alternatives."""
-
     ranked: tuple[RankedMethod, ...]
 
     @property
     def recommended(self) -> RankedMethod | None:
-        """Best non-blocked candidate, or ``None`` when all methods are blocked."""
         return next((item for item in self.ranked if item.status is not MethodStatus.BLOCKED), None)
 
     @property
     def alternatives(self) -> tuple[RankedMethod, ...]:
-        """Other non-blocked candidates retained for user review."""
         recommended = self.recommended
         if recommended is None:
             return ()
@@ -218,17 +202,14 @@ class MethodSelection:
         )
 
     def to_recommendation(self) -> Recommendation:
-        """Convert the ranking into the workflow's existing recommendation type."""
         recommended = self.recommended
         if recommended is None:
             raise ValueError("no non-blocked method is available for recommendation")
-
         rationale = recommended.candidate.rationale
         if recommended.status is MethodStatus.REVIEW:
             rationale = f"Provisional recommendation; review required. {rationale}"
         if recommended.reasons:
             rationale = f"{rationale} Selection evidence: {'; '.join(recommended.reasons)}"
-
         return Recommendation(
             recommended=recommended.candidate.name,
             rationale=rationale,
@@ -242,32 +223,22 @@ def rank_methods(
     *,
     policy: SelectionPolicy | None = None,
 ) -> MethodSelection:
-    """Rank candidate methods using explicit constraints and supplied facts.
-
-    Hard failures block a method. Missing mandatory evidence produces ``REVIEW``
-    by default rather than silently accepting or rejecting the method. Soft
-    preferences only add their declared weights when satisfied.
-    """
     if not candidates:
         raise ValueError("at least one method candidate is required")
     names = tuple(candidate.name for candidate in candidates)
     if len(set(names)) != len(names):
         raise ValueError("method candidate names must be unique")
-
     active_policy = policy if policy is not None else SelectionPolicy()
     ranked = tuple(_rank_candidate(candidate, context, active_policy) for candidate in candidates)
-    status_order = {
-        MethodStatus.ELIGIBLE: 0,
-        MethodStatus.REVIEW: 1,
-        MethodStatus.BLOCKED: 2,
-    }
-    ordered = tuple(
-        sorted(
-            ranked,
-            key=lambda item: (status_order[item.status], -item.score, item.candidate.name),
+    status_order = {MethodStatus.ELIGIBLE: 0, MethodStatus.REVIEW: 1, MethodStatus.BLOCKED: 2}
+    return MethodSelection(
+        ranked=tuple(
+            sorted(
+                ranked,
+                key=lambda item: (status_order[item.status], -item.score, item.candidate.name),
+            )
         )
     )
-    return MethodSelection(ranked=ordered)
 
 
 def _rank_candidate(
@@ -276,16 +247,10 @@ def _rank_candidate(
     policy: SelectionPolicy,
 ) -> RankedMethod:
     missing_capabilities = tuple(
-        capability
-        for capability in context.required_capabilities
-        if capability not in candidate.capabilities
+        capability for capability in context.required_capabilities if capability not in candidate.capabilities
     )
-    missing_tools = tuple(
-        tool for tool in candidate.required_tools if tool not in context.available_tools
-    )
-    prohibited_traits = tuple(
-        trait for trait in candidate.traits if trait in context.prohibited_traits
-    )
+    missing_tools = tuple(tool for tool in candidate.required_tools if tool not in context.available_tools)
+    prohibited_traits = tuple(trait for trait in candidate.traits if trait in context.prohibited_traits)
 
     failed_requirements: list[str] = []
     unknown_requirements: list[str] = []
@@ -325,6 +290,19 @@ def _rank_candidate(
         reasons.append(f"soft preferences matched: {', '.join(matched_preferences)}")
     if unknown_preferences:
         reasons.append(f"soft preferences unknown: {', '.join(unknown_preferences)}")
+
+    if context.prefer_local and candidate.execution_location is ExecutionLocation.LOCAL:
+        score += policy.local_preference_weight
+        reasons.append("local execution preferred by analysis request")
+
+    policy_blocked = context.sensitive_data and (
+        candidate.execution_location is not ExecutionLocation.LOCAL
+        or candidate.data_handling is not DataHandling.LOCAL_ONLY
+    )
+    if policy_blocked:
+        reasons.append(
+            "sensitive-data policy requires local execution with local-only data handling"
+        )
     if missing_capabilities:
         reasons.append(f"missing required capabilities: {', '.join(missing_capabilities)}")
     if missing_tools:
@@ -337,7 +315,11 @@ def _rank_candidate(
         reasons.append(f"mandatory requirements unknown: {', '.join(unknown_requirements)}")
 
     hard_block = bool(
-        missing_capabilities or missing_tools or prohibited_traits or failed_requirements
+        policy_blocked
+        or missing_capabilities
+        or missing_tools
+        or prohibited_traits
+        or failed_requirements
     )
     if policy.unknown_requirements_block and unknown_requirements:
         hard_block = True
@@ -361,6 +343,7 @@ def _rank_candidate(
         missing_capabilities=missing_capabilities,
         missing_tools=missing_tools,
         prohibited_traits=prohibited_traits,
+        policy_blocked=policy_blocked,
     )
 
 
@@ -377,7 +360,6 @@ def _compare(value: object, operator: ConditionOperator, expected: object) -> bo
         if not isinstance(expected, tuple):
             raise TypeError("membership comparison requires a tuple")
         return value not in expected
-
     if isinstance(value, (int, float)) and isinstance(expected, (int, float)):
         return _compare_ordered(float(value), operator, float(expected))
     if isinstance(value, str) and isinstance(expected, str):
