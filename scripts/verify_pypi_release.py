@@ -11,8 +11,9 @@ import argparse
 import subprocess
 import sys
 import time
-import tomllib
 from pathlib import Path
+
+import tomllib
 
 DIST_NAME = "scientific-computing-system"
 PYPI_INDEX = "https://pypi.org/simple"
