@@ -78,7 +78,10 @@ class QuantumRegister:
 
     def normalize(self) -> None:
         """Renormalize the state vector in-place to unit length."""
-        squared_norm = sum(abs(amplitude) ** 2 for amplitude in self.amplitudes)
+        try:
+            squared_norm = sum(abs(amplitude) ** 2 for amplitude in self.amplitudes)
+        except OverflowError as exc:
+            raise ValueError("quantum register norm must be finite") from exc
         if not math.isfinite(squared_norm):
             raise ValueError("quantum register norm must be finite")
         norm = math.sqrt(squared_norm)
