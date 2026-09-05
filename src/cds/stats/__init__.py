@@ -26,6 +26,15 @@ from cds.stats.hypothesis_tests import (
     t_sf,
     two_sample_ttest,
 )
+from cds.stats.multiple_testing import (
+    MultipleTestingMethod,
+    MultipleTestingResult,
+    adjust_p_values,
+    benjamini_hochberg,
+    benjamini_yekutieli,
+    bonferroni,
+    holm,
+)
 from cds.stats.nonparametric import mann_whitney_u, wilcoxon_signed_rank
 from cds.stats.power import (
     PowerResult,
@@ -72,6 +81,14 @@ __all__ = [
     "eta_squared_from_f",
     "cramers_v",
     "bonferroni_corrected_alpha",
+    # Multiple testing
+    "MultipleTestingMethod",
+    "MultipleTestingResult",
+    "adjust_p_values",
+    "benjamini_hochberg",
+    "benjamini_yekutieli",
+    "bonferroni",
+    "holm",
     # Time-series analysis
     "autocorrelation",
     "autocorrelation_function",

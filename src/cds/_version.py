@@ -1,11 +1,9 @@
-﻿# Static version source. Kept in lockstep with `version` in `pyproject.toml`.
-# Bump both for a release; merging the version bump to main triggers the
-# verified GitHub + PyPI publish workflow. See `pyproject.toml` for the release
-# checklist. This file is committed (not generated) so mypy has a concrete
-# `__version__: str` to resolve in fresh checkouts without git history.
+﻿# Static version source. Kept in lockstep with `version` in pyproject.toml and
+# version metadata in CITATION.cff. Package-affecting changes require a
+# synchronized monotonic bump; scripts/check_version_discipline.py enforces it.
 from __future__ import annotations
 
 __all__ = ["__version__", "version", "__version_tuple__", "version_tuple"]
 
-__version__ = version = "2.0.0"
-__version_tuple__ = version_tuple = (2, 0, 0)
+__version__ = version = "2.1.0"
+__version_tuple__ = version_tuple = (2, 1, 0)

@@ -9,10 +9,12 @@ Key features:
 - Quantum simulation (single & multi-qubit with entanglement)
 - Signal processing (FFT, 2D FFT, convolution, filtering)
 - Optimization, statistics, probability, linear algebra
+- Multiple-testing/FDR corrections and conservative causal estimators
 - Hypothesis generation for structured research ideas
 - Workflow orchestration with approval gates and validation
-- Uncertainty propagation, sensitivity analysis, and reproducibility provenance
-- SI units, dimensional analysis, and scalable local data I/O
+- Uncertainty propagation, local/global sensitivity, and identifiability analysis
+- Distribution-drift and out-of-distribution validation
+- SI units, dimensional analysis, and memory-bounded scientific data I/O
 - Optional scientific-tool capability discovery and normalized adapters
 - CLI for quick calculations and discovery workflows
 
@@ -32,6 +34,7 @@ Usage:
 # Scientific computing modules
 from cds import (
     bayes,
+    causal,
     core,
     data_analysis,
     data_io,
@@ -98,6 +101,7 @@ __all__ = [
     "pendulum_period",
     "doppler_frequency",
     "bayes",
+    "causal",
     "core",
     "data_analysis",
     "data_io",

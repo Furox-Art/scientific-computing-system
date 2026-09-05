@@ -2,25 +2,15 @@ name: Release
 
 # Single publish authority for PyPI + GitHub release metadata.
 #
-# Normal path: bump the package version in BOTH pyproject.toml and
-# src/cds/_version.py, merge to main, and let the full CI workflow complete.
-# This workflow starts only from a successful CI *push* run on main, verifies
-# that the exact CI-tested commit changed src/cds/_version.py, then builds and
-# verifies the wheel/sdist, attests those exact runner-local files, publishes
-# them to PyPI via Trusted Publishing (OIDC), and finally creates the matching
-# vX.Y.Z tag plus a metadata-only GitHub Release.
+# Normal path: bump synchronized package metadata, merge to main, and let the
+# full CI workflow complete. This workflow starts only from a successful CI
+# push run on main, binds itself to that exact tested commit, re-runs the
+# version-discipline guard, builds using a hash-locked non-isolated toolchain,
+# verifies the installed wheel, attests it, publishes via Trusted Publishing,
+# and creates a metadata-only GitHub Release.
 #
-# This CI hand-off is deliberate defense in depth: even if branch protection is
-# accidentally disabled, a direct version bump cannot publish before the same
-# commit has passed CI. Branch/ruleset protection is still required as the
-# primary repository-control boundary because a writer could otherwise modify
-# the CI/release workflows themselves.
-#
-# The workflow is intentionally idempotent after a partial release failure. If
-# the exact version already exists on PyPI, its filenames, sizes, and SHA-256
-# digests must match the locally verified build; only then is the upload skipped
-# and the workflow allowed to recover the GitHub tag/release. An existing tag is
-# accepted only when it resolves to the exact CI-tested release commit.
+# All actions in the privileged publish job are pinned to immutable commit SHAs.
+# Update those SHAs deliberately after reviewing upstream release notes.
 
 on:
   workflow_run:
@@ -49,7 +39,7 @@ jobs:
       release_sha: ${{ steps.candidate.outputs.release_sha }}
       should_release: ${{ steps.candidate.outputs.should_release }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 2
@@ -99,10 +89,10 @@ jobs:
     env:
       RELEASE_SHA: ${{ needs.gate.outputs.release_sha }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ env.RELEASE_SHA }}
-          fetch-depth: 0
+          fetch-depth: 2
 
       - name: Re-verify checkout identity
         shell: bash
@@ -115,9 +105,13 @@ jobs:
           fi
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
+
+      - name: Verify synchronized monotonic release metadata
+        shell: bash
+        run: python scripts/check_version_discipline.py --base-ref "${RELEASE_SHA}^1"
 
       - name: Resolve release version
         id: release
@@ -137,13 +131,15 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "Release candidate: $tag from $RELEASE_SHA"
 
-      - name: Install build backend
-        run: |
-          python -m pip install --upgrade pip
-          pip install build
+      - name: Install hash-locked build toolchain
+        run: >-
+          python -m pip install
+          --require-hashes
+          --only-binary=:all:
+          -r requirements-build.lock
 
-      - name: Build sdist + wheel
-        run: python -m build
+      - name: Build sdist + wheel without dependency isolation
+        run: python -m build --no-isolation
 
       - name: Verify package name and release version
         env:
@@ -208,7 +204,7 @@ jobs:
         run: python scripts/verify_cli_install.py --expected-version "$EXPECTED_VERSION"
 
       - name: Attest verified runner-local build provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: "dist/*"
 
@@ -279,7 +275,7 @@ jobs:
 
       - name: Create PyPI deployment record
         id: deployment
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         with:
@@ -299,7 +295,7 @@ jobs:
 
       - name: Publish to PyPI (Trusted Publishing)
         if: steps.pypi_state.outputs.already_published != 'true'
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1 snapshot
 
       - name: Create or verify release tag after successful PyPI state
         env:
@@ -344,7 +340,7 @@ jobs:
 
       - name: Set PyPI deployment status
         if: always() && steps.deployment.outputs.id != ''
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const state = "${{ job.status }}" === "success" ? "success" : "failure";
