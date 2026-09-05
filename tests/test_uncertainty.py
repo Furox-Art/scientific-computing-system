@@ -83,13 +83,17 @@ def test_linear_propagation_validation_paths() -> None:
         propagate_linear(lambda x: math.inf if x > 1.0 else x, [1.0])
 
 
-def test_linear_propagation_rejects_indefinite_covariance() -> None:
-    with pytest.raises(ValueError, match="negative propagated variance"):
-        propagate_linear(
-            lambda x, y: x - y,
-            [1.0, 1.0],
-            covariance=[[1.0, 2.0], [2.0, 1.0]],
-        )
+def test_linear_propagation_rejects_indefinite_covariance_for_any_jacobian_direction() -> None:
+    covariance = [[1.0, 2.0], [2.0, 1.0]]
+
+    # x-y used to be rejected only because this particular Jacobian exposed a
+    # negative quadratic form. x+y produces a positive quadratic form (6.0),
+    # so validating only the final scalar variance incorrectly accepted the
+    # same impossible covariance matrix. The matrix itself must be PSD first.
+    with pytest.raises(ValueError, match="positive semidefinite"):
+        propagate_linear(lambda x, y: x - y, [1.0, 1.0], covariance=covariance)
+    with pytest.raises(ValueError, match="positive semidefinite"):
+        propagate_linear(lambda x, y: x + y, [1.0, 1.0], covariance=covariance)
 
 
 def test_cholesky_psd_paths() -> None:
