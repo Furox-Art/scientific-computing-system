@@ -14,12 +14,23 @@ class LanguageMode(str, Enum):
     BOTH = "both"
 
 
+class AnalysisKind(str, Enum):
+    """Explicit scientific task families understood by the default autopilot."""
+
+    PARAMETER_FIT = "parameter_fit"
+    SIMULATION = "simulation"
+    STATISTICAL_TEST = "statistical_test"
+    SYMBOLIC_VERIFICATION = "symbolic_verification"
+    CONSTRAINT_VERIFICATION = "constraint_verification"
+
+
 class StepStatus(str, Enum):
     """Execution state of a workflow step."""
 
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
+    RESUMED = "resumed"
     SKIPPED = "skipped"
     FAILED = "failed"
 
@@ -33,6 +44,14 @@ class AnalysisRequest:
     require_plan_approval: bool = True
     prefer_local: bool = True
     sensitive_data: bool = False
+    analysis_kind: AnalysisKind | None = None
+    seed: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.question.strip():
+            raise ValueError("analysis question must not be empty")
+        if self.seed is not None and (not isinstance(self.seed, int) or isinstance(self.seed, bool)):
+            raise ValueError("seed must be an integer or null")
 
 
 @dataclass(frozen=True)
