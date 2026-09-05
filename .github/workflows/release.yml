@@ -10,11 +10,12 @@ name: Release
 # ordinary pyproject.toml packaging edits do not publish a release. The tag
 # created after a successful PyPI publish does not trigger a second publish run.
 #
-# The installed CLI must pass against the built wheel before anything is
-# published. PyPI publication succeeds before the GitHub tag/release is created,
-# preventing orphan GitHub releases when registry publishing fails. The final
-# integrity gate compares filenames, sizes, and SHA-256 digests on public PyPI
-# and the GitHub Release before the workflow can finish successfully.
+# The workflow is intentionally idempotent after a partial release failure. If
+# the exact version already exists on PyPI, its filenames, sizes, and SHA-256
+# digests must match the locally verified build; only then is the upload skipped
+# and the workflow allowed to recover the GitHub tag/release. An existing tag is
+# accepted only when it resolves to the current release commit. The final
+# integrity gate compares public PyPI with the GitHub Release before success.
 
 on:
   push:
@@ -65,12 +66,6 @@ jobs:
           PY
           )"
           tag="v${version}"
-
-          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
-            echo "::error::Version $version is already tagged as $tag. Bump the package version before publishing again."
-            exit 1
-          fi
-
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "Release candidate: $tag"
@@ -123,7 +118,10 @@ jobs:
           expected_prefix = f"scientific_computing_system-{expected_version}/"
           with tarfile.open(sdists[0], "r:gz") as archive:
               names = archive.getnames()
-          if not names or not all(name == expected_prefix.rstrip("/") or name.startswith(expected_prefix) for name in names):
+          if not names or not all(
+              name == expected_prefix.rstrip("/") or name.startswith(expected_prefix)
+              for name in names
+          ):
               sys.exit("sdist root directory does not match the release version")
 
           print(f"Package metadata verified: scientific-computing-system {expected_version}")
@@ -141,6 +139,71 @@ jobs:
         env:
           EXPECTED_VERSION: ${{ steps.release.outputs.version }}
         run: python scripts/verify_cli_install.py --expected-version "$EXPECTED_VERSION"
+
+      - name: Inspect existing public PyPI release for safe recovery
+        id: pypi_state
+        env:
+          EXPECTED_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import urllib.error
+          import urllib.request
+
+          project = "scientific-computing-system"
+          version = os.environ["EXPECTED_VERSION"]
+          output = pathlib.Path(os.environ["GITHUB_OUTPUT"])
+          api_url = f"https://pypi.org/pypi/{project}/{version}/json"
+
+          try:
+              with urllib.request.urlopen(api_url, timeout=30) as response:
+                  payload = json.load(response)
+          except urllib.error.HTTPError as exc:
+              if exc.code != 404:
+                  raise
+              with output.open("a", encoding="utf-8") as stream:
+                  stream.write("already_published=false\n")
+              print(f"PyPI {project} {version} does not exist yet; upload required.")
+              raise SystemExit(0)
+
+          remote = {}
+          for item in payload.get("urls", []):
+              if item.get("packagetype") not in {"bdist_wheel", "sdist"}:
+                  continue
+              filename = item["filename"]
+              if filename in remote:
+                  raise SystemExit(f"Duplicate PyPI artifact filename: {filename}")
+              remote[filename] = (item["size"], item["digests"]["sha256"])
+
+          local = {}
+          for path in pathlib.Path("dist").iterdir():
+              if not (path.name.endswith(".whl") or path.name.endswith(".tar.gz")):
+                  continue
+              local[path.name] = (path.stat().st_size, hashlib.sha256(path.read_bytes()).hexdigest())
+
+          if len(local) != 2 or len(remote) != 2 or set(local) != set(remote):
+              raise SystemExit(
+                  "Existing PyPI release does not contain the exact local wheel + sdist: "
+                  f"local={sorted(local)}, remote={sorted(remote)}"
+              )
+          for filename in sorted(local):
+              if local[filename] != remote[filename]:
+                  raise SystemExit(
+                      f"Existing PyPI artifact differs from local verified build: {filename}; "
+                      f"local={local[filename]}, remote={remote[filename]}"
+                  )
+              print(
+                  f"RECOVERY MATCH {filename} size={local[filename][0]} "
+                  f"sha256={local[filename][1]}"
+              )
+
+          with output.open("a", encoding="utf-8") as stream:
+              stream.write("already_published=true\n")
+          print("Exact release already exists on PyPI; safe recovery mode enabled.")
+          PY
 
       - name: Create PyPI deployment record
         id: deployment
@@ -163,17 +226,27 @@ jobs:
             core.setOutput("id", deployment.data.id);
 
       - name: Publish to PyPI (Trusted Publishing)
+        if: steps.pypi_state.outputs.already_published != 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
 
-      - name: Create release tag after successful PyPI publish
+      - name: Create or verify release tag after successful PyPI state
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
-          git push origin "$RELEASE_TAG"
+          if git rev-parse -q --verify "refs/tags/$RELEASE_TAG" >/dev/null; then
+            tag_target="$(git rev-list -n 1 "$RELEASE_TAG")"
+            if [ "$tag_target" != "$GITHUB_SHA" ]; then
+              echo "::error::Existing $RELEASE_TAG points to $tag_target, expected $GITHUB_SHA. Refusing to rewrite a release tag."
+              exit 1
+            fi
+            echo "Existing $RELEASE_TAG already resolves to the current release commit; recovery is safe."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
+            git push origin "$RELEASE_TAG"
+          fi
 
       - name: Create GitHub Release with published distribution assets
         env:
@@ -210,6 +283,6 @@ jobs:
               deployment_id: ${{ steps.deployment.outputs.id }},
               state,
               environment_url: "https://pypi.org/project/scientific-computing-system/",
-              description: `PyPI publish ${state}`
+              description: `Release pipeline ${state}`
             });
             core.info(`Deployment #${{ steps.deployment.outputs.id }} marked ${state}`);
