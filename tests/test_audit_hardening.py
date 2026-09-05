@@ -11,9 +11,9 @@ from typing import cast
 import pytest
 
 from cds.data_io import iter_csv_batches, profile_file
+from cds.quantum import QuantumCircuit, hadamard
 from cds.quantum.circuit import Qubit
 from cds.quantum.simulator import measure, simulate
-from cds.quantum import QuantumCircuit, hadamard
 from cds.tools import ToolRegistry, ToolSpec
 from cds.tools.adapters import _validate_sympy_expression, sympy_verify_identity
 

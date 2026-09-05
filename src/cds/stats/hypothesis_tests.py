@@ -119,8 +119,6 @@ def two_sample_ttest(
         if se == 0.0:
             raise ValueError("zero variance; t-test undefined")
         denominator = (va / na) ** 2 / (na - 1) + (vb / nb) ** 2 / (nb - 1)
-        if denominator <= 0.0:
-            raise ValueError("Welch degrees of freedom are undefined")
         df_effective = variance_term**2 / denominator
 
     if se == 0.0:
@@ -195,9 +193,7 @@ def chi_square_independence(table: list[list[float]]) -> TestResult:
     grand_total = sum(row_totals)
     if grand_total <= 0.0:
         raise ValueError("table total must be positive")
-    if any(total <= 0.0 for total in row_totals) or any(
-        total <= 0.0 for total in column_totals
-    ):
+    if any(total <= 0.0 for total in row_totals) or any(total <= 0.0 for total in column_totals):
         raise ValueError("every row and column must have a positive marginal total")
 
     statistic = 0.0
@@ -221,12 +217,8 @@ def one_way_anova(*groups: list[float]) -> TestResult:
         raise ValueError("need more observations than groups")
 
     grand_mean = sum(sum(group) for group in groups) / total_count
-    ss_between = sum(
-        len(group) * (mean(group) - grand_mean) ** 2 for group in groups
-    )
-    ss_within = sum(
-        sum((value - mean(group)) ** 2 for value in group) for group in groups
-    )
+    ss_between = sum(len(group) * (mean(group) - grand_mean) ** 2 for group in groups)
+    ss_within = sum(sum((value - mean(group)) ** 2 for value in group) for group in groups)
     df_between = group_count - 1
     df_within = total_count - group_count
     ms_between = ss_between / df_between

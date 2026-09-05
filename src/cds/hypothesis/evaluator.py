@@ -107,9 +107,6 @@ class HypothesisEvaluator:
                 f"({method_name or test_name}). A single test does not validate the full scientific "
                 f"hypothesis.{effect_clause}"
             )
-            # Legacy lifecycle compatibility: callers historically used this field as a
-            # binary evaluation flag. The evidence_interpretation field above is the
-            # scientifically precise interpretation for new code.
             hypothesis.status = HypothesisStatus.VALIDATED
         else:
             interpretation = "inconclusive"
@@ -198,8 +195,6 @@ class HypothesisEvaluator:
     ) -> EvaluationResult:
         result = paired_ttest(first, second)
         effect = paired_cohens_d(first, second)
-        # Keep the legacy test_name string for source compatibility; method_name is
-        # the authoritative method identifier for paired observations.
         return self._build_result(
             hypothesis,
             "Two-sample t-test",
@@ -289,7 +284,9 @@ class HypothesisEvaluator:
         if not hypotheses:
             raise ValueError("evaluate_batch requires at least one hypothesis")
 
-        raw_results = [self.evaluate(hypothesis, data) for hypothesis, data in zip(hypotheses, data_items)]
+        raw_results = [
+            self.evaluate(hypothesis, data) for hypothesis, data in zip(hypotheses, data_items)
+        ]
         corrected_alpha = bonferroni_corrected_alpha(self.alpha, len(hypotheses))
         corrected: list[EvaluationResult] = []
         for hypothesis, raw in zip(hypotheses, raw_results):
