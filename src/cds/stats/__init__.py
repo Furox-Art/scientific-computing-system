@@ -26,6 +26,7 @@ from cds.stats.hypothesis_tests import (
     t_sf,
     two_sample_ttest,
 )
+from cds.stats.multiple_testing import CorrectionMethod, adjust_p_values, rejected
 from cds.stats.nonparametric import mann_whitney_u, wilcoxon_signed_rank
 from cds.stats.power import (
     PowerResult,
@@ -72,6 +73,10 @@ __all__ = [
     "eta_squared_from_f",
     "cramers_v",
     "bonferroni_corrected_alpha",
+    # Multiple-testing control
+    "CorrectionMethod",
+    "adjust_p_values",
+    "rejected",
     # Time-series analysis
     "autocorrelation",
     "autocorrelation_function",
