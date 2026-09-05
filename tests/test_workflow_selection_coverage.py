@@ -39,6 +39,16 @@ def test_alternatives_exclude_blocked_candidates_when_recommendation_exists() ->
     assert [item.status for item in selection.ranked].count(MethodStatus.BLOCKED) == 2
 
 
+def test_recommendation_without_selection_reasons_keeps_plain_rationale() -> None:
+    candidate = MethodCandidate(name="plain", rationale="plain rationale")
+
+    recommendation = rank_methods((candidate,), MethodSelectionContext()).to_recommendation()
+
+    assert recommendation.recommended == "plain"
+    assert recommendation.rationale == "plain rationale"
+    assert recommendation.alternatives == ()
+
+
 def test_passed_requirement_and_failed_soft_preference_are_both_handled() -> None:
     requirement = SelectionCondition("supported", ConditionOperator.EQ, True, "supported")
     preference = MethodPreference(
