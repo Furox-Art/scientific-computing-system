@@ -43,7 +43,9 @@ class TestValidation:
             ("thin", {"thin": cast(int, 1.5)}),
         ],
     )
-    def test_iteration_counts_require_real_integers(self, name: str, kwargs: dict[str, int]) -> None:
+    def test_iteration_counts_require_real_integers(
+        self, name: str, kwargs: dict[str, int]
+    ) -> None:
         with pytest.raises(ValueError, match=name):
             metropolis_hastings(_normal_log_pdf, 0.0, **kwargs)
 
