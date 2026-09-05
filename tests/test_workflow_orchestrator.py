@@ -20,16 +20,24 @@ from cds.workflow import (
     MethodCandidate,
     MethodSelection,
     MethodSelectionContext,
+    OrchestrationRecord,
     PlannedAction,
     PlanStep,
     ProblemProfile,
     ResearchBlueprint,
     ResearchOrchestrator,
+    ScientificResult,
     SelectionCondition,
     ToolPlannedAction,
 )
 from cds.workflow.engine import ExecutionContext
 from cds.workflow.orchestrator import ValidatorAction
+
+
+def _record(result: ScientificResult) -> OrchestrationRecord:
+    record = result.details["_orchestration"]
+    assert isinstance(record, OrchestrationRecord)
+    return record
 
 
 def _profile(_request: AnalysisRequest) -> ProblemProfile:
@@ -86,7 +94,7 @@ def test_orchestrator_ready_pipeline_records_full_audit_trail() -> None:
         return True
 
     result = orchestrator.run(request, approve=approve)
-    record = result.details["_orchestration"]
+    record = _record(result)
 
     assert result.summary == "Scientific analysis completed and passed the final research gate."
     assert result.details["analyze"] == 42
@@ -123,7 +131,7 @@ def test_orchestrator_uses_existing_context_manifest_and_no_required_approval() 
     )
 
     result = orchestrator.run(request, context=context, manifest=manifest)
-    record = result.details["_orchestration"]
+    record = _record(result)
 
     assert result.details["input"] == 5
     assert record.manifest is manifest
@@ -161,7 +169,7 @@ def test_all_methods_blocked_stops_before_planning() -> None:
         planner=planner,
     )
     result = orchestrator.run(AnalysisRequest("blocked question"))
-    record = result.details["_orchestration"]
+    record = _record(result)
 
     assert not planner_called
     assert record.plan is None
@@ -210,7 +218,7 @@ def test_tool_step_is_selected_loaded_and_recorded() -> None:
         registry=registry,
     )
     result = orchestrator.run(AnalysisRequest("tool calculation", require_plan_approval=False))
-    record = result.details["_orchestration"]
+    record = _record(result)
 
     assert result.details["calculate"] == 9.0
     assert record.manifest.tool_versions == {"math": "unknown"}
@@ -242,7 +250,7 @@ def test_missing_tool_blocks_before_execution() -> None:
         registry=ToolRegistry(),
     )
     result = orchestrator.run(AnalysisRequest("missing tool"))
-    record = result.details["_orchestration"]
+    record = _record(result)
 
     assert record.gate.status is GateStatus.BLOCKED
     assert (
@@ -270,7 +278,7 @@ def test_denied_plan_approval_blocks_validation_and_conclusion() -> None:
         return False
 
     result = orchestrator.run(AnalysisRequest("approval required"), approve=deny)
-    record = result.details["_orchestration"]
+    record = _record(result)
 
     assert not validator_called
     assert record.gate.status is GateStatus.BLOCKED
@@ -303,7 +311,7 @@ def test_step_approval_without_callback_is_fail_closed() -> None:
     )
     result = orchestrator.run(AnalysisRequest("step approval", require_plan_approval=False))
 
-    assert result.details["_orchestration"].gate.status is GateStatus.BLOCKED
+    assert _record(result).gate.status is GateStatus.BLOCKED
     assert "consequential" not in result.details
 
 
@@ -324,7 +332,7 @@ def test_validator_failure_and_invalid_return_are_converted_to_blocking_checks()
         ),
     )
     result = orchestrator.run(AnalysisRequest("validator failures", require_plan_approval=False))
-    record = result.details["_orchestration"]
+    record = _record(result)
 
     assert record.gate.status is GateStatus.BLOCKED
     assert [report.failures[0].name for report in record.validation_reports] == [
@@ -349,7 +357,7 @@ def test_warning_validator_produces_review() -> None:
     )
     result = orchestrator.run(AnalysisRequest("warning case", require_plan_approval=False))
 
-    assert result.details["_orchestration"].gate.status is GateStatus.REVIEW
+    assert _record(result).gate.status is GateStatus.REVIEW
     assert result.summary == "Scientific analysis completed but requires review before conclusion."
     assert "inspect residuals" in result.warnings
 
@@ -374,7 +382,7 @@ def test_review_method_cannot_be_promoted_to_ready_by_clean_validation() -> None
         gate_policy=GatePolicy(require_alternatives=False),
     )
     result = orchestrator.run(AnalysisRequest("provisional case", require_plan_approval=False))
-    record = result.details["_orchestration"]
+    record = _record(result)
 
     assert record.gate.status is GateStatus.REVIEW
     assert record.gate.reasons == (
@@ -396,7 +404,7 @@ def test_review_method_reason_is_appended_to_existing_review() -> None:
         validators=(IndependentValidator("independent", _pass_report),),
     )
     result = orchestrator.run(AnalysisRequest("double review", require_plan_approval=False))
-    reasons = result.details["_orchestration"].gate.reasons
+    reasons = _record(result).gate.reasons
 
     assert reasons[0] == "recommended method has no visible alternatives"
     assert reasons[-1] == "selected method still has unknown mandatory suitability evidence"
