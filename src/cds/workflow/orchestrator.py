@@ -314,7 +314,7 @@ class ResearchOrchestrator:
                     reasons=(review_reason,),
                     missing_checks=gate.missing_checks,
                 )
-            elif review_reason not in gate.reasons:
+            else:
                 gate = GateDecision(
                     status=gate.status,
                     reasons=gate.reasons + (review_reason,),
