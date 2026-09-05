@@ -12,6 +12,7 @@ from cds.tools import ToolRegistry
 from cds.tools.adapters import (
     OptimizationResult,
     Satisfiability,
+    _validate_symbolic_expression,
     scipy_minimize,
     sympy_verify_identity,
     z3_satisfiability,
@@ -137,6 +138,70 @@ def test_sympy_verify_identity(monkeypatch: pytest.MonkeyPatch) -> None:
         sympy_verify_identity("", "2", registry=registry)
     with pytest.raises(ValueError, match="must not be empty"):
         sympy_verify_identity("2", " ", registry=registry)
+
+
+def test_symbolic_expression_validator_accepts_scalar_math_subset() -> None:
+    for expression in (
+        "x",
+        "2",
+        "3.5",
+        "1+2j",
+        "x + 2*y - z/3",
+        "x // 2",
+        "x % 2",
+        "x**2",
+        "x^2",
+        "+x",
+        "-x",
+        "sin(x)**2 + cos(x)**2",
+        "sqrt(x) + exp(y) + log(z)",
+    ):
+        _validate_symbolic_expression(expression)
+
+
+@pytest.mark.parametrize(
+    ("expression", "message"),
+    [
+        ("x" * 4097, "exceeds"),
+        ("x +", "valid safe expression syntax"),
+        ("\x00", "valid safe expression syntax"),
+        ("True", "constants must be numeric"),
+        ("'text'", "constants must be numeric"),
+        ("_private", "must not start with underscore"),
+        ("x << 1", "disallowed binary operator"),
+        ("~x", "disallowed unary operator"),
+        ("__import__('os')", "disallowed function call"),
+        ("obj.method(x)", "disallowed function call"),
+        ("sin(x, evaluate=False)", "cannot use keyword arguments"),
+        ("x[0]", "disallowed syntax: Subscript"),
+        ("lambda: x", "disallowed syntax: Lambda"),
+        ("[x for x in y]", "disallowed syntax: ListComp"),
+        ("x < 2", "disallowed syntax: Compare"),
+    ],
+)
+def test_symbolic_expression_validator_rejects_python_execution_surface(
+    expression: str,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        _validate_symbolic_expression(expression)
+
+
+def test_sympy_verify_identity_rejects_unsafe_source_before_backend_load(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    registry = ToolRegistry()
+    loaded = False
+
+    def fake_load(_name: str) -> ModuleType:
+        nonlocal loaded
+        loaded = True
+        return ModuleType("sympy")
+
+    monkeypatch.setattr(registry, "load", fake_load)
+    with pytest.raises(ValueError, match="disallowed function call"):
+        sympy_verify_identity("__import__('os').system('echo unsafe')", "0", registry=registry)
+    assert not loaded
 
 
 class _FakeSolver:
