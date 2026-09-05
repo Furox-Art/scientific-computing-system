@@ -29,10 +29,19 @@ def test_release_workflow_verifies_cross_registry_integrity() -> None:
 def test_release_order_is_publish_then_tag_then_release_then_integrity() -> None:
     release = _text(RELEASE_WORKFLOW)
     publish = release.index("Publish to PyPI (Trusted Publishing)")
-    tag = release.index("Create release tag after successful PyPI publish")
+    tag = release.index("Create or verify release tag after successful PyPI state")
     github_release = release.index("Create GitHub Release with published distribution assets")
     integrity = release.index("Verify PyPI and GitHub Release artifact parity")
     assert publish < tag < github_release < integrity
+
+
+def test_release_recovery_is_idempotent_and_refuses_tag_rewrite() -> None:
+    release = _text(RELEASE_WORKFLOW)
+    assert "Inspect existing public PyPI release for safe recovery" in release
+    assert "already_published=true" in release
+    assert "steps.pypi_state.outputs.already_published != 'true'" in release
+    assert 'git rev-list -n 1 "$RELEASE_TAG"' in release
+    assert "Refusing to rewrite a release tag" in release
 
 
 def test_registry_smoke_repairs_and_rechecks_release_assets() -> None:
