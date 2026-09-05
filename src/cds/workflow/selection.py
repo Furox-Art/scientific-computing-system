@@ -8,9 +8,9 @@ and returns a deterministic ranking with visible alternatives.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
-from typing import Mapping
 
 from cds.workflow.types import Recommendation
 
@@ -312,9 +312,7 @@ def _rank_candidate(
         for capability in context.preferred_capabilities
         if capability in candidate.capabilities
     )
-    matched_traits = tuple(
-        trait for trait in context.preferred_traits if trait in candidate.traits
-    )
+    matched_traits = tuple(trait for trait in context.preferred_traits if trait in candidate.traits)
     score += len(matched_capabilities) * policy.preferred_capability_weight
     score += len(matched_traits) * policy.preferred_trait_weight
 
