@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from pathlib import Path
 
 import pytest
 
@@ -24,7 +25,7 @@ def test_streaming_extend_and_invalid_dense_dimensions() -> None:
 
 
 def test_manifest_creation_without_locks_or_git_sha(
-    tmp_path: pytest.TempPathFactory,
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(provenance_manifest, "detect_git_sha", lambda: None)
