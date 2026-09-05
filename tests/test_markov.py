@@ -1,6 +1,8 @@
 """Tests for Markov chain Monte Carlo (Metropolis-Hastings)."""
 
 import math
+from typing import cast
+from unittest import mock
 
 import pytest
 
@@ -30,9 +32,46 @@ class TestValidation:
         with pytest.raises(ValueError, match="thin"):
             metropolis_hastings(_normal_log_pdf, 0.0, thin=0)
 
-    def test_nonpositive_proposal_scale(self) -> None:
+    @pytest.mark.parametrize(
+        ("name", "kwargs"),
+        [
+            ("n_samples", {"n_samples": True}),
+            ("n_samples", {"n_samples": cast(int, 1.5)}),
+            ("burn_in", {"burn_in": True}),
+            ("burn_in", {"burn_in": cast(int, 1.5)}),
+            ("thin", {"thin": True}),
+            ("thin", {"thin": cast(int, 1.5)}),
+        ],
+    )
+    def test_iteration_counts_require_real_integers(
+        self, name: str, kwargs: dict[str, int]
+    ) -> None:
+        with pytest.raises(ValueError, match=name):
+            metropolis_hastings(_normal_log_pdf, 0.0, **kwargs)
+
+    def test_nonpositive_or_nonfinite_proposal_scale(self) -> None:
         with pytest.raises(ValueError, match="proposal_scale"):
             metropolis_hastings(_normal_log_pdf, 0.0, proposal_scale=0.0)
+        with pytest.raises(ValueError, match="proposal_scale"):
+            metropolis_hastings(_normal_log_pdf, 0.0, proposal_scale=math.nan)
+        with pytest.raises(ValueError, match="proposal_scale"):
+            metropolis_hastings(_normal_log_pdf, 0.0, proposal_scale=math.inf)
+
+    def test_nonfinite_initial_state_is_rejected(self) -> None:
+        with pytest.raises(ValueError, match="x0"):
+            metropolis_hastings(_normal_log_pdf, math.nan)
+        with pytest.raises(ValueError, match="x0"):
+            metropolis_hastings(_normal_log_pdf, math.inf)
+
+    @pytest.mark.parametrize("bad_density", [math.nan, math.inf])
+    def test_undefined_log_density_is_rejected(self, bad_density: float) -> None:
+        with pytest.raises(ValueError, match="log_target"):
+            metropolis_hastings(lambda _x: bad_density, 0.0, n_samples=1, burn_in=0)
+
+    def test_nonfinite_proposal_is_rejected(self) -> None:
+        with mock.patch("cds.montecarlo.markov.random.Random.gauss", return_value=math.inf):
+            with pytest.raises(ArithmeticError, match="proposal became non-finite"):
+                metropolis_hastings(_normal_log_pdf, 0.0, n_samples=1, burn_in=0)
 
 
 class TestSamplerBasics:
@@ -52,7 +91,7 @@ class TestSamplerBasics:
         assert 0.0 < res.acceptance_rate < 1.0
 
     def test_high_acceptance_for_flat_target(self) -> None:
-        res = metropolis_hastings(lambda x: 0.0, 0.0, n_samples=200, seed=5)
+        res = metropolis_hastings(lambda _x: 0.0, 0.0, n_samples=200, seed=5)
         assert res.acceptance_rate > 0.95
 
     def test_burn_in_zero_default_thin(self) -> None:
@@ -74,12 +113,12 @@ class TestInfiniteDensityHandling:
         assert all(s >= 0.0 for s in res.samples)
         assert res.acceptance_rate < 1.0
 
-    def test_inf_current_state_accepts_finite_proposal(self) -> None:
+    def test_negative_inf_current_state_accepts_finite_proposal(self) -> None:
         res = metropolis_hastings(_half_normal_log_pdf, -1.0, n_samples=300, burn_in=150, seed=42)
         assert all(s >= 0.0 for s in res.samples)
         assert res.acceptance_rate > 0.0
 
-    def test_inf_current_escapes_quickly(self) -> None:
+    def test_negative_inf_current_escapes_quickly(self) -> None:
         res = metropolis_hastings(
             _half_normal_log_pdf,
             -2.0,

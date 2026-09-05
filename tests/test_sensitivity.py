@@ -39,10 +39,14 @@ def test_zero_output_and_empty_parameter_report() -> None:
 
 
 def test_local_sensitivity_validation() -> None:
-    with pytest.raises(ValueError, match="must be positive"):
+    with pytest.raises(ValueError, match="positive and finite"):
         local_sensitivity(lambda _values: 1.0, [1.0], relative_step=0.0)
-    with pytest.raises(ValueError, match="must be positive"):
+    with pytest.raises(ValueError, match="positive and finite"):
         local_sensitivity(lambda _values: 1.0, [1.0], absolute_step=-1.0)
+    with pytest.raises(ValueError, match="positive and finite"):
+        local_sensitivity(lambda _values: 1.0, [1.0], relative_step=math.inf)
+    with pytest.raises(ValueError, match="positive and finite"):
+        local_sensitivity(lambda _values: 1.0, [1.0], absolute_step=math.nan)
     with pytest.raises(ValueError, match="finite values"):
         local_sensitivity(lambda _values: 1.0, [math.inf])
     with pytest.raises(ValueError, match="baseline output"):

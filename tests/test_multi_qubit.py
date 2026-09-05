@@ -1,6 +1,9 @@
 """Tests for multi-qubit quantum operations and entanglement."""
 
 import math
+from typing import cast
+
+import pytest
 
 from cds.quantum.multi_qubit import (
     QuantumRegister,
@@ -29,10 +32,32 @@ def test_zeros_register() -> None:
     assert all(abs(a) < 1e-9 for a in reg.amplitudes[1:])
 
 
+def test_register_shape_and_value_validation() -> None:
+    with pytest.raises(ValueError, match="positive integer"):
+        QuantumRegister.zeros(0)
+    with pytest.raises(ValueError, match="positive integer"):
+        QuantumRegister.zeros(True)
+    with pytest.raises(ValueError, match="positive integer"):
+        QuantumRegister.zeros(cast(int, 1.5))
+    with pytest.raises(ValueError, match="exactly 2"):
+        QuantumRegister(n_qubits=1, amplitudes=[1 + 0j])
+    with pytest.raises(ValueError, match="amplitudes must be finite"):
+        QuantumRegister(n_qubits=1, amplitudes=[complex(math.inf), 0j])
+
+
 def test_from_bits() -> None:
-    reg = QuantumRegister.from_bits(3, 5)  # |101>
+    reg = QuantumRegister.from_bits(3, 5)
     assert abs(reg.amplitudes[5] - 1) < 1e-9
     assert sum(abs(a) ** 2 for a in reg.amplitudes) - 1.0 < 1e-9
+
+    with pytest.raises(ValueError, match="value must be an integer"):
+        QuantumRegister.from_bits(2, -1)
+    with pytest.raises(ValueError, match="value must be an integer"):
+        QuantumRegister.from_bits(2, 4)
+    with pytest.raises(ValueError, match="value must be an integer"):
+        QuantumRegister.from_bits(2, True)
+    with pytest.raises(ValueError, match="value must be an integer"):
+        QuantumRegister.from_bits(2, cast(int, 1.5))
 
 
 def test_probabilities() -> None:
@@ -40,6 +65,15 @@ def test_probabilities() -> None:
     probs = reg.probabilities()
     assert abs(probs[0] - 1.0) < 1e-9
     assert abs(probs[1]) < 1e-9
+
+
+def test_probabilities_normalize_equivalent_state_vectors() -> None:
+    reg = QuantumRegister(n_qubits=1, amplitudes=[3 + 0j, 4 + 0j])
+    assert reg.probabilities() == pytest.approx([9.0 / 25.0, 16.0 / 25.0])
+
+    zero = QuantumRegister(n_qubits=1, amplitudes=[0j, 0j])
+    with pytest.raises(ValueError, match="non-zero norm"):
+        zero.probabilities()
 
 
 def test_normalize() -> None:
@@ -50,24 +84,24 @@ def test_normalize() -> None:
 
 
 def test_normalize_zero_norm_is_noop() -> None:
-    # norm == 0 → the `if norm > 0` guard skips the in-place divide.
-    # A zero-amplitude register stays zero rather than raising.
     reg = QuantumRegister(n_qubits=1, amplitudes=[0 + 0j, 0 + 0j])
     reg.normalize()
     assert reg.amplitudes == [0, 0]
 
 
-def test_measure_shots_falls_through_to_last_state() -> None:
-    # In measure_shots the inner loop only `break`s when `r < cumulative`.
-    # The probabilities come from `abs(a)**2`, so an *un-normalised* register
-    # whose total mass is < 1 leaves the final cumulative bucket strictly below
-    # 1.0 — a draw `r` above it never satisfies the break predicate and the
-    # loop exhausts, keeping the `len(probs) - 1` default (the 84 -> 89 edge).
-    # We craft tiny amplitudes so `cumulative` stays ≈ 0 across all buckets.
-    reg = QuantumRegister(n_qubits=1, amplitudes=[1e-12 + 0j, 1e-12 + 0j])
-    counts = reg.measure_shots(shots=50, seed=1)
-    # The fall-through pins every shot to the last index (|1>), regardless of r.
-    assert counts == {"1": 50}
+def test_normalize_rejects_overflowed_norm() -> None:
+    reg = QuantumRegister(n_qubits=1, amplitudes=[complex(1e308), 0j])
+    with pytest.raises(ValueError, match="norm must be finite"):
+        reg.normalize()
+
+
+def test_measure_shots_normalizes_equivalent_state_vectors() -> None:
+    scaled = QuantumRegister(n_qubits=1, amplitudes=[1e-12 + 0j, 1e-12 + 0j])
+    normalized = QuantumRegister(
+        n_qubits=1,
+        amplitudes=[complex(1 / math.sqrt(2)), complex(1 / math.sqrt(2))],
+    )
+    assert scaled.measure_shots(shots=200, seed=1) == normalized.measure_shots(shots=200, seed=1)
 
 
 def test_measure_deterministic() -> None:
@@ -76,15 +110,38 @@ def test_measure_deterministic() -> None:
     assert result == 0
 
 
+def test_measure_rejects_zero_norm_state() -> None:
+    reg = QuantumRegister(n_qubits=1, amplitudes=[0j, 0j])
+    with pytest.raises(ValueError, match="non-zero norm"):
+        reg.measure(seed=42)
+
+
 def test_measure_shots() -> None:
     reg = QuantumRegister.zeros(2)
     counts = reg.measure_shots(shots=100, seed=42)
     assert counts.get("00", 0) == 100
 
 
+def test_measure_shots_rejects_invalid_shot_count() -> None:
+    reg = QuantumRegister.zeros(1)
+    with pytest.raises(ValueError, match="positive integer"):
+        reg.measure_shots(shots=0)
+    with pytest.raises(ValueError, match="positive integer"):
+        reg.measure_shots(shots=-1)
+    with pytest.raises(ValueError, match="positive integer"):
+        reg.measure_shots(shots=True)
+    with pytest.raises(ValueError, match="positive integer"):
+        reg.measure_shots(shots=cast(int, 1.5))
+
+
 def test_expectation_zero_state() -> None:
     reg = QuantumRegister.zeros(2)
     assert reg.expectation() == 0.0
+
+
+def test_expectation_uses_normalized_probabilities() -> None:
+    reg = QuantumRegister(n_qubits=1, amplitudes=[0j, 2 + 0j])
+    assert reg.expectation() == 1.0
 
 
 # --- Single-qubit gates on register ---
@@ -93,15 +150,25 @@ def test_expectation_zero_state() -> None:
 def test_x_gate_flips_qubit_0() -> None:
     reg = QuantumRegister.zeros(2)
     reg = x_gate(reg, 0)
-    # |00> -> |01>
     assert abs(reg.amplitudes[1] - 1) < 1e-9
 
 
 def test_x_gate_flips_qubit_1() -> None:
     reg = QuantumRegister.zeros(2)
     reg = x_gate(reg, 1)
-    # |00> -> |10>
     assert abs(reg.amplitudes[2] - 1) < 1e-9
+
+
+def test_single_qubit_gate_rejects_invalid_target() -> None:
+    reg = QuantumRegister.zeros(2)
+    with pytest.raises(ValueError, match="target index"):
+        x_gate(reg, -1)
+    with pytest.raises(ValueError, match="target index"):
+        x_gate(reg, 2)
+    with pytest.raises(ValueError, match="target index"):
+        x_gate(reg, True)
+    with pytest.raises(ValueError, match="target index"):
+        x_gate(reg, cast(int, 0.5))
 
 
 def test_h_gate_superposition() -> None:
@@ -115,21 +182,18 @@ def test_h_gate_superposition() -> None:
 def test_z_gate_on_zero() -> None:
     reg = QuantumRegister.zeros(1)
     reg = z_gate(reg, 0)
-    # Z|0> = |0>
     assert abs(reg.amplitudes[0] - 1) < 1e-9
 
 
 def test_z_gate_on_one() -> None:
     reg = QuantumRegister.from_bits(1, 1)
     reg = z_gate(reg, 0)
-    # Z|1> = -|1>
     assert abs(reg.amplitudes[1] - (-1)) < 1e-9
 
 
 def test_y_gate() -> None:
     reg = QuantumRegister.zeros(1)
     reg = y_gate(reg, 0)
-    # Y|0> = i|1>
     assert abs(reg.amplitudes[0]) < 1e-9
     assert abs(reg.amplitudes[1] - 1j) < 1e-9
 
@@ -139,9 +203,13 @@ def test_rz_gate() -> None:
     reg = h_gate(reg, 0)
     reg = rz_gate(reg, 0, math.pi)
     probs = reg.probabilities()
-    # still 50/50 after Rz
     assert abs(probs[0] - 0.5) < 1e-9
     assert abs(probs[1] - 0.5) < 1e-9
+
+
+def test_rz_gate_rejects_non_finite_theta() -> None:
+    with pytest.raises(ValueError, match="theta"):
+        rz_gate(QuantumRegister.zeros(1), 0, math.nan)
 
 
 def test_double_x_is_identity() -> None:
@@ -158,28 +226,38 @@ def test_double_h_is_identity() -> None:
     assert abs(reg.amplitudes[0] - 1) < 1e-9
 
 
-# --- CNOT ---
+# --- Controlled gates ---
 
 
 def test_cnot_no_flip_when_control_zero() -> None:
     reg = QuantumRegister.zeros(2)
     reg = cnot(reg, 0, 1)
-    # control is 0, no change
     assert abs(reg.amplitudes[0] - 1) < 1e-9
 
 
 def test_cnot_flips_when_control_one() -> None:
     reg = QuantumRegister.zeros(2)
-    reg = x_gate(reg, 0)  # |01>
-    reg = cnot(reg, 0, 1)  # should flip target -> |11>
+    reg = x_gate(reg, 0)
+    reg = cnot(reg, 0, 1)
     assert abs(reg.amplitudes[3] - 1) < 1e-9
+
+
+def test_controlled_gates_validate_indices_and_distinctness() -> None:
+    reg = QuantumRegister.zeros(2)
+    with pytest.raises(ValueError, match="control index"):
+        cnot(reg, 2, 0)
+    with pytest.raises(ValueError, match="target index"):
+        cnot(reg, 0, 2)
+    with pytest.raises(ValueError, match="distinct"):
+        cnot(reg, 0, 0)
+    with pytest.raises(ValueError, match="distinct"):
+        cz(reg, 1, 1)
 
 
 def test_cnot_creates_entanglement() -> None:
     reg = QuantumRegister.zeros(2)
     reg = h_gate(reg, 0)
     reg = cnot(reg, 0, 1)
-    # Bell state: (|00> + |11>) / sqrt(2)
     assert is_entangled(reg)
 
 
@@ -187,16 +265,14 @@ def test_cnot_creates_entanglement() -> None:
 
 
 def test_cz_on_11() -> None:
-    reg = QuantumRegister.from_bits(2, 3)  # |11>
+    reg = QuantumRegister.from_bits(2, 3)
     reg = cz(reg, 0, 1)
-    # CZ|11> = -|11>
     assert abs(reg.amplitudes[3] - (-1)) < 1e-9
 
 
 def test_cz_on_00() -> None:
     reg = QuantumRegister.zeros(2)
     reg = cz(reg, 0, 1)
-    # no change
     assert abs(reg.amplitudes[0] - 1) < 1e-9
 
 
@@ -205,9 +281,24 @@ def test_cz_on_00() -> None:
 
 def test_swap_01_to_10() -> None:
     reg = QuantumRegister.zeros(2)
-    reg = x_gate(reg, 0)  # |01>
-    reg = swap(reg, 0, 1)  # -> |10>
+    reg = x_gate(reg, 0)
+    reg = swap(reg, 0, 1)
     assert abs(reg.amplitudes[2] - 1) < 1e-9
+
+
+def test_swap_same_qubit_returns_equivalent_copy() -> None:
+    reg = h_gate(QuantumRegister.zeros(2), 0)
+    swapped = swap(reg, 0, 0)
+    assert swapped is not reg
+    assert swapped.amplitudes == reg.amplitudes
+
+
+def test_swap_validates_indices() -> None:
+    reg = QuantumRegister.zeros(2)
+    with pytest.raises(ValueError, match="first index"):
+        swap(reg, -1, 1)
+    with pytest.raises(ValueError, match="second index"):
+        swap(reg, 0, 2)
 
 
 # --- Toffoli ---
@@ -215,17 +306,29 @@ def test_swap_01_to_10() -> None:
 
 def test_toffoli_flips_when_both_controls_set() -> None:
     reg = QuantumRegister.zeros(3)
-    reg = x_gate(reg, 0)  # |001>
-    reg = x_gate(reg, 1)  # |011>
-    reg = toffoli(reg, 0, 1, 2)  # -> |111>
+    reg = x_gate(reg, 0)
+    reg = x_gate(reg, 1)
+    reg = toffoli(reg, 0, 1, 2)
     assert abs(reg.amplitudes[7] - 1) < 1e-9
 
 
 def test_toffoli_no_flip_when_one_control() -> None:
     reg = QuantumRegister.zeros(3)
-    reg = x_gate(reg, 0)  # |001>
-    reg = toffoli(reg, 0, 1, 2)  # control1 is 0, no change
+    reg = x_gate(reg, 0)
+    reg = toffoli(reg, 0, 1, 2)
     assert abs(reg.amplitudes[1] - 1) < 1e-9
+
+
+def test_toffoli_requires_three_distinct_valid_qubits() -> None:
+    reg = QuantumRegister.zeros(3)
+    with pytest.raises(ValueError, match="first control index"):
+        toffoli(reg, 3, 1, 2)
+    with pytest.raises(ValueError, match="second control index"):
+        toffoli(reg, 0, 3, 2)
+    with pytest.raises(ValueError, match="target index"):
+        toffoli(reg, 0, 1, 3)
+    with pytest.raises(ValueError, match="distinct"):
+        toffoli(reg, 0, 0, 2)
 
 
 # --- Bell states ---
@@ -234,8 +337,8 @@ def test_toffoli_no_flip_when_one_control() -> None:
 def test_bell_phi_plus() -> None:
     reg = bell_state(0)
     s = 1 / math.sqrt(2)
-    assert abs(reg.amplitudes[0] - s) < 1e-9  # |00>
-    assert abs(reg.amplitudes[3] - s) < 1e-9  # |11>
+    assert abs(reg.amplitudes[0] - s) < 1e-9
+    assert abs(reg.amplitudes[3] - s) < 1e-9
     assert is_entangled(reg)
 
 
@@ -260,12 +363,20 @@ def test_bell_psi_minus() -> None:
     assert is_entangled(reg)
 
 
+def test_bell_state_rejects_invalid_selector() -> None:
+    with pytest.raises(ValueError, match="0 through 3"):
+        bell_state(4)
+    with pytest.raises(ValueError, match="0 through 3"):
+        bell_state(True)
+    with pytest.raises(ValueError, match="0 through 3"):
+        bell_state(cast(int, 1.5))
+
+
 def test_bell_measurements() -> None:
     reg = bell_state(0)
     counts = reg.measure_shots(shots=10000, seed=7)
     assert "00" in counts
     assert "11" in counts
-    # should be roughly 50/50
     total = sum(counts.values())
     r00 = counts.get("00", 0) / total
     assert 0.45 < r00 < 0.55
@@ -277,7 +388,6 @@ def test_bell_measurements() -> None:
 def test_ghz_3_qubit() -> None:
     reg = ghz_state(3)
     probs = reg.probabilities()
-    # only |000> and |111> should have probability
     assert abs(probs[0] - 0.5) < 1e-9
     assert abs(probs[7] - 0.5) < 1e-9
     for i in range(1, 7):
@@ -291,6 +401,11 @@ def test_ghz_4_qubit() -> None:
     assert abs(probs[15] - 0.5) < 1e-9
 
 
+def test_ghz_requires_positive_qubit_count() -> None:
+    with pytest.raises(ValueError, match="positive integer"):
+        ghz_state(0)
+
+
 # --- Entanglement checks ---
 
 
@@ -300,7 +415,6 @@ def test_separable_state() -> None:
 
 
 def test_product_superposition_not_entangled() -> None:
-    # H|0> ⊗ |0> is separable
     reg = QuantumRegister.zeros(2)
     reg = h_gate(reg, 0)
     assert not is_entangled(reg)
@@ -313,6 +427,21 @@ def test_entangled_after_cnot() -> None:
     assert is_entangled(reg)
 
 
+def test_entanglement_is_scale_invariant_and_rejects_zero_norm() -> None:
+    s = 3.0 / math.sqrt(2)
+    scaled_bell = QuantumRegister(2, [complex(s), 0j, 0j, complex(s)])
+    assert is_entangled(scaled_bell)
+
+    zero = QuantumRegister(2, [0j, 0j, 0j, 0j])
+    with pytest.raises(ValueError, match="non-zero norm"):
+        is_entangled(zero)
+
+
+def test_entanglement_requires_two_qubits() -> None:
+    with pytest.raises(ValueError, match="2-qubit"):
+        is_entangled(QuantumRegister.zeros(1))
+
+
 # --- 3-qubit circuits ---
 
 
@@ -321,23 +450,17 @@ def test_3_qubit_circuit() -> None:
     reg = h_gate(reg, 0)
     reg = h_gate(reg, 1)
     reg = h_gate(reg, 2)
-    # all 8 basis states equal
     probs = reg.probabilities()
     for p in probs:
         assert abs(p - 0.125) < 1e-9
 
 
 def test_quantum_teleportation_circuit() -> None:
-    """Simplified teleportation-like circuit."""
     reg = QuantumRegister.zeros(3)
-    # prepare qubit 0 in some state
-    reg = x_gate(reg, 0)  # |1>
-    # create Bell pair on qubits 1,2
+    reg = x_gate(reg, 0)
     reg = h_gate(reg, 1)
     reg = cnot(reg, 1, 2)
-    # CNOT from 0 to 1
     reg = cnot(reg, 0, 1)
     reg = h_gate(reg, 0)
-    # circuit ran without error
     total_prob = sum(abs(a) ** 2 for a in reg.amplitudes)
     assert abs(total_prob - 1.0) < 1e-9

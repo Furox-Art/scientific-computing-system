@@ -6,6 +6,11 @@ import math
 from dataclasses import dataclass
 
 
+def _validate_integer_exponent(exponent: int) -> None:
+    if isinstance(exponent, bool) or not isinstance(exponent, int):
+        raise ValueError("dimension exponent must be an integer")
+
+
 @dataclass(frozen=True)
 class Dimension:
     """Exponents of the seven SI base dimensions.
@@ -21,6 +26,18 @@ class Dimension:
     temperature: int = 0
     amount: int = 0
     luminous_intensity: int = 0
+
+    def __post_init__(self) -> None:
+        for exponent in (
+            self.mass,
+            self.length,
+            self.time,
+            self.current,
+            self.temperature,
+            self.amount,
+            self.luminous_intensity,
+        ):
+            _validate_integer_exponent(exponent)
 
     def __mul__(self, other: Dimension) -> Dimension:
         return Dimension(
@@ -45,6 +62,7 @@ class Dimension:
         )
 
     def __pow__(self, exponent: int) -> Dimension:
+        _validate_integer_exponent(exponent)
         return Dimension(
             self.mass * exponent,
             self.length * exponent,
@@ -89,6 +107,7 @@ class Unit:
         )
 
     def __pow__(self, exponent: int) -> Unit:
+        _validate_integer_exponent(exponent)
         return Unit(
             f"{self.symbol}^{exponent}",
             self.scale**exponent,
@@ -109,7 +128,10 @@ class Quantity:
 
     @property
     def si_value(self) -> float:
-        return self.value * self.unit.scale
+        value = self.value * self.unit.scale
+        if not math.isfinite(value):
+            raise ArithmeticError("quantity SI value became non-finite")
+        return value
 
     def to(self, target: Unit) -> Quantity:
         """Convert to another unit with the same physical dimension."""
@@ -139,6 +161,7 @@ class Quantity:
         return Quantity(self.value / float(other), self.unit)
 
     def __pow__(self, exponent: int) -> Quantity:
+        _validate_integer_exponent(exponent)
         return Quantity(self.value**exponent, self.unit**exponent)
 
 
