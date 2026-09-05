@@ -97,6 +97,11 @@ def test_tool_selection_covers_sensitive_local_and_nonlocal_preference_paths() -
     assert unrestricted.tool == "stdlib-math"
 
 
+def test_analysis_request_rejects_empty_question() -> None:
+    with pytest.raises(ValueError, match="analysis question must not be empty"):
+        AnalysisRequest(question="   ")
+
+
 def test_analysis_request_rejects_sensitive_remote_fallback() -> None:
     with pytest.raises(ValueError, match="sensitive_data cannot allow remote fallback"):
         AnalysisRequest(
