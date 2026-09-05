@@ -7,8 +7,8 @@ import argparse
 import re
 import subprocess
 import sys
-import tomllib
 from pathlib import Path
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
@@ -20,8 +20,7 @@ def _run_git(*args: str) -> str:
         cwd=ROOT,
         check=True,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
     )
     return process.stdout.strip()
 
