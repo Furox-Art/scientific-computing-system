@@ -207,7 +207,7 @@ jobs:
 
       - name: Create PyPI deployment record
         id: deployment
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         with:
@@ -273,7 +273,7 @@ jobs:
 
       - name: Set PyPI deployment status
         if: always() && steps.deployment.outputs.id != ''
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const state = "${{ job.status }}" === "success" ? "success" : "failure";
