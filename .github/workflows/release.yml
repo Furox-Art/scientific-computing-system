@@ -1,18 +1,18 @@
 name: Release
 
-# Single publish authority for PyPI + GitHub release metadata.
+# Single publish authority for PyPI + GitHub release artifacts.
 #
 # Normal path: bump the package version in BOTH pyproject.toml and
 # src/cds/_version.py, merge to main, and this workflow builds and verifies the
-# wheel/sdist, publishes the verified files to PyPI via Trusted Publishing
-# (OIDC), then creates the matching vX.Y.Z tag and an assets-free GitHub Release.
-# The _version.py change is the only release trigger; ordinary pyproject.toml
-# packaging edits do not publish a release. The tag created after a successful
-# PyPI publish does not trigger a second publish run.
+# wheel/sdist, publishes those exact files to PyPI via Trusted Publishing
+# (OIDC), then creates the matching vX.Y.Z tag and GitHub Release with the same
+# wheel/sdist attached. The _version.py change is the only release trigger;
+# ordinary pyproject.toml packaging edits do not publish a release. The tag
+# created after a successful PyPI publish does not trigger a second publish run.
 #
-# Distribution files are never uploaded as GitHub Actions artifacts or GitHub
-# Release assets; they exist only in the ephemeral runner workspace while being
-# verified and published to PyPI. The installed CLI must pass before publishing.
+# The installed CLI must pass against the built wheel before anything is
+# published. PyPI publication succeeds before the GitHub tag/release is created,
+# preventing orphan GitHub releases when registry publishing fails.
 
 on:
   push:
@@ -173,17 +173,18 @@ jobs:
           git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG"
           git push origin "$RELEASE_TAG"
 
-      - name: Create GitHub Release without distribution assets
+      - name: Create GitHub Release with published distribution assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           set -euo pipefail
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG already exists; leaving it asset-free."
+            echo "Release $RELEASE_TAG already exists; synchronizing distribution assets."
+            gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" dist/* --clobber
           else
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-              --generate-notes --title "$RELEASE_TAG"
+              --generate-notes --title "$RELEASE_TAG" dist/*
           fi
 
       - name: Set PyPI deployment status
