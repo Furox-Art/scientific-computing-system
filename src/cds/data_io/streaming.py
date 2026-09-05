@@ -154,7 +154,9 @@ def _solve_dense(matrix: Sequence[Sequence[float]], rhs: Sequence[float]) -> lis
     n = len(matrix)
     if n == 0 or len(rhs) != n or any(len(row) != n for row in matrix):
         raise ValueError("normal equation dimensions are inconsistent")
-    augmented = [[float(value) for value in row] + [float(rhs[index])] for index, row in enumerate(matrix)]
+    augmented = [
+        [float(value) for value in row] + [float(rhs[index])] for index, row in enumerate(matrix)
+    ]
     for column in range(n):
         pivot = max(range(column, n), key=lambda row: abs(augmented[row][column]))
         if abs(augmented[pivot][column]) <= 1e-14:
