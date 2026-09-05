@@ -73,6 +73,8 @@ def test_provenance_identity_and_type_guards_cover_each_rejection_path() -> None
     with pytest.raises(ValueError, match="run_id"):
         _valid_manifest(run_id=cast(str, 1))
     with pytest.raises(ValueError, match="created_utc"):
+        _valid_manifest(created_utc="")
+    with pytest.raises(ValueError, match="created_utc"):
         _valid_manifest(created_utc="not-a-date")
     with pytest.raises(ValueError, match="timezone-aware"):
         _valid_manifest(created_utc="2026-09-05T12:00:00")
@@ -139,6 +141,10 @@ def test_statistical_ttest_edge_guards_and_paired_limits() -> None:
     shifted = paired_ttest([2.0, 3.0], [1.0, 2.0])
     assert math.isinf(shifted.statistic)
     assert shifted.p_value == 0.0
+
+    regular = paired_ttest([1.0, 2.0, 4.0], [0.5, 1.0, 2.0])
+    assert math.isfinite(regular.statistic)
+    assert 0.0 <= regular.p_value <= 1.0
 
 
 def test_statistical_gof_anova_and_effect_size_fail_closed_paths() -> None:
