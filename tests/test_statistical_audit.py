@@ -9,6 +9,7 @@ import pytest
 
 from cds.core.models import Hypothesis
 from cds.hypothesis import Domain, EvaluationData, HypothesisEvaluator, generate_hypotheses
+from cds.stats import paired_cohens_d
 
 
 def _hypothesis() -> Hypothesis:
@@ -64,3 +65,11 @@ def test_evaluator_paired_method_and_evidence_are_explicit() -> None:
     )
     assert inconclusive.evidence_interpretation == "inconclusive"
     assert "does not demonstrate" in inconclusive.conclusion
+
+
+def test_paired_cohens_d_constant_nonzero_difference_is_signed_infinite() -> None:
+    positive = paired_cohens_d([2.0, 3.0, 4.0], [1.0, 2.0, 3.0])
+    negative = paired_cohens_d([1.0, 2.0, 3.0], [2.0, 3.0, 4.0])
+
+    assert positive == math.inf
+    assert negative == -math.inf
