@@ -93,8 +93,7 @@ def pypi_manifest(version: str) -> dict[str, Artifact]:
 
     if package_types != {"bdist_wheel", "sdist"} or len(artifacts) != 2:
         raise ValueError(
-            "PyPI release must contain exactly one wheel and one sdist; "
-            f"found {sorted(artifacts)}"
+            f"PyPI release must contain exactly one wheel and one sdist; found {sorted(artifacts)}"
         )
     return artifacts
 
@@ -145,9 +144,7 @@ def compare_manifests(pypi: dict[str, Artifact], github: dict[str, Artifact]) ->
         left = pypi[filename]
         right = github[filename]
         if left.size != right.size:
-            raise ValueError(
-                f"size mismatch for {filename}: PyPI={left.size}, GitHub={right.size}"
-            )
+            raise ValueError(f"size mismatch for {filename}: PyPI={left.size}, GitHub={right.size}")
         if left.sha256 != right.sha256:
             raise ValueError(
                 f"SHA-256 mismatch for {filename}: PyPI={left.sha256}, GitHub={right.sha256}"
@@ -194,7 +191,9 @@ def verify_release_integrity(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", default=None)
-    parser.add_argument("--repository", default=os.environ.get("GITHUB_REPOSITORY", DEFAULT_REPOSITORY))
+    parser.add_argument(
+        "--repository", default=os.environ.get("GITHUB_REPOSITORY", DEFAULT_REPOSITORY)
+    )
     parser.add_argument("--attempts", type=int, default=DEFAULT_ATTEMPTS)
     parser.add_argument("--delay-seconds", type=float, default=DEFAULT_DELAY_SECONDS)
     args = parser.parse_args()
