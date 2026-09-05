@@ -42,6 +42,13 @@ def _evaluate_finite(function: Callable[[float], float], x: float) -> float:
     return value
 
 
+def _finite_width(lower: float, upper: float, *, name: str) -> float:
+    width = upper - lower
+    if not math.isfinite(width):
+        raise ArithmeticError(f"{name} width became non-finite")
+    return width
+
+
 def _pi_worker(samples_seed: tuple[int, int | None]) -> int:
     """Worker function for parallel pi estimation."""
     samples, seed = samples_seed
@@ -104,11 +111,11 @@ def mc_integrate(
     _validate_integer("n_samples", n_samples, minimum=1)
     _validate_finite("a", a)
     _validate_finite("b", b)
+    width = _finite_width(a, b, name="integration interval")
 
     rng = random.Random(seed)
     total = 0.0
     total_sq = 0.0
-    width = b - a
     for _ in range(n_samples):
         x = a + rng.random() * width
         val = _evaluate_finite(f, x)
@@ -123,6 +130,8 @@ def mc_integrate(
     if not math.isfinite(estimate) or not math.isfinite(var):
         raise ArithmeticError("Monte Carlo integral became non-finite")
     se = abs(width) * math.sqrt(max(0.0, var) / n_samples)
+    if not math.isfinite(se):
+        raise ArithmeticError("Monte Carlo standard error became non-finite")
     return MCResult(estimate=estimate, samples=n_samples, std_error=se)
 
 
@@ -207,6 +216,8 @@ def buffon_needle(
     estimate = (2 * needle_length) / (line_spacing * p)
     se_p = math.sqrt(p * (1 - p) / n_throws)
     se = (2 * needle_length * se_p) / (line_spacing * p * p)
+    if not math.isfinite(estimate) or not math.isfinite(se):
+        raise ArithmeticError("Buffon estimator became non-finite")
     return MCResult(estimate=estimate, samples=n_throws, std_error=se)
 
 
@@ -223,9 +234,9 @@ def mc_expectation(
     _validate_finite("b", b)
     if a >= b:
         raise ValueError("a must be less than b")
+    width = _finite_width(a, b, name="expectation interval")
 
     rng = random.Random(seed)
-    width = b - a
     total = 0.0
     total_sq = 0.0
     for _ in range(n_samples):
@@ -240,6 +251,8 @@ def mc_expectation(
     if not math.isfinite(mean_val) or not math.isfinite(var):
         raise ArithmeticError("Monte Carlo expectation became non-finite")
     se = math.sqrt(max(0.0, var) / n_samples)
+    if not math.isfinite(se):
+        raise ArithmeticError("Monte Carlo standard error became non-finite")
     return MCResult(estimate=mean_val, samples=n_samples, std_error=se)
 
 
@@ -258,18 +271,22 @@ def hit_or_miss(
         _validate_finite(name, value)
     if x0 >= x1 or y0 >= y1:
         raise ValueError("ranges must be non-empty (lo < hi)")
+    x_width = _finite_width(x0, x1, name="x-range")
+    y_width = _finite_width(y0, y1, name="y-range")
+    box = x_width * y_width
+    if not math.isfinite(box):
+        raise ArithmeticError("bounding-box area became non-finite")
 
     rng = random.Random(seed)
     hits = 0
     for _ in range(n_samples):
-        x = x0 + rng.random() * (x1 - x0)
-        y = y0 + rng.random() * (y1 - y0)
+        x = x0 + rng.random() * x_width
+        y = y0 + rng.random() * y_width
         if predicate(x, y):
             hits += 1
     p = hits / n_samples
-    box = (x1 - x0) * (y1 - y0)
-    if not math.isfinite(box):
-        raise ArithmeticError("bounding-box area became non-finite")
     estimate = box * p
     se = box * math.sqrt(p * (1 - p) / n_samples) if n_samples > 1 else 0.0
+    if not math.isfinite(estimate) or not math.isfinite(se):
+        raise ArithmeticError("hit-or-miss estimate became non-finite")
     return MCResult(estimate=estimate, samples=n_samples, std_error=se)
