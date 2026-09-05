@@ -3,15 +3,6 @@ name: CI
 on:
   push:
     branches: [ main ]
-    # Files that cannot change the package, the test result or the published
-    # site, so a metadata-only commit should not spend 18 job checkouts.
-    # `docs/**` is deliberately absent: docs changes must still trigger the
-    # `deploy-docs` job below or the published site drifts from main.
-    #
-    # Deliberately NOT applied to `pull_request`. The aggregate `CI` job is
-    # designed to be the single required status check, and a workflow skipped
-    # by paths-ignore never reports that context — which would leave a PR
-    # pending forever if branch protection is re-enabled.
     paths-ignore:
       - '.github/CODEOWNERS'
       - '.github/FUNDING.yml'
@@ -25,23 +16,10 @@ on:
   pull_request:
     branches: [ main ]
 
-# One in-flight run per ref. Every CI run in this repo is a push to main
-# (27 of 27 over the last fortnight), so without this a burst of commits
-# starts a full 18-job run per commit while only the last result matters.
-#
-# Note this can cancel a superseded run's `deploy-docs` job mid-flight.
-# That is safe: `mkdocs gh-deploy --force` either has not pushed yet or has
-# already replaced gh-pages wholesale, and the superseding run redeploys.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# Least privilege for the whole workflow. This repo's *default* workflow
-# permission is read-only, but that is a repo setting a future change could
-# flip back, and these jobs install and execute third-party packages from
-# PyPI — they must never hold a write-scoped GITHUB_TOKEN. `deploy-docs`
-# below re-grants `contents: write` for itself, which is the only job that
-# writes anything (the gh-pages push).
 permissions:
   contents: read
 
@@ -56,11 +34,6 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
-    # Shallow clone. The version is static (see the note by `version` in
-    # pyproject.toml on why setuptools_scm/hatch-vcs was dropped) and the only
-    # mkdocs plugins are search + mkdocstrings, neither of which reads git
-    # history — so nothing in this job needs the log. All 12 matrix cells were
-    # fetching the entire history for nothing.
     - uses: actions/checkout@v5
 
     - name: Set up Python
@@ -69,11 +42,6 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Install dependencies
-      # Optional runtime extras (`pandas`, `plot`) are installed so their
-      # bridges are exercised (and covered) on every cell. The *core* package
-      # stays zero-dependency at runtime — these packages only live in this CI
-      # test environment so the importorskip'd tests actually run and the
-      # coverage gate stays honest.
       run: |
         python -m pip install --upgrade pip
         pip install ".[test,dev,docs,pandas,plot]"
@@ -94,12 +62,6 @@ jobs:
       shell: bash
       run: |
         set -e
-        # Reference cell (Linux + Python 3.12) enforces the blended coverage
-        # gate (statement + branch). Other cells run the test suite for
-        # cross-platform coverage but don't enforce the gate; --no-cov-on-fail
-        # keeps a single 1-line branch miss on a non-reference platform from
-        # breaking the whole matrix. The gate is set in pyproject.toml
-        # [tool.coverage.report] fail_under = 100.
         if [ "$RUNNER_OS" = "Linux" ] && [ "${{ matrix.python-version }}" = "3.12" ]; then
           pytest tests/ --cov=cds --cov-branch --cov-report=xml --cov-report=term
         else
@@ -119,16 +81,7 @@ jobs:
       run: mkdocs build --strict
 
   audit:
-    # Security scan of the committed lock files with pip-audit. Audits both
-    # the runtime lock (requirements.lock → typer/pydantic/rich) and the
-    # dev/docs/test lock (requirements-dev.lock → full toolchain) directly
-    # against the PyPI Advisory database, so no install step is needed and
-    # the result is environment-independent.
-    #
-    # BLOCKING: as of v1.0.4 both lock files regenerate clean (0 CVEs).
-    # A fresh advisory will now fail CI until `pip-compile --upgrade` is
-    # run — that is the intended signal to rotate the pins.
-    name: pip-audit on Linux with Python 3.12
+    name: pip-audit committed locks on Linux with Python 3.12
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
@@ -143,31 +96,55 @@ jobs:
         python -m pip install --upgrade pip
         pip install pip-audit
 
-    - name: Audit runtime lock (requirements.lock)
+    - name: Audit runtime lock
       run: pip-audit -r requirements.lock --strict
 
-    - name: Audit dev/docs/test lock (requirements-dev.lock)
+    - name: Audit dev/docs/test lock
       run: pip-audit -r requirements-dev.lock --strict
 
+    - name: Audit hash-locked release build toolchain
+      run: pip-audit -r requirements-build.lock --strict
+
+  optional_audit:
+    name: scientific/io extras audit and real backend smoke
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+
+    - name: Install scientific and I/O extras with audit tooling
+      run: |
+        python -m pip install --upgrade pip
+        pip install pip-audit ".[test,scientific,io]"
+        pip check
+
+    - name: Audit resolved scientific and I/O environment
+      run: pip-audit --local --strict
+
+    - name: Exercise real HDF5 and NetCDF pipelines
+      run: pytest tests/test_data_io_optional_backends.py -v
+
+  version_discipline:
+    name: synchronized monotonic package version
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 2
+
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+
+    - name: Reject source/version/citation drift
+      run: python scripts/check_version_discipline.py --base-ref HEAD^1
+
   property-tests:
-    # Hypothesis-driven property tests. Lives in its own job (rather than the
-    # main `test` matrix) for two reasons:
-    #   1. It installs the optional `[property]` extra (hypothesis), which the
-    #      base `test` extra deliberately omits to keep that matrix lean. This
-    #      job is what actually proves the extra resolves and is usable.
-    #   2. Property tests are slower (Hypothesis searches + shrinks the input
-    #      space) and don't need to run across the full 4×3 OS/Python matrix —
-    #      the invariants are platform-independent. One Linux + 3.12 cell is
-    #      the reference cell, matching the coverage-gating job's choice.
-    # The suites themselves (tests/test_property_invariants.py,
-    # tests/test_special_invariants.py) skip gracefully via
-    # pytest.importorskip when hypothesis is absent, so the main matrix's
-    # `pytest tests/` run is unaffected even though it collects the file.
-    #
-    # Mypy note: the main matrix excludes this file from `mypy tests/` (see
-    # pyproject.toml [tool.mypy].exclude) because hypothesis is absent there
-    # and the missing-import noise is not a real defect. This job installs
-    # hypothesis, so it owns the strict type-check for this file.
     name: property tests on Linux with Python 3.12
     runs-on: ubuntu-latest
     steps:
@@ -179,36 +156,17 @@ jobs:
         python-version: "3.12"
 
     - name: Install dependencies
-      # `.[property,test,dev]` — hypothesis (the point of this job), pytest
-      # (the runner), and mypy (this job owns the property file's strict
-      # type-check, which the main matrix skips). `[property]` alone pulls
-      # in neither pytest nor mypy; earlier incarnations failed with
-      # `pytest: command not found` and then `mypy: command not found`.
       run: |
         python -m pip install --upgrade pip
         pip install ".[property,test,dev]"
 
     - name: Type check with Mypy (property suite)
-      # Strict mypy against the property file. This is the *only* place that
-      # type-checks it, because the main matrix excludes it (hypothesis
-      # absent). `--strict` is explicit so the check does not silently relax
-      # if the global config ever changes.
       run: mypy --strict tests/test_property_invariants.py tests/test_special_invariants.py
 
     - name: Run property-based tests
-      # Run ONLY the property suite here — the main matrix already covers the
-      # example-based suite. Isolating it keeps this job's signal clean: a
-      # failure here means a Hypothesis search found a counterexample, not a
-      # regression in an unrelated test.
       run: pytest tests/test_property_invariants.py tests/test_special_invariants.py -v
 
   ml-reference:
-    # Correctness gate, not a test run: verifies the v1.6 estimators against
-    # frozen scikit-learn 1.9.0 reference values (docs/ml_reference.md). The
-    # script is dependency-free, so this job installs the bare package — no
-    # extras — which doubles as proof that the core stays zero-dependency.
-    # One Linux + 3.12 cell matches the reference cell used elsewhere: the
-    # comparison is deterministic and platform-independent.
     name: ML reference parity on Linux with Python 3.12
     runs-on: ubuntu-latest
     steps:
@@ -236,22 +194,7 @@ jobs:
       with:
         python-version: "3.12"
     - uses: pre-commit/action@v3.0.1
-      # No SKIP needed: the mypy hook was removed from .pre-commit-config.yaml
-      # (see the note there). Type checking lives in the `test` matrix, which
-      # installs the extras mypy actually needs.
 
-  # The main matrix installs every optional extra (pandas, ...) so the
-  # importorskip'd tests actually run and coverage stays at 100%. This job is
-  # the *structural* guard against the silent-coverage gap that caused: when a
-  # new optional extra lands, it is easy to forget to add it to CI, and the gap
-  # is invisible locally (the dev box has the extra). So this cell runs the
-  # suite with ONLY the base [test,dev] extras — no pandas, no hypothesis — and
-  # asserts core coverage still hits 100% with the optional module omitted.
-  # The omit list is the single source of truth for "what is optional": if a
-  # module is omitted here, it MUST be covered by an extra-installing cell
-  # above. A new optional module that is neither omitted here nor covered above
-  # will drop this cell below 100% and fail CI — surfacing the missing extra at
-  # PR time rather than after merge.
   minimal-deps:
     name: minimal-deps coverage on Linux with Python 3.12
     runs-on: ubuntu-latest
@@ -272,49 +215,41 @@ jobs:
       shell: bash
       run: |
         set -e
-        # Drive coverage via the `coverage` CLI (not pytest-cov) so we can pass
-        # `--omit` on the command line for THIS cell only. The main matrix
-        # installs every optional extra and must keep measuring pandas_io; a
-        # global omit in pyproject would wrongly hide it there too.
-        #
-        # The omit list below is the single source of truth for "what is
-        # optional": each file listed here is an optional-extras module whose
-        # coverage is asserted by an extra-installing cell above instead. A new
-        # optional module that is omitted here but NOT covered above will leave
-        # a real gap that no cell catches — so the list must stay in lockstep
-        # with the extras the matrix installs.
         coverage run \
           --branch \
           --omit="*/cds/data_analysis/pandas_io.py,*/cds/plot/*" \
           -m pytest tests/
         coverage report --fail-under=100 --show-missing
 
-  # Aggregate "required" check. Branch protection requires a single status
-  # check named `CI`, but the jobs above each report under their own matrix
-  # names (e.g. "3.12 on ubuntu-latest", "pre-commit on Linux with Python 3.12").
-  # This gate job runs after every other job and turns green only when all of
-  # them succeed, exposing exactly one context for branch protection to gate on.
-  # That lets merges happen via the normal flow instead of temporarily disabling
-  # branch protection on every PR.
   CI:
     name: CI
     if: always()
-    needs: [test, audit, property-tests, pre-commit, minimal-deps, ml-reference]
+    needs:
+      - test
+      - audit
+      - optional_audit
+      - version_discipline
+      - property-tests
+      - pre-commit
+      - minimal-deps
+      - ml-reference
     runs-on: ubuntu-latest
     steps:
       - name: Report overall result
         run: |
           echo "Aggregated results:"
-          echo "  test.result           = ${{ needs.test.result }}"
-          echo "  audit.result          = ${{ needs.audit.result }}"
-          echo "  property-tests.result = ${{ needs.property-tests.result }}"
-          echo "  pre-commit.result     = ${{ needs.pre-commit.result }}"
-          echo "  minimal-deps.result   = ${{ needs.minimal-deps.result }}"
-          echo "  ml-reference.result   = ${{ needs.ml-reference.result }}"
-          # Fail unless every dependency succeeded. `needs.*.result` is one of
-          # "success" | "failure" | "cancelled" | "skipped"; we only accept success.
+          echo "  test.result               = ${{ needs.test.result }}"
+          echo "  audit.result              = ${{ needs.audit.result }}"
+          echo "  optional_audit.result     = ${{ needs.optional_audit.result }}"
+          echo "  version_discipline.result = ${{ needs.version_discipline.result }}"
+          echo "  property-tests.result     = ${{ needs.property-tests.result }}"
+          echo "  pre-commit.result         = ${{ needs.pre-commit.result }}"
+          echo "  minimal-deps.result       = ${{ needs.minimal-deps.result }}"
+          echo "  ml-reference.result       = ${{ needs.ml-reference.result }}"
           if [ "${{ needs.test.result }}" != "success" ] \
              || [ "${{ needs.audit.result }}" != "success" ] \
+             || [ "${{ needs.optional_audit.result }}" != "success" ] \
+             || [ "${{ needs.version_discipline.result }}" != "success" ] \
              || [ "${{ needs.property-tests.result }}" != "success" ] \
              || [ "${{ needs.pre-commit.result }}" != "success" ] \
              || [ "${{ needs.minimal-deps.result }}" != "success" ] \
@@ -324,19 +259,6 @@ jobs:
           fi
           echo "All required jobs succeeded."
 
-  # Deploy the MkDocs site to the gh-pages branch (GitHub Pages, legacy build
-  # mode). The repo's Pages setting uses the `gh-pages` branch as its source, so
-  # the modern `actions/deploy-pages` flow does NOT work here (it was tried and
-  # removed in cdcf5d0). `mkdocs gh-deploy --force --no-history` is the same
-  # command `scripts/publish.py` runs locally and is the only deploy path that
-  # is compatible with legacy Pages. This job automates it on every push to main
-  # so the published site never drifts from the docs/ on main again.
-  #
-  # DELIBERATELY NOT in the `CI` gate's `needs:` above — docs deploy must not be
-  # a required status check (a deploy hiccup should never block a merge). It
-  # also only runs on pushes to main, never on PRs, so a PR's docs build is
-  # validated by the `mkdocs build --strict` step in the `test` matrix without
-  # touching the live site.
   deploy-docs:
     name: Deploy docs to gh-pages
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -364,9 +286,6 @@ jobs:
 
       - name: Deploy to gh-pages
         env:
-          # mkdocs gh-deploy pushes to gh-pages as the GITHUB_TOKEN identity.
-          # The token is injected into the git remote URL so the push is
-          # authenticated without persisting any credential helper.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
