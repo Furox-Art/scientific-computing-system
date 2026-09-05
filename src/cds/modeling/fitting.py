@@ -211,7 +211,7 @@ def _bootstrap_uncertainty(
 ]:
     """Nonparametric case-resampling uncertainty for nonlinear/robust fits."""
     rng = random.Random(bootstrap_seed)
-    samples_by_name = {name: [] for name in names}
+    samples_by_name: dict[str, list[float]] = {name: [] for name in names}
     successes = 0
     n = len(observations)
     for _ in range(bootstrap_samples):
