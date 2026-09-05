@@ -11,9 +11,7 @@ def test_paired_cohens_d_nonconstant_differences() -> None:
     second = [1.0, 3.0, 6.0, 8.0]
     differences = [left - right for left, right in zip(first, second)]
     mean_difference = sum(differences) / len(differences)
-    variance = sum((value - mean_difference) ** 2 for value in differences) / (
-        len(differences) - 1
-    )
+    variance = sum((value - mean_difference) ** 2 for value in differences) / (len(differences) - 1)
     expected = mean_difference / math.sqrt(variance)
 
     assert math.isclose(paired_cohens_d(first, second), expected, rel_tol=1e-12, abs_tol=1e-12)
