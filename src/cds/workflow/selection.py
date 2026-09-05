@@ -290,21 +290,21 @@ def _rank_candidate(
     failed_requirements: list[str] = []
     unknown_requirements: list[str] = []
     for requirement in candidate.requirements:
-        status = requirement.evaluate(context)
-        if status is ConditionStatus.FAIL:
+        condition_status = requirement.evaluate(context)
+        if condition_status is ConditionStatus.FAIL:
             failed_requirements.append(requirement.label)
-        elif status is ConditionStatus.UNKNOWN:
+        elif condition_status is ConditionStatus.UNKNOWN:
             unknown_requirements.append(requirement.label)
 
     score = candidate.base_score
     matched_preferences: list[str] = []
     unknown_preferences: list[str] = []
     for preference in candidate.preferences:
-        status = preference.condition.evaluate(context)
-        if status is ConditionStatus.PASS:
+        condition_status = preference.condition.evaluate(context)
+        if condition_status is ConditionStatus.PASS:
             score += preference.weight
             matched_preferences.append(preference.condition.label)
-        elif status is ConditionStatus.UNKNOWN:
+        elif condition_status is ConditionStatus.UNKNOWN:
             unknown_preferences.append(preference.condition.label)
 
     matched_capabilities = tuple(
@@ -343,15 +343,15 @@ def _rank_candidate(
         hard_block = True
 
     if hard_block:
-        status = MethodStatus.BLOCKED
+        method_status = MethodStatus.BLOCKED
     elif unknown_requirements:
-        status = MethodStatus.REVIEW
+        method_status = MethodStatus.REVIEW
     else:
-        status = MethodStatus.ELIGIBLE
+        method_status = MethodStatus.ELIGIBLE
 
     return RankedMethod(
         candidate=candidate,
-        status=status,
+        status=method_status,
         score=score,
         reasons=tuple(reasons),
         matched_preferences=tuple(matched_preferences),
@@ -369,14 +369,28 @@ def _compare(value: object, operator: ConditionOperator, expected: object) -> bo
         return value == expected
     if operator is ConditionOperator.NE:
         return value != expected
-    if operator is ConditionOperator.LT:
-        return value < expected  # type: ignore[operator]
-    if operator is ConditionOperator.LTE:
-        return value <= expected  # type: ignore[operator]
-    if operator is ConditionOperator.GT:
-        return value > expected  # type: ignore[operator]
-    if operator is ConditionOperator.GTE:
-        return value >= expected  # type: ignore[operator]
     if operator is ConditionOperator.IN:
-        return value in expected  # type: ignore[operator]
-    return value not in expected  # type: ignore[operator]
+        if not isinstance(expected, tuple):
+            raise TypeError("membership comparison requires a tuple")
+        return value in expected
+    if operator is ConditionOperator.NOT_IN:
+        if not isinstance(expected, tuple):
+            raise TypeError("membership comparison requires a tuple")
+        return value not in expected
+
+    if isinstance(value, (int, float)) and isinstance(expected, (int, float)):
+        left = float(value)
+        right = float(expected)
+    elif isinstance(value, str) and isinstance(expected, str):
+        left = value
+        right = expected
+    else:
+        raise TypeError("ordered comparison requires compatible numeric or string values")
+
+    if operator is ConditionOperator.LT:
+        return left < right
+    if operator is ConditionOperator.LTE:
+        return left <= right
+    if operator is ConditionOperator.GT:
+        return left > right
+    return left >= right
