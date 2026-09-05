@@ -237,9 +237,11 @@ def test_mined_hypothesis_flows_into_existing_evaluator_pipeline() -> None:
         {"dose": [1.0, 2.0, 3.0, 4.0, 5.0], "effect": [2.0, 4.0, 6.0, 8.0, 10.0]}
     )
     hypo = mined[0].hypothesis
+    initial_status = hypo.status
     result = HypothesisEvaluator(alpha=0.05).evaluate(
         hypo,
         {"groups": [[2.0, 4.0, 6.0], [8.0, 10.0, 12.0]]},
     )
     assert result.is_significant
-    assert hypo.status == HypothesisStatus.VALIDATED
+    assert result.evidence_interpretation == "supported"
+    assert hypo.status is initial_status is HypothesisStatus.TESTABLE
