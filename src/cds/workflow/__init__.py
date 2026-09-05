@@ -1,5 +1,6 @@
 """Scientific workflow orchestration and approval-gated execution."""
 
+from cds.workflow.autopilot import default_method_catalog, default_research_orchestrator
 from cds.workflow.engine import ExecutionContext, ResearchWorkflow
 from cds.workflow.gates import GateDecision, GatePolicy, GateStatus, evaluate_research_gate
 from cds.workflow.orchestrator import (
@@ -26,6 +27,7 @@ from cds.workflow.selection import (
 )
 from cds.workflow.tooling import ToolSelection, register_tool_step, select_tool
 from cds.workflow.types import (
+    AnalysisKind,
     AnalysisPlan,
     AnalysisRequest,
     ExecutionEvent,
@@ -38,6 +40,7 @@ from cds.workflow.types import (
 )
 
 __all__ = [
+    "AnalysisKind",
     "AnalysisPlan",
     "AnalysisRequest",
     "ConditionOperator",
@@ -70,6 +73,8 @@ __all__ = [
     "StepStatus",
     "ToolPlannedAction",
     "ToolSelection",
+    "default_method_catalog",
+    "default_research_orchestrator",
     "evaluate_research_gate",
     "rank_methods",
     "register_tool_step",
