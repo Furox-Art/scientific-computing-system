@@ -38,7 +38,9 @@ def test_global_sensitivity_detects_interaction_effect_spread() -> None:
 
 def test_global_sensitivity_is_seed_reproducible() -> None:
     kwargs = {"trajectories": 10, "levels": 5, "seed": 123}
-    first = global_sensitivity(lambda values: values[0] ** 2 + values[1], [(0, 2), (1, 3)], **kwargs)
+    first = global_sensitivity(
+        lambda values: values[0] ** 2 + values[1], [(0, 2), (1, 3)], **kwargs
+    )
     second = global_sensitivity(
         lambda values: values[0] ** 2 + values[1], [(0, 2), (1, 3)], **kwargs
     )
