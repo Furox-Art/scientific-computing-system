@@ -8,6 +8,7 @@ and returns a deterministic ranking with visible alternatives.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
@@ -46,6 +47,26 @@ class MethodStatus(str, Enum):
     BLOCKED = "blocked"
 
 
+def _validate_unique_names(values: tuple[str, ...], field_name: str) -> None:
+    if any(not isinstance(value, str) or not value.strip() for value in values):
+        raise ValueError(f"{field_name} must not contain empty values")
+    if len(set(values)) != len(values):
+        raise ValueError(f"{field_name} must be unique")
+
+
+def _validate_finite_weight(value: float, field_name: str, *, allow_zero: bool) -> None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{field_name} must be a finite number")
+    normalized = float(value)
+    if not math.isfinite(normalized):
+        raise ValueError(f"{field_name} must be finite")
+    if allow_zero:
+        if normalized < 0.0:
+            raise ValueError(f"{field_name} must not be negative")
+    elif normalized <= 0.0:
+        raise ValueError(f"{field_name} must be greater than zero")
+
+
 @dataclass(frozen=True)
 class MethodSelectionContext:
     """Observed facts and explicit analysis constraints used for ranking."""
@@ -56,6 +77,18 @@ class MethodSelectionContext:
     available_tools: tuple[str, ...] = ()
     prohibited_traits: tuple[str, ...] = ()
     preferred_traits: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        fact_keys = tuple(name for name, _value in self.facts)
+        _validate_unique_names(fact_keys, "fact keys")
+        for field_name, values in (
+            ("required capabilities", self.required_capabilities),
+            ("preferred capabilities", self.preferred_capabilities),
+            ("available tools", self.available_tools),
+            ("prohibited traits", self.prohibited_traits),
+            ("preferred traits", self.preferred_traits),
+        ):
+            _validate_unique_names(values, field_name)
 
     @classmethod
     def from_facts(
@@ -69,6 +102,8 @@ class MethodSelectionContext:
         preferred_traits: tuple[str, ...] = (),
     ) -> MethodSelectionContext:
         """Create a deterministic context from a mapping of observed facts."""
+        if any(not isinstance(key, str) for key in facts):
+            raise ValueError("fact keys must be strings")
         return cls(
             facts=tuple(sorted(facts.items())),
             required_capabilities=required_capabilities,
@@ -96,7 +131,7 @@ class SelectionCondition:
     description: str = ""
 
     def __post_init__(self) -> None:
-        if not self.key:
+        if not isinstance(self.key, str) or not self.key.strip():
             raise ValueError("condition key must not be empty")
         if self.operator in {ConditionOperator.IN, ConditionOperator.NOT_IN} and not isinstance(
             self.expected, tuple
@@ -129,8 +164,7 @@ class MethodPreference:
     weight: float = 1.0
 
     def __post_init__(self) -> None:
-        if self.weight <= 0:
-            raise ValueError("preference weight must be greater than zero")
+        _validate_finite_weight(self.weight, "preference weight", allow_zero=False)
 
 
 @dataclass(frozen=True)
@@ -147,19 +181,17 @@ class MethodCandidate:
     base_score: float = 0.0
 
     def __post_init__(self) -> None:
-        if not self.name:
+        if not isinstance(self.name, str) or not self.name.strip():
             raise ValueError("method name must not be empty")
-        if not self.rationale:
+        if not isinstance(self.rationale, str) or not self.rationale.strip():
             raise ValueError("method rationale must not be empty")
         for field_name, values in (
             ("capabilities", self.capabilities),
             ("traits", self.traits),
             ("required tools", self.required_tools),
         ):
-            if any(not value for value in values):
-                raise ValueError(f"{field_name} must not contain empty values")
-            if len(set(values)) != len(values):
-                raise ValueError(f"{field_name} must be unique")
+            _validate_unique_names(values, field_name)
+        _validate_finite_weight(self.base_score, "method base score", allow_zero=True)
 
 
 @dataclass(frozen=True)
@@ -171,10 +203,16 @@ class SelectionPolicy:
     unknown_requirements_block: bool = False
 
     def __post_init__(self) -> None:
-        if self.preferred_capability_weight < 0:
-            raise ValueError("preferred capability weight must not be negative")
-        if self.preferred_trait_weight < 0:
-            raise ValueError("preferred trait weight must not be negative")
+        _validate_finite_weight(
+            self.preferred_capability_weight,
+            "preferred capability weight",
+            allow_zero=True,
+        )
+        _validate_finite_weight(
+            self.preferred_trait_weight,
+            "preferred trait weight",
+            allow_zero=True,
+        )
 
 
 @dataclass(frozen=True)
@@ -378,7 +416,12 @@ def _compare(value: object, operator: ConditionOperator, expected: object) -> bo
             raise TypeError("membership comparison requires a tuple")
         return value not in expected
 
-    if isinstance(value, (int, float)) and isinstance(expected, (int, float)):
+    if (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and isinstance(expected, (int, float))
+        and not isinstance(expected, bool)
+    ):
         return _compare_ordered(float(value), operator, float(expected))
     if isinstance(value, str) and isinstance(expected, str):
         return _compare_ordered(value, operator, expected)
@@ -391,6 +434,8 @@ def _compare_ordered(
     right: float | str,
 ) -> bool:
     if isinstance(left, float) and isinstance(right, float):
+        if not math.isfinite(left) or not math.isfinite(right):
+            raise TypeError("ordered numeric comparison requires finite values")
         if operator is ConditionOperator.LT:
             return left < right
         if operator is ConditionOperator.LTE:
