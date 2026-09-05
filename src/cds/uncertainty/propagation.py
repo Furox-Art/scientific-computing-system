@@ -35,7 +35,7 @@ class PropagationResult:
 
 @dataclass(frozen=True)
 class MonteCarloResult:
-    """Monte Carlo propagated output distribution summary."""
+    """Exact Monte Carlo summary retaining all outputs for exact sample quantiles."""
 
     mean: float
     standard_deviation: float
@@ -45,6 +45,22 @@ class MonteCarloResult:
     seed: int | None
     confidence: float
     method: str = "monte-carlo"
+
+
+@dataclass(frozen=True)
+class StreamingMonteCarloResult:
+    """Bounded-memory Monte Carlo summary with reservoir-estimated quantiles."""
+
+    mean: float
+    standard_deviation: float
+    lower: float
+    upper: float
+    samples: int
+    seed: int | None
+    confidence: float
+    reservoir_size: int
+    quantiles_exact: bool
+    method: str = "monte-carlo-streaming-reservoir"
 
 
 def _validate_means(means: Sequence[float]) -> tuple[float, ...]:
@@ -136,12 +152,7 @@ def propagate_linear(
     covariance: Sequence[Sequence[float]] | None = None,
     relative_step: float = 1e-6,
 ) -> PropagationResult:
-    """Propagate covariance through ``function`` using first-order sensitivities.
-
-    The Jacobian is estimated with symmetric finite differences. Correlated
-    inputs are supported through a full covariance matrix.
-    """
-
+    """Propagate covariance through ``function`` using first-order sensitivities."""
     normalized_means = _validate_means(means)
     matrix = _covariance_matrix(len(normalized_means), standard_uncertainties, covariance)
     value = _evaluate(function, normalized_means)
@@ -187,6 +198,35 @@ def _quantile(sorted_values: Sequence[float], probability: float) -> float:
     return sorted_values[lower_index] * (1.0 - fraction) + sorted_values[upper_index] * fraction
 
 
+def _draw_correlated(
+    generator: random.Random,
+    means: tuple[float, ...],
+    lower: Sequence[Sequence[float]],
+) -> list[float]:
+    standard_normals = [generator.normalvariate(0.0, 1.0) for _ in means]
+    return [
+        means[row]
+        + sum(lower[row][column] * standard_normals[column] for column in range(row + 1))
+        for row in range(len(means))
+    ]
+
+
+def _mc_setup(
+    means: Sequence[float],
+    standard_uncertainties: Sequence[float] | None,
+    covariance: Sequence[Sequence[float]] | None,
+    samples: int,
+    confidence: float,
+) -> tuple[tuple[float, ...], tuple[tuple[float, ...], ...]]:
+    normalized_means = _validate_means(means)
+    if samples < 2:
+        raise ValueError("samples must be at least 2")
+    if not 0.0 < confidence < 1.0:
+        raise ValueError("confidence must be between 0 and 1")
+    matrix = _covariance_matrix(len(normalized_means), standard_uncertainties, covariance)
+    return normalized_means, _cholesky(matrix)
+
+
 def propagate_monte_carlo(
     function: Callable[..., float],
     means: Sequence[float],
@@ -197,27 +237,19 @@ def propagate_monte_carlo(
     seed: int | None = 0,
     confidence: float = 0.95,
 ) -> MonteCarloResult:
-    """Propagate Gaussian input uncertainty through an arbitrary function."""
+    """Propagate Gaussian uncertainty with exact empirical sample quantiles.
 
-    normalized_means = _validate_means(means)
-    if samples < 2:
-        raise ValueError("samples must be at least 2")
-    if not 0.0 < confidence < 1.0:
-        raise ValueError("confidence must be between 0 and 1")
-    matrix = _covariance_matrix(len(normalized_means), standard_uncertainties, covariance)
-    lower = _cholesky(matrix)
+    This compatibility API retains every output and is therefore ``O(samples)``
+    in memory.  Use :func:`propagate_monte_carlo_streaming` for large runs.
+    """
+    normalized_means, lower = _mc_setup(
+        means, standard_uncertainties, covariance, samples, confidence
+    )
     generator = random.Random(seed)
-    outputs: list[float] = []
-
-    for _ in range(samples):
-        standard_normals = [generator.normalvariate(0.0, 1.0) for _ in normalized_means]
-        simulated = [
-            normalized_means[row]
-            + sum(lower[row][column] * standard_normals[column] for column in range(row + 1))
-            for row in range(len(normalized_means))
-        ]
-        outputs.append(_evaluate(function, simulated))
-
+    outputs = [
+        _evaluate(function, _draw_correlated(generator, normalized_means, lower))
+        for _ in range(samples)
+    ]
     mean = sum(outputs) / samples
     variance = sum((value - mean) ** 2 for value in outputs) / (samples - 1)
     ordered = sorted(outputs)
@@ -230,4 +262,62 @@ def propagate_monte_carlo(
         samples=samples,
         seed=seed,
         confidence=confidence,
+    )
+
+
+def propagate_monte_carlo_streaming(
+    function: Callable[..., float],
+    means: Sequence[float],
+    *,
+    standard_uncertainties: Sequence[float] | None = None,
+    covariance: Sequence[Sequence[float]] | None = None,
+    samples: int = 100_000,
+    seed: int | None = 0,
+    confidence: float = 0.95,
+    reservoir_size: int = 4096,
+) -> StreamingMonteCarloResult:
+    """Propagate uncertainty in bounded memory using online moments.
+
+    Mean and sample standard deviation are exact for the simulated stream via
+    Welford's online algorithm.  Confidence bounds use uniform reservoir
+    sampling and are therefore approximate when ``reservoir_size < samples``;
+    the result exposes ``quantiles_exact`` so this approximation is never
+    silent.  Memory is ``O(min(samples, reservoir_size))``.
+    """
+    normalized_means, lower = _mc_setup(
+        means, standard_uncertainties, covariance, samples, confidence
+    )
+    if reservoir_size < 2:
+        raise ValueError("reservoir_size must be at least 2")
+    retained = min(samples, reservoir_size)
+    generator = random.Random(seed)
+    reservoir_rng = random.Random(None if seed is None else seed ^ 0x5DEECE66D)
+    reservoir: list[float] = []
+    mean = 0.0
+    m2 = 0.0
+
+    for count in range(1, samples + 1):
+        output = _evaluate(function, _draw_correlated(generator, normalized_means, lower))
+        delta = output - mean
+        mean += delta / count
+        m2 += delta * (output - mean)
+        if len(reservoir) < retained:
+            reservoir.append(output)
+        else:
+            replacement = reservoir_rng.randrange(count)
+            if replacement < retained:
+                reservoir[replacement] = output
+
+    ordered = sorted(reservoir)
+    tail = (1.0 - confidence) / 2.0
+    return StreamingMonteCarloResult(
+        mean=mean,
+        standard_deviation=math.sqrt(m2 / (samples - 1)),
+        lower=_quantile(ordered, tail),
+        upper=_quantile(ordered, 1.0 - tail),
+        samples=samples,
+        seed=seed,
+        confidence=confidence,
+        reservoir_size=retained,
+        quantiles_exact=retained == samples,
     )
