@@ -500,10 +500,7 @@ def test_blueprint_rejects_incomplete_or_ambiguous_implementations() -> None:
     with pytest.raises(ValueError, match="at least one step"):
         ResearchBlueprint(steps=())
     with pytest.raises(ValueError, match="step ids must not be empty"):
-        ResearchBlueprint(
-            steps=(PlanStep(" ", "description", "method", "rationale"),),
-            actions=(PlannedAction(" ", lambda _context: None),),
-        )
+        ResearchBlueprint(steps=(PlanStep(" ", "description", "method", "rationale"),))
     with pytest.raises(ValueError, match="reserved"):
         ResearchBlueprint(
             steps=(PlanStep("plan", "description", "method", "rationale"),),
