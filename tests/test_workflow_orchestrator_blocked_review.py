@@ -84,9 +84,7 @@ def test_review_method_preserves_existing_blocked_gate(
         planner=_planner,
     )
 
-    result = orchestrator.run(
-        AnalysisRequest("blocked review case", require_plan_approval=False)
-    )
+    result = orchestrator.run(AnalysisRequest("blocked review case", require_plan_approval=False))
     record = result.details["_orchestration"]
     assert isinstance(record, OrchestrationRecord)
     assert record.gate.status is GateStatus.BLOCKED
