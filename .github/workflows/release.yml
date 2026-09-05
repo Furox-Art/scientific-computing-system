@@ -6,20 +6,18 @@ name: Release
 # src/cds/_version.py, merge to main, and this workflow builds and verifies the
 # wheel/sdist, publishes the verified files to PyPI via Trusted Publishing
 # (OIDC), then creates the matching vX.Y.Z tag and an assets-free GitHub Release.
-# The _version.py change is the branch-release trigger; ordinary pyproject.toml
-# packaging edits do not publish a release. Distribution files are never
-# uploaded as GitHub Actions artifacts or GitHub Release assets; they exist only
-# in the ephemeral runner workspace while being verified and published to PyPI.
+# The _version.py change is the only release trigger; ordinary pyproject.toml
+# packaging edits do not publish a release. The tag created after a successful
+# PyPI publish does not trigger a second publish run.
 #
-# A manually pushed v* tag is also supported, but it must exactly match the
-# package metadata. In both paths the installed CLI must pass before publishing.
+# Distribution files are never uploaded as GitHub Actions artifacts or GitHub
+# Release assets; they exist only in the ephemeral runner workspace while being
+# verified and published to PyPI. The installed CLI must pass before publishing.
 
 on:
   push:
     branches:
       - main
-    tags:
-      - "v*"
     paths:
       - "src/cds/_version.py"
 
@@ -66,12 +64,7 @@ jobs:
           )"
           tag="v${version}"
 
-          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$GITHUB_REF_NAME" != "$tag" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match package version $version."
-            exit 1
-          fi
-
-          if [ "$GITHUB_REF_TYPE" = "branch" ] && git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
             echo "::error::Version $version is already tagged as $tag. Bump the package version before publishing again."
             exit 1
           fi
@@ -171,7 +164,6 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
 
       - name: Create release tag after successful PyPI publish
-        if: github.ref_type == 'branch'
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
