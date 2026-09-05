@@ -7,7 +7,6 @@ the JSON artifact with enough environment metadata to compare runs responsibly.
 
 from __future__ import annotations
 
-import json
 import math
 import multiprocessing
 import os
@@ -17,7 +16,6 @@ import subprocess
 import timeit
 from collections import OrderedDict
 from collections.abc import Callable
-from typing import Any
 
 import run_benchmarks as legacy
 
@@ -81,7 +79,7 @@ def _full_git_sha() -> str:
 
 
 def build_robust_json(
-    results: dict[str, "OrderedDict[str, str]"],
+    results: dict[str, OrderedDict[str, str]],
 ) -> dict[str, object]:
     """Extend legacy benchmark JSON with reproducibility and timing metadata."""
     record = _original_build_json(results)
