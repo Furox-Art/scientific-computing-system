@@ -1,21 +1,19 @@
 name: Release
 
-# Single publish authority for PyPI + GitHub release artifacts.
+# Single publish authority for PyPI + GitHub release metadata.
 #
 # Normal path: bump the package version in BOTH pyproject.toml and
 # src/cds/_version.py, merge to main, and this workflow builds and verifies the
 # wheel/sdist, publishes those exact files to PyPI via Trusted Publishing
-# (OIDC), then creates the matching vX.Y.Z tag and GitHub Release with the same
-# wheel/sdist attached. The _version.py change is the only release trigger;
-# ordinary pyproject.toml packaging edits do not publish a release. The tag
-# created after a successful PyPI publish does not trigger a second publish run.
+# (OIDC), then creates the matching vX.Y.Z tag and a metadata-only GitHub
+# Release. Distribution files remain on PyPI only; GitHub Release assets must
+# never contain .whl or .tar.gz files.
 #
 # The workflow is intentionally idempotent after a partial release failure. If
 # the exact version already exists on PyPI, its filenames, sizes, and SHA-256
 # digests must match the locally verified build; only then is the upload skipped
 # and the workflow allowed to recover the GitHub tag/release. An existing tag is
-# accepted only when it resolves to the current release commit. The final
-# integrity gate compares public PyPI with the GitHub Release before success.
+# accepted only when it resolves to the current release commit.
 
 on:
   push:
@@ -35,7 +33,7 @@ concurrency:
 
 jobs:
   publish:
-    name: Build + verify + publish to PyPI + GitHub Release
+    name: Build + verify + publish to PyPI + metadata-only GitHub Release
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -248,21 +246,20 @@ jobs:
             git push origin "$RELEASE_TAG"
           fi
 
-      - name: Create GitHub Release with published distribution assets
+      - name: Create metadata-only GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           set -euo pipefail
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG already exists; synchronizing distribution assets."
-            gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" dist/* --clobber
+            echo "Release $RELEASE_TAG already exists; preserving metadata-only release."
           else
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-              --generate-notes --title "$RELEASE_TAG" dist/*
+              --generate-notes --title "$RELEASE_TAG"
           fi
 
-      - name: Verify PyPI and GitHub Release artifact parity
+      - name: Verify PyPI release and asset-free GitHub Release policy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
