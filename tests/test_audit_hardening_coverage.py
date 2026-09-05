@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -48,7 +49,7 @@ def test_empty_global_sensitivity_report_has_no_most_influential_parameter() -> 
 def test_global_sensitivity_rejects_nonfinite_perturbation_output() -> None:
     calls = 0
 
-    def model(_values: list[float]) -> float:
+    def model(_values: Sequence[float]) -> float:
         nonlocal calls
         calls += 1
         return 0.0 if calls == 1 else math.nan
