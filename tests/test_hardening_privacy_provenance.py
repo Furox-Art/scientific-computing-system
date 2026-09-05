@@ -29,31 +29,18 @@ from cds.workflow.engine import ExecutionContext
 from cds.workflow.tooling import register_tool_step, select_tool
 
 
-def _installed_registry(monkeypatch: pytest.MonkeyPatch, *specs: ToolSpec) -> ToolRegistry:
+def _installed_registry(*specs: ToolSpec) -> ToolRegistry:
     registry = ToolRegistry()
     for spec in specs:
         registry.register(spec)
-
-    monkeypatch.setattr(
-        "cds.tools.registry.importlib.util.find_spec",
-        lambda _module: object(),
-    )
-    monkeypatch.setattr(
-        "cds.tools.registry.metadata.version",
-        lambda _distribution: "1.0.0",
-    )
-    monkeypatch.setattr(
-        "cds.tools.registry.importlib.import_module",
-        lambda module: ModuleType(module),
-    )
     return registry
 
 
 def _local_spec() -> ToolSpec:
     return ToolSpec(
         name="local-fit",
-        module="local_fit",
-        distribution="local-fit",
+        module="math",
+        distribution="distribution-that-does-not-exist",
         capabilities=("fit",),
         purpose="local fitting backend",
     )
@@ -62,8 +49,8 @@ def _local_spec() -> ToolSpec:
 def _remote_spec() -> ToolSpec:
     return ToolSpec(
         name="remote-fit",
-        module="remote_fit",
-        distribution="remote-fit",
+        module="math",
+        distribution="distribution-that-does-not-exist",
         capabilities=("fit",),
         purpose="remote fitting backend",
         locality=ToolLocality.REMOTE,
@@ -98,16 +85,14 @@ def test_privacy_contract_rejects_inconsistent_tool_and_request_policies() -> No
         )
 
 
-def test_tool_selection_prefers_local_and_requires_explicit_remote_fallback(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    mixed = _installed_registry(monkeypatch, _remote_spec(), _local_spec())
+def test_tool_selection_prefers_local_and_requires_explicit_remote_fallback() -> None:
+    mixed = _installed_registry(_remote_spec(), _local_spec())
     selected = select_tool("fit", registry=mixed)
     assert selected.tool == "local-fit"
     assert selected.locality is ToolLocality.LOCAL
     assert not selected.data_egress
 
-    remote_only = _installed_registry(monkeypatch, _remote_spec())
+    remote_only = _installed_registry(_remote_spec())
     with pytest.raises(PermissionError, match="remote fallback requires"):
         select_tool("fit", registry=remote_only)
 
@@ -137,10 +122,8 @@ def test_tool_selection_prefers_local_and_requires_explicit_remote_fallback(
         )
 
 
-def test_remote_tool_execution_records_egress_provenance(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    registry = _installed_registry(monkeypatch, _remote_spec())
+def test_remote_tool_execution_records_egress_provenance() -> None:
+    registry = _installed_registry(_remote_spec())
     request = AnalysisRequest(
         "remote fit",
         require_plan_approval=False,
@@ -171,9 +154,9 @@ def test_remote_tool_execution_records_egress_provenance(
     )
     result = workflow.execute()
 
-    assert result.details["fit"] == "remote_fit"
+    assert result.details["fit"] == "math"
     assert selection.locality is ToolLocality.REMOTE
-    assert manifest.tool_versions == {"remote-fit": "1.0.0"}
+    assert manifest.tool_versions == {"remote-fit": "unknown"}
     assert manifest.metadata["tool.remote-fit.locality"] == "remote"
     assert manifest.metadata["tool.remote-fit.data_egress"] == "true"
     assert not manifest.decisions[0].approved_by_user
@@ -216,8 +199,8 @@ def _orchestration_record(result: object) -> OrchestrationRecord:
     return record
 
 
-def test_orchestrator_binds_plan_hash_automatically(monkeypatch: pytest.MonkeyPatch) -> None:
-    registry = _installed_registry(monkeypatch, _local_spec())
+def test_orchestrator_binds_plan_hash_automatically() -> None:
+    registry = _installed_registry(_local_spec())
     request = AnalysisRequest("fit locally", require_plan_approval=False)
     result = ResearchOrchestrator(
         candidates=_candidate(),
@@ -232,10 +215,8 @@ def test_orchestrator_binds_plan_hash_automatically(monkeypatch: pytest.MonkeyPa
     assert len(record.manifest.metadata["plan.sha256"]) == 64
 
 
-def test_orchestrator_blocks_sensitive_remote_only_backend_and_keeps_plan_hash(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    registry = _installed_registry(monkeypatch, _remote_spec())
+def test_orchestrator_blocks_sensitive_remote_only_backend_and_keeps_plan_hash() -> None:
+    registry = _installed_registry(_remote_spec())
     request = AnalysisRequest(
         "fit sensitive data",
         require_plan_approval=False,
