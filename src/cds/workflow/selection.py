@@ -61,10 +61,22 @@ class MethodSelectionContext:
     def from_facts(
         cls,
         facts: Mapping[str, object],
-        **kwargs: object,
+        *,
+        required_capabilities: tuple[str, ...] = (),
+        preferred_capabilities: tuple[str, ...] = (),
+        available_tools: tuple[str, ...] = (),
+        prohibited_traits: tuple[str, ...] = (),
+        preferred_traits: tuple[str, ...] = (),
     ) -> MethodSelectionContext:
         """Create a deterministic context from a mapping of observed facts."""
-        return cls(facts=tuple(sorted(facts.items())), **kwargs)
+        return cls(
+            facts=tuple(sorted(facts.items())),
+            required_capabilities=required_capabilities,
+            preferred_capabilities=preferred_capabilities,
+            available_tools=available_tools,
+            prohibited_traits=prohibited_traits,
+            preferred_traits=preferred_traits,
+        )
 
     def fact(self, key: str) -> object:
         """Return a fact value or an internal missing sentinel."""
