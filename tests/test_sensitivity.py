@@ -135,7 +135,9 @@ def test_local_identifiability_zero_column_is_not_independent() -> None:
 
 
 def test_identifiability_validation_and_model_contracts() -> None:
-    model = lambda values: (values[0],)
+    def model(values: Sequence[float]) -> Sequence[float]:
+        return (values[0],)
+
     with pytest.raises(ValueError, match="must be positive"):
         local_identifiability(model, [1.0], relative_step=0.0)
     with pytest.raises(ValueError, match="must be positive"):
