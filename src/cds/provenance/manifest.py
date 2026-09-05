@@ -23,6 +23,12 @@ class DecisionRecord:
     rationale: str
     approved_by_user: bool
 
+    def __post_init__(self) -> None:
+        if not self.action.strip() or not self.rationale.strip():
+            raise ValueError("decision action and rationale must not be empty")
+        if not isinstance(self.approved_by_user, bool):
+            raise ValueError("approved_by_user must be a boolean")
+
 
 @dataclass
 class RunManifest:
@@ -38,6 +44,47 @@ class RunManifest:
     decisions: list[DecisionRecord] = field(default_factory=list)
     metadata: dict[str, str] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.question, str) or not self.question.strip():
+            raise ValueError("question must not be empty")
+        if not isinstance(self.run_id, str) or not self.run_id.strip():
+            raise ValueError("run_id must not be empty")
+        if not isinstance(self.created_utc, str) or not self.created_utc.strip():
+            raise ValueError("created_utc must not be empty")
+        try:
+            created = datetime.fromisoformat(self.created_utc)
+        except ValueError as exc:
+            raise ValueError("created_utc must be a valid ISO-8601 timestamp") from exc
+        if created.tzinfo is None or created.utcoffset() is None:
+            raise ValueError("created_utc must be timezone-aware")
+        if self.seed is not None and (not isinstance(self.seed, int) or isinstance(self.seed, bool)):
+            raise ValueError("seed must be an integer or null")
+
+        for name, digest in self.data_hashes.items():
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError("data hash names must not be empty")
+            if not isinstance(digest, str) or len(digest) != 64 or any(
+                character not in "0123456789abcdef" for character in digest.lower()
+            ):
+                raise ValueError("data hashes must be SHA-256 hex digests")
+
+        for mapping_name, mapping in (
+            ("tool_versions", self.tool_versions),
+            ("environment", self.environment),
+            ("metadata", self.metadata),
+        ):
+            if any(
+                not isinstance(key, str)
+                or not key.strip()
+                or not isinstance(value, str)
+                or not value.strip()
+                for key, value in mapping.items()
+            ):
+                raise ValueError(f"{mapping_name} must map non-empty strings to non-empty strings")
+
+        if any(not isinstance(decision, DecisionRecord) for decision in self.decisions):
+            raise ValueError("decisions must contain DecisionRecord values")
+
     @classmethod
     def create(
         cls,
@@ -48,8 +95,6 @@ class RunManifest:
         created_utc: str | None = None,
     ) -> RunManifest:
         """Create a manifest with a snapshot of the local Python environment."""
-        if not question.strip():
-            raise ValueError("question must not be empty")
         return cls(
             question=question,
             run_id=run_id or str(uuid4()),
@@ -81,8 +126,6 @@ class RunManifest:
 
     def record_decision(self, action: str, rationale: str, *, approved_by_user: bool) -> None:
         """Append an auditable scientific decision."""
-        if not action.strip() or not rationale.strip():
-            raise ValueError("decision action and rationale must not be empty")
         self.decisions.append(
             DecisionRecord(
                 action=action,
@@ -101,7 +144,7 @@ class RunManifest:
 
     @classmethod
     def from_json(cls, payload: str) -> RunManifest:
-        """Restore a manifest from ``to_json`` output."""
+        """Restore and validate a manifest from ``to_json`` output."""
         raw = json.loads(payload)
         if not isinstance(raw, dict):
             raise ValueError("manifest JSON must be an object")
@@ -186,26 +229,30 @@ def save_checkpoint(
     manifest: RunManifest,
     state: dict[str, object],
 ) -> None:
-    """Atomically save a JSON checkpoint without silently overwriting mid-write."""
+    """Atomically save a JSON checkpoint and clean partial temporary files."""
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     payload = {"manifest": manifest.to_dict(), "state": state}
-    with tempfile.NamedTemporaryFile(
-        mode="w",
-        encoding="utf-8",
-        dir=destination.parent,
-        prefix=f".{destination.name}.",
-        suffix=".tmp",
-        delete=False,
-    ) as handle:
-        temporary = Path(handle.name)
-        json.dump(payload, handle, indent=2, sort_keys=True, ensure_ascii=False)
-        handle.write("\n")
+    temporary: Path | None = None
     try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            json.dump(payload, handle, indent=2, sort_keys=True, ensure_ascii=False)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
         temporary.replace(destination)
-    except Exception:
-        temporary.unlink(missing_ok=True)
-        raise
+        temporary = None
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def load_checkpoint(path: str | os.PathLike[str]) -> tuple[RunManifest, dict[str, object]]:

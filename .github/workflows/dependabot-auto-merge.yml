@@ -1,33 +1,16 @@
 name: Dependabot Auto Merge
 
-# Enables GitHub's native auto-merge for Dependabot PRs so that, once CI
-# passes, the PR merges itself with no human in the loop.
-#
-# HISTORY / WHY THIS IS NON-TRIVIAL:
-#   This workflow used to be an illusion. `gh pr merge --auto --squash` ran
-#   fine, but with `required_approving_review_count: 1` + `enforce_admins:
-#   true` on `main`, the auto-merge could *never complete* — no account
-#   existed that could satisfy the approval (the single maintainer is the
-#   author of every PR, and GitHub forbids self-approval; dependabot[bot]
-#   cannot approve its own PR; the default GITHUB_TOKEN cannot approve).
-#   Every Dependabot PR therefore stalled in the queue forever. PR #61 hit
-#   the exact same wall for a maintainer-authored PR.
-#
-#   As of this commit, branch protection requires 0 approvals (single-
-#   maintainer reality; CodeQL + CI status checks still gate the merge), so
-#   auto-merge now actually reaches MERGED. The companion workflow
-#   `bot-reviewer.yml` keeps the *option* of returning to `require approvals:
-#   1` by auto-approving Dependabot PRs once a `REVIEW_BOT_TOKEN` secret is
-#   in place — see its header.
-#
-# `allow_auto_merge` must be enabled at the repo level (Settings → General →
-# Pull Requests → "Allow auto-merge"). It is currently enabled.
+# Fail-closed Dependabot automation. Branch protection is not assumed: this
+# workflow explicitly waits for the three repository quality workflows on the
+# exact PR head SHA before allowing a patch/minor dependency update to merge.
+# A failed, cancelled, missing, or timed-out quality workflow blocks the merge.
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
 
 permissions:
+  actions: read
   contents: read
   pull-requests: write
 
@@ -42,35 +25,59 @@ jobs:
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
-      - name: Enable auto-merge (squash) for Dependabot PRs
-        # Only patch and minor updates. `--auto` arms the merge and GitHub
-        # completes it once every *required* status check is green — but `main`
-        # currently has no branch protection, so there are no required checks
-        # and an armed merge lands immediately. Gating on update-type is
-        # therefore the only thing standing between a major action bump and an
-        # unreviewed merge, and major bumps are exactly the ones that carry
-        # config-schema changes (actions/labeler v5 changed its schema).
-        #
-        # To have CI gate this instead, protect `main` and mark the aggregate
-        # `CI` job as a required context — it exists for precisely that purpose,
-        # see the comment above it in tests.yml. Then this condition can widen.
+      - name: Wait for required quality workflows
         if: steps.metadata.outputs.update-type != 'version-update:semver-major'
-        # NOTE: --auto and --admin are mutually exclusive; gh rejects the pair
-        # with "specify only one of --auto, --disable-auto, or --admin". This
-        # step passed both and so had never once succeeded — invisible until the
-        # dependabot config itself was repaired and the first PR appeared.
-        run: gh pr merge --auto --squash "$PR_URL"
         env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Report auto-merge status
-        if: always()
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          echo "Dependabot update type: ${{ steps.metadata.outputs.update-type }}"
-          echo "Dependency: ${{ steps.metadata.outputs.dependency-names }} (${{ steps.metadata.outputs.new-version }})"
-          if [ "${{ steps.metadata.outputs.update-type }}" = "version-update:semver-major" ]; then
-            echo "::notice::Major update — auto-merge deliberately NOT armed, review by hand."
-          else
-            echo "::notice::Auto-merge armed for ${{ github.event.pull_request.html_url }}"
-          fi
+          set -euo pipefail
+          required=("CI" "CodeQL" "Installed CLI Smoke")
+
+          for workflow in "${required[@]}"; do
+            echo "Waiting for $workflow on $HEAD_SHA"
+            resolved="false"
+            for attempt in $(seq 1 80); do
+              result="$(gh api \
+                -H "Accept: application/vnd.github+json" \
+                "/repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$HEAD_SHA&event=pull_request&per_page=100" \
+                --jq ".workflow_runs[] | select(.name == \"$workflow\") | [.status, (.conclusion // \"\")] | @tsv" \
+                | head -n 1)"
+
+              if [[ -z "$result" ]]; then
+                sleep 15
+                continue
+              fi
+
+              status="${result%%$'\t'*}"
+              conclusion="${result#*$'\t'}"
+              if [[ "$status" != "completed" ]]; then
+                sleep 15
+                continue
+              fi
+              if [[ "$conclusion" != "success" ]]; then
+                echo "::error::$workflow completed with conclusion=$conclusion"
+                exit 1
+              fi
+
+              resolved="true"
+              echo "::notice::$workflow passed for $HEAD_SHA"
+              break
+            done
+
+            if [[ "$resolved" != "true" ]]; then
+              echo "::error::Timed out waiting for $workflow on $HEAD_SHA"
+              exit 1
+            fi
+          done
+
+      - name: Merge verified patch/minor update
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --squash "$PR_URL"
+
+      - name: Report major update policy
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+        run: echo "::notice::Major update is never auto-merged; manual review is required."

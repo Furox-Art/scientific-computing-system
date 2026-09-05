@@ -23,12 +23,13 @@ def _tool_registry(
 ) -> ToolRegistry:
     registry = ToolRegistry()
     for name in ("alpha", "beta"):
+        capabilities = ("fit", "verification") if name == "beta" else ("fit",)
         registry.register(
             ToolSpec(
                 name=name,
                 module=f"{name}_module",
                 distribution=f"{name}-dist",
-                capabilities=("fit", "verification" if name == "beta" else "fit"),
+                capabilities=capabilities,
                 purpose=f"{name} backend",
             )
         )
