@@ -8,7 +8,6 @@ from types import ModuleType
 import pytest
 
 import cds.montecarlo.methods as montecarlo_methods
-import cds.quantum.multi_qubit as multi_qubit
 from cds.quantum.multi_qubit import QuantumRegister
 
 
@@ -107,7 +106,10 @@ def test_measure_shots_falls_back_to_final_basis_state_on_roundoff(
         def random(self) -> float:
             return cumulative
 
-    monkeypatch.setattr(multi_qubit.random, "Random", lambda _seed=None: BoundaryRandom())
+    monkeypatch.setattr(
+        "cds.quantum.multi_qubit.random.Random",
+        lambda _seed=None: BoundaryRandom(),
+    )
 
     counts = register.measure_shots(shots=1, seed=0)
     assert counts == {"11": 1}
