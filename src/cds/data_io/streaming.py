@@ -53,6 +53,8 @@ def profile_file(
         raise ValueError("block sizes must be positive")
     if min_block_size > max_block_size:
         raise ValueError("min_block_size must not exceed max_block_size")
+    if min_block_size > memory_budget_bytes:
+        raise ValueError("min_block_size must not exceed memory_budget_bytes")
 
     source = Path(path)
     size = source.stat().st_size
@@ -73,8 +75,8 @@ def iter_csv_batches(
     """Yield CSV rows in bounded batches using only the standard library."""
     if batch_size <= 0:
         raise ValueError("batch_size must be positive")
-    if not delimiter:
-        raise ValueError("delimiter must not be empty")
+    if len(delimiter) != 1:
+        raise ValueError("delimiter must be exactly one character")
     with Path(path).open("r", encoding=encoding, newline="") as handle:
         reader = csv.DictReader(handle, delimiter=delimiter)
         if reader.fieldnames is None:
