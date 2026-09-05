@@ -1,9 +1,10 @@
-"""Verify GitHub Release and public PyPI distribution artifacts are identical.
+"""Verify PyPI distributions and the metadata-only GitHub Release policy.
 
-This is a release safety gate. It compares the exact wheel/sdist filenames,
-sizes, and SHA-256 digests published on PyPI with the matching GitHub Release.
-The command fails closed on missing, duplicate, extra, or mismatched distribution
-artifacts so a release cannot be reported healthy while the registries drift.
+The package wheel and source distribution are authoritative on PyPI only.
+GitHub may hold release metadata and provenance attestations, but wheel/sdist
+files must not be stored as GitHub Release assets. This gate fails closed if
+PyPI is incomplete or if a matching GitHub Release contains a ``.whl`` or
+``.tar.gz`` distribution asset.
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ DEFAULT_DELAY_SECONDS = 5.0
 
 @dataclass(frozen=True)
 class Artifact:
-    """One published distribution artifact."""
+    """One published PyPI distribution artifact."""
 
     filename: str
     size: int
@@ -65,7 +66,7 @@ def _is_distribution(filename: str) -> bool:
 
 
 def pypi_manifest(version: str) -> dict[str, Artifact]:
-    """Return the exact wheel + sdist manifest from public PyPI."""
+    """Return exactly one wheel and one sdist from public PyPI."""
     payload = _read_json(f"https://pypi.org/pypi/{DIST_NAME}/{version}/json")
     urls = payload.get("urls")
     if not isinstance(urls, list):
@@ -98,8 +99,13 @@ def pypi_manifest(version: str) -> dict[str, Artifact]:
     return artifacts
 
 
-def github_manifest(repository: str, tag: str, *, token: str | None = None) -> dict[str, Artifact]:
-    """Return wheel/sdist assets from the matching GitHub Release."""
+def github_distribution_assets(
+    repository: str,
+    tag: str,
+    *,
+    token: str | None = None,
+) -> tuple[str, ...]:
+    """Return prohibited wheel/sdist asset names from the matching GitHub Release."""
     payload = _read_json(
         f"https://api.github.com/repos/{repository}/releases/tags/{tag}",
         token=token,
@@ -108,48 +114,14 @@ def github_manifest(repository: str, tag: str, *, token: str | None = None) -> d
     if not isinstance(assets, list):
         raise TypeError("GitHub release response does not contain an assets list")
 
-    artifacts: dict[str, Artifact] = {}
+    names: list[str] = []
     for raw in assets:
         if not isinstance(raw, dict):
             continue
         filename = raw.get("name")
-        if not isinstance(filename, str) or not _is_distribution(filename):
-            continue
-        digest = raw.get("digest")
-        if not isinstance(digest, str) or not digest.startswith("sha256:"):
-            raise ValueError(f"GitHub asset {filename} has no SHA-256 digest")
-        size = raw.get("size")
-        if not isinstance(size, int):
-            raise ValueError(f"GitHub asset {filename} has no integer size")
-        if filename in artifacts:
-            raise ValueError(f"duplicate GitHub release artifact filename: {filename}")
-        artifacts[filename] = Artifact(filename, size, digest.removeprefix("sha256:"))
-
-    if len(artifacts) != 2:
-        raise ValueError(
-            "GitHub Release must contain exactly one wheel and one sdist; "
-            f"found {sorted(artifacts)}"
-        )
-    return artifacts
-
-
-def compare_manifests(pypi: dict[str, Artifact], github: dict[str, Artifact]) -> None:
-    """Fail if the two registries do not expose the same distributions."""
-    if set(pypi) != set(github):
-        raise ValueError(
-            "distribution filenames differ between PyPI and GitHub: "
-            f"PyPI={sorted(pypi)}, GitHub={sorted(github)}"
-        )
-    for filename in sorted(pypi):
-        left = pypi[filename]
-        right = github[filename]
-        if left.size != right.size:
-            raise ValueError(f"size mismatch for {filename}: PyPI={left.size}, GitHub={right.size}")
-        if left.sha256 != right.sha256:
-            raise ValueError(
-                f"SHA-256 mismatch for {filename}: PyPI={left.sha256}, GitHub={right.sha256}"
-            )
-        print(f"MATCH {filename} size={left.size} sha256={left.sha256}")
+        if isinstance(filename, str) and _is_distribution(filename):
+            names.append(filename)
+    return tuple(sorted(names))
 
 
 def verify_release_integrity(
@@ -160,7 +132,7 @@ def verify_release_integrity(
     delay_seconds: float = DEFAULT_DELAY_SECONDS,
     token: str | None = None,
 ) -> None:
-    """Verify registry parity, retrying only propagation/not-found failures."""
+    """Verify public PyPI and absence of GitHub distribution assets."""
     if attempts < 1:
         raise ValueError("attempts must be at least 1")
     if delay_seconds < 0:
@@ -171,11 +143,21 @@ def verify_release_integrity(
     for attempt in range(1, attempts + 1):
         try:
             print(f"Release integrity attempt {attempt}/{attempts}: {repository} {tag}")
-            compare_manifests(
-                pypi_manifest(version),
-                github_manifest(repository, tag, token=token),
+            manifest = pypi_manifest(version)
+            prohibited = github_distribution_assets(repository, tag, token=token)
+            if prohibited:
+                raise ValueError(
+                    "GitHub Release must not store wheel/sdist distribution assets: "
+                    f"{list(prohibited)}"
+                )
+            for artifact in manifest.values():
+                print(
+                    f"PYPI {artifact.filename} size={artifact.size} sha256={artifact.sha256}"
+                )
+            print(
+                f"Release integrity verified: {DIST_NAME} {version}; "
+                "GitHub Release is distribution-asset-free"
             )
-            print(f"Release integrity verified: {DIST_NAME} {version} / {tag}")
             return
         except (urllib.error.HTTPError, urllib.error.URLError) as exc:
             last_error = exc

@@ -1,21 +1,20 @@
 name: Release
 
-# Single publish authority for PyPI + GitHub release artifacts.
+# Single publish authority for PyPI + a metadata-only GitHub Release.
 #
 # Normal path: bump the package version in BOTH pyproject.toml and
 # src/cds/_version.py, merge to main, and this workflow builds and verifies the
-# wheel/sdist, publishes those exact files to PyPI via Trusted Publishing
-# (OIDC), then creates the matching vX.Y.Z tag and GitHub Release with the same
-# wheel/sdist attached. The _version.py change is the only release trigger;
-# ordinary pyproject.toml packaging edits do not publish a release. The tag
-# created after a successful PyPI publish does not trigger a second publish run.
+# wheel/sdist in the ephemeral runner, installs the built wheel and smoke-tests
+# the real CLI, attests those exact local files, publishes them to PyPI through
+# Trusted Publishing (OIDC), then creates the matching vX.Y.Z tag and GitHub
+# Release WITHOUT attaching wheel/sdist assets. Distribution files are never
+# stored as GitHub Actions artifacts or GitHub Release assets.
 #
-# The workflow is intentionally idempotent after a partial release failure. If
-# the exact version already exists on PyPI, its filenames, sizes, and SHA-256
-# digests must match the locally verified build; only then is the upload skipped
-# and the workflow allowed to recover the GitHub tag/release. An existing tag is
-# accepted only when it resolves to the current release commit. The final
-# integrity gate compares public PyPI with the GitHub Release before success.
+# The workflow is idempotent after a partial release failure. If the exact
+# version already exists on PyPI, its filenames, sizes, and SHA-256 digests must
+# match the locally verified build before upload is skipped. Existing release
+# distribution assets are removed so recovery also restores the metadata-only
+# GitHub policy.
 
 on:
   push:
@@ -25,6 +24,7 @@ on:
       - "src/cds/_version.py"
 
 permissions:
+  attestations: write
   contents: write
   deployments: write
   id-token: write
@@ -35,10 +35,11 @@ concurrency:
 
 jobs:
   publish:
-    name: Build + verify + publish to PyPI + GitHub Release
+    name: Build + verify + attest + publish to PyPI + metadata-only GitHub Release
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
+      attestations: write
       contents: write
       deployments: write
       id-token: write
@@ -75,7 +76,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install build
 
-      - name: Build sdist + wheel
+      - name: Build sdist + wheel in ephemeral runner
         run: python -m build
 
       - name: Verify package name and release version
@@ -182,7 +183,10 @@ jobs:
           for path in pathlib.Path("dist").iterdir():
               if not (path.name.endswith(".whl") or path.name.endswith(".tar.gz")):
                   continue
-              local[path.name] = (path.stat().st_size, hashlib.sha256(path.read_bytes()).hexdigest())
+              local[path.name] = (
+                  path.stat().st_size,
+                  hashlib.sha256(path.read_bytes()).hexdigest(),
+              )
 
           if len(local) != 2 or len(remote) != 2 or set(local) != set(remote):
               raise SystemExit(
@@ -204,6 +208,11 @@ jobs:
               stream.write("already_published=true\n")
           print("Exact release already exists on PyPI; safe recovery mode enabled.")
           PY
+
+      - name: Attest verified ephemeral wheel and sdist
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "dist/*"
 
       - name: Create PyPI deployment record
         id: deployment
@@ -248,21 +257,34 @@ jobs:
             git push origin "$RELEASE_TAG"
           fi
 
-      - name: Create GitHub Release with published distribution assets
+      - name: Create metadata-only GitHub Release and remove distribution assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           set -euo pipefail
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG already exists; synchronizing distribution assets."
-            gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" dist/* --clobber
+            echo "Release $RELEASE_TAG already exists; enforcing metadata-only distribution policy."
           else
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-              --generate-notes --title "$RELEASE_TAG" dist/*
+              --generate-notes --title "$RELEASE_TAG"
           fi
 
-      - name: Verify PyPI and GitHub Release artifact parity
+          while IFS= read -r asset; do
+            test -z "$asset" && continue
+            case "$asset" in
+              *.whl|*.tar.gz)
+                echo "Removing prohibited GitHub distribution asset: $asset"
+                gh release delete-asset "$RELEASE_TAG" "$asset" \
+                  --repo "$GITHUB_REPOSITORY" --yes
+                ;;
+            esac
+          done < <(
+            gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+              --json assets --jq '.assets[].name'
+          )
+
+      - name: Verify PyPI publication and metadata-only GitHub Release policy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
