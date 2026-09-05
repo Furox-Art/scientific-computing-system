@@ -210,7 +210,9 @@ def buffon_needle(
             crossings += 1
 
     if crossings == 0:
-        raise ArithmeticError("Buffon estimator is undefined with zero crossings; increase n_throws")
+        raise ArithmeticError(
+            "Buffon estimator is undefined with zero crossings; increase n_throws"
+        )
 
     p = crossings / n_throws
     estimate = (2 * needle_length) / (line_spacing * p)
