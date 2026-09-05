@@ -20,7 +20,9 @@ def test_group_leakage_detects_cross_split_entities() -> None:
     assert clean.status is CheckStatus.PASS
     leaked = check_group_leakage(["a", "b", "c"], ["c", "d"])
     assert leaked.status is CheckStatus.FAIL
-    assert "'c'" in leaked.details["overlap"]
+    overlap = leaked.details["overlap"]
+    assert isinstance(overlap, tuple)
+    assert "'c'" in overlap
 
 
 def test_ood_range_check_passes_and_fails_interpretable_bounds() -> None:
