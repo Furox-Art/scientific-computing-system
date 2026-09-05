@@ -8,16 +8,20 @@ from dataclasses import dataclass
 from importlib import metadata
 from types import ModuleType
 
+from cds.policy import DataHandling, ExecutionLocation
+
 
 @dataclass(frozen=True)
 class ToolSpec:
-    """Description of one optional scientific backend."""
+    """Description of one optional scientific backend and its data boundary."""
 
     name: str
     module: str
     distribution: str
     capabilities: tuple[str, ...]
     purpose: str
+    execution_location: ExecutionLocation = ExecutionLocation.LOCAL
+    data_handling: DataHandling = DataHandling.LOCAL_ONLY
 
     def __post_init__(self) -> None:
         if not self.name.strip() or not self.module.strip() or not self.distribution.strip():
@@ -42,24 +46,20 @@ class ToolRegistry:
         self._specs: dict[str, ToolSpec] = {}
 
     def register(self, spec: ToolSpec) -> None:
-        """Register a backend under a unique logical name."""
         if spec.name in self._specs:
             raise ValueError(f"tool {spec.name!r} is already registered")
         self._specs[spec.name] = spec
 
     def spec(self, name: str) -> ToolSpec:
-        """Return a registered backend specification."""
         try:
             return self._specs[name]
         except KeyError as exc:
             raise KeyError(f"unknown tool: {name}") from exc
 
     def names(self) -> tuple[str, ...]:
-        """Return registered tool names in deterministic order."""
         return tuple(sorted(self._specs))
 
     def status(self, name: str) -> ToolStatus:
-        """Check import availability and package version without importing the tool."""
         spec = self.spec(name)
         available = importlib.util.find_spec(spec.module) is not None
         if not available:
@@ -71,11 +71,9 @@ class ToolRegistry:
         return ToolStatus(spec=spec, available=True, version=version)
 
     def statuses(self) -> tuple[ToolStatus, ...]:
-        """Probe every registered backend."""
         return tuple(self.status(name) for name in self.names())
 
     def recommend(self, capability: str, *, installed_only: bool = True) -> tuple[ToolStatus, ...]:
-        """Return backends that advertise a capability, installed tools first."""
         matches = [
             self.status(name)
             for name in self.names()
@@ -86,7 +84,6 @@ class ToolRegistry:
         return tuple(sorted(matches, key=lambda status: (not status.available, status.spec.name)))
 
     def load(self, name: str) -> ModuleType:
-        """Import an explicitly requested backend or raise a clear installation error."""
         status = self.status(name)
         if not status.available:
             raise ModuleNotFoundError(
@@ -97,7 +94,7 @@ class ToolRegistry:
 
 
 def default_registry() -> ToolRegistry:
-    """Return CDS's standard optional scientific backend registry."""
+    """Return CDS's standard local-only scientific backend registry."""
     registry = ToolRegistry()
     for spec in (
         ToolSpec(
