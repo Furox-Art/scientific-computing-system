@@ -41,10 +41,7 @@ def test_release_workflow_attests_verified_build_before_publish() -> None:
     attest = release.index("Attest verified runner-local build provenance")
     publish = release.index("Publish to PyPI (Trusted Publishing)")
     assert smoke < attest < publish
-    assert (
-        "actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be"
-        in release
-    )
+    assert "actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be" in release
     assert 'subject-path: "dist/*"' in release
     assert "attestations: write" in release
     assert not LEGACY_ATTEST_WORKFLOW.exists()
