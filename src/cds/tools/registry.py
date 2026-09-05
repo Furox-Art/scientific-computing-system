@@ -32,8 +32,14 @@ class ToolSpec:
     def __post_init__(self) -> None:
         if not self.name.strip() or not self.module.strip() or not self.distribution.strip():
             raise ValueError("tool name, module, and distribution must not be empty")
+        if not self.purpose.strip():
+            raise ValueError("tool purpose must not be empty")
         if not self.capabilities:
             raise ValueError("tool must declare at least one capability")
+        if any(not capability.strip() for capability in self.capabilities):
+            raise ValueError("tool capabilities must not contain empty values")
+        if len(set(self.capabilities)) != len(self.capabilities):
+            raise ValueError("tool capabilities must be unique")
         if self.locality is ToolLocality.REMOTE and not self.data_egress:
             raise ValueError("remote tools must explicitly declare data_egress=True")
         if self.locality is ToolLocality.LOCAL and self.data_egress:
