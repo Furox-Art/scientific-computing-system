@@ -6,10 +6,12 @@ import hashlib
 import json
 import os
 import platform
+import subprocess
 import sys
 import tempfile
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from typing import cast
 from uuid import uuid4
@@ -22,6 +24,65 @@ class DecisionRecord:
     action: str
     rationale: str
     approved_by_user: bool
+
+
+def _is_hex_sha(value: str) -> bool:
+    return 7 <= len(value) <= 64 and all(char in "0123456789abcdef" for char in value.lower())
+
+
+def detect_git_sha() -> str | None:
+    """Resolve the current source revision from CI metadata or the local checkout."""
+    for key in ("GITHUB_SHA", "CI_COMMIT_SHA", "GIT_COMMIT"):
+        value = os.environ.get(key, "").strip()
+        if value and _is_hex_sha(value):
+            return value.lower()
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    value = result.stdout.strip()
+    return value.lower() if result.returncode == 0 and _is_hex_sha(value) else None
+
+
+def _canonicalize(value: object) -> object:
+    if isinstance(value, Enum):
+        return value.value
+    if is_dataclass(value) and not isinstance(value, type):
+        return _canonicalize(asdict(value))
+    if isinstance(value, dict):
+        return {str(key): _canonicalize(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_canonicalize(item) for item in value]
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    raise TypeError(f"unsupported canonical provenance value: {type(value).__name__}")
+
+
+def canonical_sha256(value: object) -> str:
+    """Hash a deterministic JSON representation of supported scientific metadata."""
+    payload = json.dumps(
+        _canonicalize(value),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    )
+    return sha256_text(payload)
+
+
+def _capture_lock_hashes(root: Path) -> dict[str, str]:
+    hashes: dict[str, str] = {}
+    for name in ("requirements.lock", "requirements-dev.lock"):
+        path = root / name
+        if path.is_file():
+            hashes[f"lock.{name}.sha256"] = sha256_file(path)
+    return hashes
 
 
 @dataclass
@@ -46,10 +107,16 @@ class RunManifest:
         seed: int | None = None,
         run_id: str | None = None,
         created_utc: str | None = None,
+        project_root: str | os.PathLike[str] | None = None,
     ) -> RunManifest:
-        """Create a manifest with a snapshot of the local Python environment."""
+        """Create a manifest with an automatic source/environment snapshot."""
         if not question.strip():
             raise ValueError("question must not be empty")
+        root = Path(project_root) if project_root is not None else Path.cwd()
+        metadata_values = _capture_lock_hashes(root)
+        git_sha = detect_git_sha()
+        if git_sha is not None:
+            metadata_values["source.git_sha"] = git_sha
         return cls(
             question=question,
             run_id=run_id or str(uuid4()),
@@ -61,6 +128,7 @@ class RunManifest:
                 "platform": platform.platform(),
                 "executable": sys.executable,
             },
+            metadata=metadata_values,
         )
 
     def record_data_hash(self, name: str, digest: str) -> None:
@@ -90,6 +158,20 @@ class RunManifest:
                 approved_by_user=approved_by_user,
             )
         )
+
+    def record_plan_hash(self, plan: object) -> str:
+        """Bind this run to the canonical analysis plan used for execution."""
+        digest = canonical_sha256(plan)
+        self.metadata["plan.sha256"] = digest
+        return digest
+
+    def record_environment_lock(self, name: str, path: str | os.PathLike[str]) -> str:
+        """Bind an additional environment/lock file to the manifest."""
+        if not name.strip():
+            raise ValueError("environment lock name must not be empty")
+        digest = sha256_file(path)
+        self.metadata[f"lock.{name}.sha256"] = digest
+        return digest
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-compatible representation."""

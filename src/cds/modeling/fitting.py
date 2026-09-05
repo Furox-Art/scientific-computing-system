@@ -15,6 +15,7 @@ from cds.optimization import adam, gradient_descent, nelder_mead, projected_grad
 
 FitLoss = Literal["squared", "absolute", "huber"]
 FitOptimizer = Literal["auto", "gradient_descent", "adam", "nelder_mead", "projected_gradient"]
+FitUncertainty = Literal["auto", "none", "normal", "bootstrap", "both"]
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,9 @@ class FitDiagnostics:
     standard_errors: dict[str, float] | None
     confidence_intervals: dict[str, tuple[float, float]] | None
     identifiable: bool
+    uncertainty_method: str = "none"
+    bootstrap_confidence_intervals: dict[str, tuple[float, float]] | None = None
+    bootstrap_successes: int = 0
 
 
 @dataclass(frozen=True)
@@ -86,12 +90,7 @@ def _make_starts(
 
 
 def _invert_matrix(matrix: Sequence[Sequence[float]]) -> list[list[float]]:
-    """Invert a small dense matrix with Gauss-Jordan elimination.
-
-    Parameter-covariance matrices are typically only ``p x p`` where ``p`` is
-    the number of fitted parameters. Keeping this helper local avoids making
-    the modeling layer depend on the lower-level public linear-algebra module.
-    """
+    """Invert a small dense matrix with Gauss-Jordan elimination."""
     n = len(matrix)
     if n == 0:
         raise ValueError("matrix must be non-empty")
@@ -142,6 +141,7 @@ def _uncertainty(
     residuals: Sequence[float],
     confidence: float,
 ) -> tuple[dict[str, float] | None, dict[str, tuple[float, float]] | None, bool]:
+    """Local linearized covariance/normal-approximation uncertainty."""
     n = len(observations)
     p = len(names)
     if n <= p:
@@ -171,6 +171,96 @@ def _uncertainty(
     return standard_errors, intervals, True
 
 
+def _percentile(values: Sequence[float], probability: float) -> float:
+    if not values:
+        raise ValueError("percentile requires at least one value")
+    if not 0.0 <= probability <= 1.0:
+        raise ValueError("probability must lie in [0, 1]")
+    ordered = sorted(values)
+    position = probability * (len(ordered) - 1)
+    lower = int(math.floor(position))
+    upper = int(math.ceil(position))
+    if lower == upper:
+        return ordered[lower]
+    weight = position - lower
+    return ordered[lower] * (1.0 - weight) + ordered[upper] * weight
+
+
+def _bootstrap_uncertainty(
+    model: MathModel,
+    observations: Sequence[tuple[dict[str, float], float]],
+    names: Sequence[str],
+    values: Sequence[float],
+    *,
+    target_label: str,
+    optimizer: FitOptimizer,
+    loss: FitLoss,
+    bounds: Sequence[tuple[float, float]] | None,
+    huber_delta: float,
+    confidence: float,
+    bootstrap_samples: int,
+    bootstrap_seed: int,
+    min_success_fraction: float,
+    lr: float,
+    tol: float,
+    max_iter: int,
+) -> tuple[
+    dict[str, float] | None,
+    dict[str, tuple[float, float]] | None,
+    int,
+]:
+    """Nonparametric case-resampling uncertainty for nonlinear/robust fits."""
+    rng = random.Random(bootstrap_seed)
+    samples_by_name: dict[str, list[float]] = {name: [] for name in names}
+    successes = 0
+    n = len(observations)
+    for _ in range(bootstrap_samples):
+        resampled = [observations[rng.randrange(n)] for _ in range(n)]
+        try:
+            result = fit_parameters_advanced(
+                model,
+                resampled,
+                names,
+                x0=values,
+                target_label=target_label,
+                optimizer=optimizer,
+                loss=loss,
+                bounds=bounds,
+                multi_start=1,
+                seed=rng.randrange(2**31),
+                huber_delta=huber_delta,
+                confidence=confidence,
+                uncertainty="none",
+                lr=lr,
+                tol=tol,
+                max_iter=max_iter,
+            )
+        except (ArithmeticError, ValueError, ZeroDivisionError):
+            continue
+        candidate = [result.parameters[name] for name in names]
+        if any(not math.isfinite(value) for value in candidate):
+            continue
+        successes += 1
+        for name, value in zip(names, candidate):
+            samples_by_name[name].append(value)
+
+    required = max(2, math.ceil(bootstrap_samples * min_success_fraction))
+    if successes < required:
+        return None, None, successes
+
+    alpha = (1.0 - confidence) / 2.0
+    intervals = {
+        name: (_percentile(samples, alpha), _percentile(samples, 1.0 - alpha))
+        for name, samples in samples_by_name.items()
+    }
+    standard_errors = {}
+    for name, samples in samples_by_name.items():
+        mean = sum(samples) / len(samples)
+        variance = sum((sample - mean) ** 2 for sample in samples) / (len(samples) - 1)
+        standard_errors[name] = math.sqrt(max(0.0, variance))
+    return standard_errors, intervals, successes
+
+
 def fit_parameters_advanced(
     model: MathModel,
     observed: Sequence[tuple[dict[str, float], float]],
@@ -185,15 +275,21 @@ def fit_parameters_advanced(
     seed: int = 0,
     huber_delta: float = 1.0,
     confidence: float = 0.95,
+    uncertainty: FitUncertainty = "auto",
+    bootstrap_samples: int = 200,
+    bootstrap_seed: int | None = None,
+    min_bootstrap_success_fraction: float = 0.8,
     lr: float = GD_DEFAULT_LR,
     tol: float = DEFAULT_TOLERANCE,
     max_iter: int = 10000,
 ) -> AdvancedFitResult:
-    """Fit model parameters with method selection, robust losses, and diagnostics.
+    """Fit model parameters with method selection, diagnostics, and optional bootstrap CIs.
 
-    This API complements the backward-compatible :func:`fit_parameters`.
-    It never silently removes observations and returns enough diagnostics to
-    assess fit quality and parameter identifiability.
+    ``uncertainty='normal'`` preserves the fast local Jacobian approximation for
+    squared loss. ``'bootstrap'`` provides nonparametric case-resampling CIs
+    that remain meaningful for nonlinear and robust-loss fits, while ``'both'``
+    exposes both estimates for cross-checking. ``'auto'`` keeps the historical
+    fast behavior (normal for squared loss, none for robust losses).
     """
     names = list(parameter_names)
     observations = list(observed)
@@ -214,6 +310,14 @@ def fit_parameters_advanced(
         raise ValueError("huber_delta must be positive")
     if not 0.0 < confidence < 1.0:
         raise ValueError("confidence must be strictly between 0 and 1")
+    if uncertainty not in ("auto", "none", "normal", "bootstrap", "both"):
+        raise ValueError("unknown uncertainty method")
+    if bootstrap_samples < 2:
+        raise ValueError("bootstrap_samples must be >= 2")
+    if not 0.0 < min_bootstrap_success_fraction <= 1.0:
+        raise ValueError("min_bootstrap_success_fraction must lie in (0, 1]")
+    if uncertainty in ("normal", "both") and loss != "squared":
+        raise ValueError("normal-approximation uncertainty requires squared loss")
     if bounds is not None:
         if len(bounds) != len(names):
             raise ValueError("bounds must have the same length as parameter_names")
@@ -295,8 +399,17 @@ def fit_parameters_advanced(
     rss = sum(value * value for value in residuals)
     r_squared = 1.0 - rss / total_variation if total_variation > 0 else (1.0 if rss == 0 else 0.0)
 
-    if loss == "squared":
-        standard_errors, intervals, identifiable = _uncertainty(
+    resolved_uncertainty: FitUncertainty
+    if uncertainty == "auto":
+        resolved_uncertainty = "normal" if loss == "squared" else "none"
+    else:
+        resolved_uncertainty = uncertainty
+
+    normal_errors: dict[str, float] | None = None
+    normal_intervals: dict[str, tuple[float, float]] | None = None
+    normal_identifiable = False
+    if resolved_uncertainty in ("normal", "both"):
+        normal_errors, normal_intervals, normal_identifiable = _uncertainty(
             model,
             observations,
             names,
@@ -305,8 +418,40 @@ def fit_parameters_advanced(
             residuals,
             confidence,
         )
+
+    bootstrap_errors: dict[str, float] | None = None
+    bootstrap_intervals: dict[str, tuple[float, float]] | None = None
+    bootstrap_successes = 0
+    if resolved_uncertainty in ("bootstrap", "both"):
+        bootstrap_errors, bootstrap_intervals, bootstrap_successes = _bootstrap_uncertainty(
+            model,
+            observations,
+            names,
+            best_values,
+            target_label=label,
+            optimizer=optimizer,
+            loss=loss,
+            bounds=bounds,
+            huber_delta=huber_delta,
+            confidence=confidence,
+            bootstrap_samples=bootstrap_samples,
+            bootstrap_seed=seed if bootstrap_seed is None else bootstrap_seed,
+            min_success_fraction=min_bootstrap_success_fraction,
+            lr=lr,
+            tol=tol,
+            max_iter=max_iter,
+        )
+
+    if resolved_uncertainty == "bootstrap":
+        standard_errors = bootstrap_errors
+        intervals = bootstrap_intervals
+        identifiable = bootstrap_intervals is not None
     else:
-        standard_errors, intervals, identifiable = None, None, False
+        standard_errors = normal_errors
+        intervals = normal_intervals
+        identifiable = normal_identifiable
+        if resolved_uncertainty == "both":
+            identifiable = normal_identifiable and bootstrap_intervals is not None
 
     diagnostics = FitDiagnostics(
         residuals=tuple(residuals),
@@ -316,6 +461,9 @@ def fit_parameters_advanced(
         standard_errors=standard_errors,
         confidence_intervals=intervals,
         identifiable=identifiable,
+        uncertainty_method=resolved_uncertainty,
+        bootstrap_confidence_intervals=bootstrap_intervals,
+        bootstrap_successes=bootstrap_successes,
     )
     return AdvancedFitResult(
         parameters=dict(zip(names, best_values)),

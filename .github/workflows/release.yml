@@ -49,7 +49,7 @@ jobs:
       release_sha: ${{ steps.candidate.outputs.release_sha }}
       should_release: ${{ steps.candidate.outputs.should_release }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 2
@@ -99,7 +99,7 @@ jobs:
     env:
       RELEASE_SHA: ${{ needs.gate.outputs.release_sha }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ env.RELEASE_SHA }}
           fetch-depth: 0
@@ -115,7 +115,7 @@ jobs:
           fi
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
 
@@ -208,7 +208,7 @@ jobs:
         run: python scripts/verify_cli_install.py --expected-version "$EXPECTED_VERSION"
 
       - name: Attest verified runner-local build provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: "dist/*"
 
@@ -279,7 +279,7 @@ jobs:
 
       - name: Create PyPI deployment record
         id: deployment
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         with:
@@ -299,7 +299,7 @@ jobs:
 
       - name: Publish to PyPI (Trusted Publishing)
         if: steps.pypi_state.outputs.already_published != 'true'
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
 
       - name: Create or verify release tag after successful PyPI state
         env:
@@ -344,7 +344,7 @@ jobs:
 
       - name: Set PyPI deployment status
         if: always() && steps.deployment.outputs.id != ''
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const state = "${{ job.status }}" === "success" ? "success" : "failure";
