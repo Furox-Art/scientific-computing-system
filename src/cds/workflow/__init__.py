@@ -2,6 +2,15 @@
 
 from cds.workflow.engine import ExecutionContext, ResearchWorkflow
 from cds.workflow.gates import GateDecision, GatePolicy, GateStatus, evaluate_research_gate
+from cds.workflow.orchestrator import (
+    IndependentValidator,
+    OrchestrationRecord,
+    PlannedAction,
+    ProblemProfile,
+    ResearchBlueprint,
+    ResearchOrchestrator,
+    ToolPlannedAction,
+)
 from cds.workflow.selection import (
     ConditionOperator,
     ConditionStatus,
@@ -39,20 +48,27 @@ __all__ = [
     "GateDecision",
     "GatePolicy",
     "GateStatus",
+    "IndependentValidator",
     "LanguageMode",
     "MethodCandidate",
     "MethodPreference",
     "MethodSelection",
     "MethodSelectionContext",
     "MethodStatus",
+    "OrchestrationRecord",
     "PlanStep",
+    "PlannedAction",
+    "ProblemProfile",
     "RankedMethod",
     "Recommendation",
+    "ResearchBlueprint",
+    "ResearchOrchestrator",
     "ResearchWorkflow",
     "ScientificResult",
     "SelectionCondition",
     "SelectionPolicy",
     "StepStatus",
+    "ToolPlannedAction",
     "ToolSelection",
     "evaluate_research_gate",
     "rank_methods",
