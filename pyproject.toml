@@ -2,7 +2,7 @@
 # Distribution name. Formerly published as "cognitive-discovery-system";
 # the import name stays `cds`. Keep the old PyPI project alive as an alias.
 name = "scientific-computing-system"
-version = "2.0.0"
+version = "2.1.0"
 description = "A pure-Python computational science platform for numerical methods, modeling, validation, uncertainty, scientific workflows, dimensional analysis, and optional research-data backends. Zero runtime dependencies."
 readme = "README.md"
 license = "MIT"
