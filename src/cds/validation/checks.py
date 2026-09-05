@@ -218,6 +218,227 @@ def check_duplicate_rows(
     )
 
 
+def check_group_leakage(
+    train_groups: Sequence[object],
+    test_groups: Sequence[object],
+    *,
+    name: str = "group-leakage",
+) -> ValidationCheck:
+    """Detect entity/group identifiers crossing train/test boundaries."""
+    train = set(train_groups)
+    overlap = tuple(sorted((repr(group) for group in train.intersection(test_groups))))
+    if overlap:
+        return ValidationCheck(
+            name=name,
+            status=CheckStatus.FAIL,
+            message=f"{len(overlap)} group identifiers occur in both train and test",
+            details={"overlap": overlap},
+        )
+    return ValidationCheck(
+        name=name,
+        status=CheckStatus.PASS,
+        message="no group identifiers cross train/test boundaries",
+    )
+
+
+def check_ood_ranges(
+    training_rows: Sequence[Sequence[float]],
+    candidate_rows: Sequence[Sequence[float]],
+    *,
+    allowed_fraction: float = 0.0,
+    margin_fraction: float = 0.0,
+    name: str = "out-of-distribution-range",
+) -> ValidationCheck:
+    """Flag rows outside per-feature training ranges.
+
+    This intentionally uses an interpretable range check rather than claiming a
+    full density model. ``margin_fraction`` expands each observed training range
+    before evaluation, and ``allowed_fraction`` controls how much OOD traffic is
+    tolerated before the check fails.
+    """
+    if not 0.0 <= allowed_fraction <= 1.0:
+        raise ValueError("allowed_fraction must lie in [0, 1]")
+    if margin_fraction < 0.0:
+        raise ValueError("margin_fraction must be non-negative")
+    if not training_rows:
+        raise ValueError("training_rows must not be empty")
+    width = len(training_rows[0])
+    if width == 0:
+        raise ValueError("rows must contain at least one feature")
+    all_rows = [*training_rows, *candidate_rows]
+    if any(len(row) != width for row in all_rows):
+        raise ValueError("all OOD rows must have the same feature count")
+    if any(not math.isfinite(value) for row in all_rows for value in row):
+        return ValidationCheck(
+            name=name,
+            status=CheckStatus.FAIL,
+            message="OOD range check cannot use non-finite feature values",
+        )
+
+    lower = [min(row[index] for row in training_rows) for index in range(width)]
+    upper = [max(row[index] for row in training_rows) for index in range(width)]
+    expanded = []
+    for low, high in zip(lower, upper):
+        scale = max(abs(low), abs(high), high - low, 1.0)
+        margin = margin_fraction * scale
+        expanded.append((low - margin, high + margin))
+
+    outside = [
+        row_index
+        for row_index, row in enumerate(candidate_rows)
+        if any(
+            value < expanded[index][0] or value > expanded[index][1]
+            for index, value in enumerate(row)
+        )
+    ]
+    fraction = len(outside) / len(candidate_rows) if candidate_rows else 0.0
+    status = CheckStatus.PASS if fraction <= allowed_fraction else CheckStatus.FAIL
+    return ValidationCheck(
+        name=name,
+        status=status,
+        message=(
+            "candidate rows remain within declared training-domain ranges"
+            if status is CheckStatus.PASS
+            else f"{len(outside)} candidate rows fall outside training-domain ranges"
+        ),
+        details={
+            "outside_indices": outside,
+            "outside_fraction": fraction,
+            "allowed_fraction": allowed_fraction,
+            "ranges": expanded,
+        },
+    )
+
+
+def check_distribution_drift(
+    reference: Sequence[float],
+    current: Sequence[float],
+    *,
+    max_standardized_mean_shift: float = 0.5,
+    max_variance_ratio: float = 2.0,
+    name: str = "distribution-drift",
+) -> ValidationCheck:
+    """Detect large first/second-moment shifts between scalar distributions."""
+    if max_standardized_mean_shift < 0:
+        raise ValueError("max_standardized_mean_shift must be non-negative")
+    if max_variance_ratio < 1.0:
+        raise ValueError("max_variance_ratio must be >= 1")
+    if len(reference) < 2 or len(current) < 2:
+        raise ValueError("drift check requires at least two values per sample")
+    finite = check_finite([*reference, *current], name=name)
+    if finite.status is CheckStatus.FAIL:
+        return finite
+
+    def moments(values: Sequence[float]) -> tuple[float, float]:
+        mean = sum(values) / len(values)
+        variance = sum((value - mean) ** 2 for value in values) / (len(values) - 1)
+        return mean, variance
+
+    ref_mean, ref_var = moments(reference)
+    cur_mean, cur_var = moments(current)
+    scale = max(math.sqrt(ref_var), 1e-12)
+    mean_shift = abs(cur_mean - ref_mean) / scale
+    if ref_var <= 1e-24 and cur_var <= 1e-24:
+        variance_ratio = 1.0
+    elif min(ref_var, cur_var) <= 1e-24:
+        variance_ratio = math.inf
+    else:
+        variance_ratio = max(ref_var, cur_var) / min(ref_var, cur_var)
+    drifted = (
+        mean_shift > max_standardized_mean_shift or variance_ratio > max_variance_ratio
+    )
+    return ValidationCheck(
+        name=name,
+        status=CheckStatus.WARNING if drifted else CheckStatus.PASS,
+        message="distribution drift detected" if drifted else "no material moment drift detected",
+        details={
+            "standardized_mean_shift": mean_shift,
+            "variance_ratio": variance_ratio,
+            "mean_shift_threshold": max_standardized_mean_shift,
+            "variance_ratio_threshold": max_variance_ratio,
+        },
+    )
+
+
+def check_residual_diagnostics(
+    residuals: Sequence[float],
+    *,
+    max_bias_z: float = 2.0,
+    max_abs_lag1: float = 0.3,
+    max_variance_ratio: float = 2.0,
+    name: str = "residual-diagnostics",
+) -> ValidationCheck:
+    """Screen residual bias, lag-1 dependence, and scale instability."""
+    if max_bias_z < 0 or max_abs_lag1 < 0 or max_variance_ratio < 1:
+        raise ValueError("residual diagnostic thresholds are invalid")
+    if len(residuals) < 4:
+        return ValidationCheck(
+            name=name,
+            status=CheckStatus.WARNING,
+            message="too few residuals for dependence/heteroscedasticity diagnostics",
+            details={"count": len(residuals)},
+        )
+    finite = check_finite(residuals, name=name)
+    if finite.status is CheckStatus.FAIL:
+        return finite
+
+    n = len(residuals)
+    mean = sum(residuals) / n
+    centered = [value - mean for value in residuals]
+    variance = sum(value * value for value in centered) / (n - 1)
+    standard_error = math.sqrt(variance / n) if variance > 0 else 0.0
+    bias_z = abs(mean) / standard_error if standard_error > 0 else (0.0 if mean == 0 else math.inf)
+
+    denominator = sum(value * value for value in centered)
+    lag1 = (
+        sum(centered[index] * centered[index - 1] for index in range(1, n)) / denominator
+        if denominator > 0
+        else 0.0
+    )
+
+    midpoint = n // 2
+    first = residuals[:midpoint]
+    second = residuals[midpoint:]
+
+    def sample_variance(values: Sequence[float]) -> float:
+        local_mean = sum(values) / len(values)
+        return sum((value - local_mean) ** 2 for value in values) / max(1, len(values) - 1)
+
+    first_var = sample_variance(first)
+    second_var = sample_variance(second)
+    if first_var <= 1e-24 and second_var <= 1e-24:
+        variance_ratio = 1.0
+    elif min(first_var, second_var) <= 1e-24:
+        variance_ratio = math.inf
+    else:
+        variance_ratio = max(first_var, second_var) / min(first_var, second_var)
+
+    suspicious = (
+        bias_z > max_bias_z
+        or abs(lag1) > max_abs_lag1
+        or variance_ratio > max_variance_ratio
+    )
+    return ValidationCheck(
+        name=name,
+        status=CheckStatus.WARNING if suspicious else CheckStatus.PASS,
+        message=(
+            "residual diagnostics indicate possible model misspecification"
+            if suspicious
+            else "residual diagnostics show no configured warning signal"
+        ),
+        details={
+            "bias_z": bias_z,
+            "lag1": lag1,
+            "variance_ratio": variance_ratio,
+            "thresholds": {
+                "max_bias_z": max_bias_z,
+                "max_abs_lag1": max_abs_lag1,
+                "max_variance_ratio": max_variance_ratio,
+            },
+        },
+    )
+
+
 def check_numerical_stability(
     function: Callable[[float], float],
     point: float,
