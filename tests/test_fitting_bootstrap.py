@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import pytest
 
 from cds.modeling import MathModel, Variable, fit_parameters_advanced
-from cds.modeling.fitting import _percentile
+from cds.modeling.fitting import AdvancedFitResult, _percentile
 
 
 def _model() -> MathModel:
@@ -23,8 +24,11 @@ def _observations() -> list[tuple[dict[str, float], float]]:
     ]
 
 
-def test_bootstrap_uncertainty_is_seeded_and_contains_fit() -> None:
-    kwargs = dict(
+def _seeded_bootstrap_fit() -> AdvancedFitResult:
+    return fit_parameters_advanced(
+        _model(),
+        _observations(),
+        ["a", "b"],
         x0=[1.8, 1.0],
         optimizer="nelder_mead",
         uncertainty="bootstrap",
@@ -32,8 +36,11 @@ def test_bootstrap_uncertainty_is_seeded_and_contains_fit() -> None:
         bootstrap_seed=17,
         max_iter=1500,
     )
-    first = fit_parameters_advanced(_model(), _observations(), ["a", "b"], **kwargs)
-    second = fit_parameters_advanced(_model(), _observations(), ["a", "b"], **kwargs)
+
+
+def test_bootstrap_uncertainty_is_seeded_and_contains_fit() -> None:
+    first = _seeded_bootstrap_fit()
+    second = _seeded_bootstrap_fit()
     assert first.diagnostics.uncertainty_method == "bootstrap"
     assert first.diagnostics.bootstrap_successes >= 20
     assert (
@@ -42,8 +49,10 @@ def test_bootstrap_uncertainty_is_seeded_and_contains_fit() -> None:
     assert first.diagnostics.confidence_intervals == second.diagnostics.confidence_intervals
     assert first.diagnostics.standard_errors is not None
     assert first.diagnostics.identifiable
+    intervals = first.diagnostics.confidence_intervals
+    assert intervals is not None
     for name, estimate in first.parameters.items():
-        low, high = first.diagnostics.confidence_intervals[name]
+        low, high = intervals[name]
         assert low <= estimate <= high
 
 
@@ -137,7 +146,7 @@ def test_bootstrap_failure_is_reported_not_fabricated(monkeypatch: pytest.Monkey
     original = fitting.fit_parameters_advanced
     calls = 0
 
-    def flaky(*args: object, **kwargs: object):  # type: ignore[no-untyped-def]
+    def flaky(*args: Any, **kwargs: Any) -> AdvancedFitResult:
         nonlocal calls
         if kwargs.get("uncertainty") == "none":
             calls += 1
