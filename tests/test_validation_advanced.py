@@ -81,7 +81,7 @@ def test_distribution_drift_handles_constant_and_invalid_inputs() -> None:
 
 
 def test_residual_diagnostics_flags_bias_dependence_and_scale_change() -> None:
-    clean = check_residual_diagnostics([-1.0, 1.0, -1.0, 1.0, -1.0, 1.0])
+    clean = check_residual_diagnostics([-1.0, 0.5, 1.0, -0.5, 0.5, -1.0, -0.5, 1.0])
     assert clean.status is CheckStatus.PASS
 
     biased = check_residual_diagnostics([2.0, 2.1, 1.9, 2.0, 2.1, 1.9])
