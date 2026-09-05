@@ -5,6 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 REGISTRY_WORKFLOW = ROOT / ".github" / "workflows" / "pypi-registry-smoke.yml"
+LEGACY_ATTEST_WORKFLOW = ROOT / ".github" / "workflows" / "attest.yml"
 
 
 def _text(path: Path) -> str:
@@ -18,6 +19,18 @@ def test_release_workflow_keeps_distribution_assets_off_github() -> None:
     assert "gh release upload" not in release
     assert "published distribution assets" not in release
     assert '--title "$RELEASE_TAG" dist/*' not in release
+
+
+def test_release_workflow_attests_verified_build_before_publish() -> None:
+    release = _text(RELEASE_WORKFLOW)
+    smoke = release.index("Smoke-test installed CLI before publish")
+    attest = release.index("Attest verified runner-local build provenance")
+    publish = release.index("Publish to PyPI (Trusted Publishing)")
+    assert smoke < attest < publish
+    assert "actions/attest-build-provenance@v2" in release
+    assert 'subject-path: "dist/*"' in release
+    assert "attestations: write" in release
+    assert not LEGACY_ATTEST_WORKFLOW.exists()
 
 
 def test_release_workflow_verifies_asset_free_policy() -> None:
