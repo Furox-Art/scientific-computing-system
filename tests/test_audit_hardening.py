@@ -46,7 +46,7 @@ def test_profile_file_respects_hard_memory_budget(tmp_path: Path) -> None:
     path = tmp_path / "sample.bin"
     path.write_bytes(b"x" * 4096)
 
-    with pytest.raises(ValueError, match="at least min_block_size"):
+    with pytest.raises(ValueError, match="min_block_size must not exceed memory_budget_bytes"):
         profile_file(path, memory_budget_bytes=1024, min_block_size=2048)
 
     profile = profile_file(
