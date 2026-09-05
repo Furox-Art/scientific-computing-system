@@ -186,25 +186,29 @@ def save_checkpoint(
     manifest: RunManifest,
     state: dict[str, object],
 ) -> None:
-    """Atomically save a JSON checkpoint without silently overwriting mid-write."""
+    """Atomically save a JSON checkpoint and remove partial files on any failure."""
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     payload = {"manifest": manifest.to_dict(), "state": state}
-    with tempfile.NamedTemporaryFile(
-        mode="w",
-        encoding="utf-8",
-        dir=destination.parent,
-        prefix=f".{destination.name}.",
-        suffix=".tmp",
-        delete=False,
-    ) as handle:
-        temporary = Path(handle.name)
-        json.dump(payload, handle, indent=2, sort_keys=True, ensure_ascii=False)
-        handle.write("\n")
+    temporary: Path | None = None
     try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=destination.parent,
+            prefix=f".{destination.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            json.dump(payload, handle, indent=2, sort_keys=True, ensure_ascii=False)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
         temporary.replace(destination)
     except Exception:
-        temporary.unlink(missing_ok=True)
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
         raise
 
 
