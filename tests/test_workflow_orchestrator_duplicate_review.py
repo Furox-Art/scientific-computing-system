@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from cds.workflow import (
     AnalysisRequest,
     ConditionOperator,
@@ -20,7 +22,9 @@ from cds.workflow import (
 from cds.workflow.engine import ExecutionContext
 
 
-def test_existing_method_review_reason_is_not_duplicated(monkeypatch) -> None:
+def test_existing_method_review_reason_is_not_duplicated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """A REVIEW method must preserve, not duplicate, an identical gate reason."""
     review_reason = "selected method still has unknown mandatory suitability evidence"
     candidate = MethodCandidate(
