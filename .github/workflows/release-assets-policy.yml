@@ -1,0 +1,66 @@
+name: Release Asset Policy
+
+# CDS distribution files belong on PyPI, not GitHub. This workflow removes
+# legacy/custom wheel and sdist assets from every GitHub Release without
+# touching GitHub's generated source archives or the PyPI publication.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/release-assets-policy.yml"
+  release:
+    types: [published, edited]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  enforce:
+    name: remove wheel and sdist assets from all GitHub Releases
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete prohibited distribution assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          removed=0
+
+          while IFS=$'\t' read -r asset_id asset_name release_tag; do
+            [[ -z "$asset_id" ]] && continue
+            case "$asset_name" in
+              *.whl|*.tar.gz)
+                echo "Removing $asset_name from release $release_tag"
+                gh api --method DELETE \
+                  "/repos/$GITHUB_REPOSITORY/releases/assets/$asset_id"
+                removed=$((removed + 1))
+                ;;
+            esac
+          done < <(
+            gh api --paginate \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+              --jq '.[] as $release | $release.assets[]? | [.id, .name, $release.tag_name] | @tsv'
+          )
+
+          echo "Removed $removed prohibited GitHub distribution asset(s)."
+
+      - name: Verify repository-wide release policy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          violations="$(
+            gh api --paginate \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+              --jq '.[] as $release | $release.assets[]? | select(.name | endswith(".whl") or endswith(".tar.gz")) | [$release.tag_name, .name] | @tsv'
+          )"
+          if [[ -n "$violations" ]]; then
+            echo "::error::Prohibited wheel/sdist assets remain on GitHub Releases:"
+            printf '%s\n' "$violations"
+            exit 1
+          fi
+          echo "All GitHub Releases satisfy the metadata-only distribution policy."
