@@ -118,14 +118,18 @@ class RunManifest:
             raise ValueError("created_utc must be a valid ISO-8601 timestamp") from exc
         if created.tzinfo is None or created.utcoffset() is None:
             raise ValueError("created_utc must be timezone-aware")
-        if self.seed is not None and (not isinstance(self.seed, int) or isinstance(self.seed, bool)):
+        if self.seed is not None and (
+            not isinstance(self.seed, int) or isinstance(self.seed, bool)
+        ):
             raise ValueError("seed must be an integer or null")
 
         for name, digest in self.data_hashes.items():
             if not isinstance(name, str) or not name.strip():
                 raise ValueError("data hash names must not be empty")
-            if not isinstance(digest, str) or len(digest) != 64 or any(
-                character not in "0123456789abcdef" for character in digest.lower()
+            if (
+                not isinstance(digest, str)
+                or len(digest) != 64
+                or any(character not in "0123456789abcdef" for character in digest.lower())
             ):
                 raise ValueError("data hashes must be SHA-256 hex digests")
 
