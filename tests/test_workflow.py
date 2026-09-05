@@ -58,10 +58,30 @@ def test_plan_approval_is_required_before_execution() -> None:
     workflow.register("load", lambda _ctx: [1])
     result = workflow.execute()
     assert "not approved" in result.summary
-    assert result.trace.events[-1].status is StepStatus.SKIPPED
+    assert result.details == {}
+    assert result.warnings == ["analysis plan approval was denied"]
+    assert result.trace.events[-1].status is StepStatus.DENIED
 
     denied = workflow.execute(approve=lambda _step: False)
     assert "not approved" in denied.summary
+    assert denied.trace.events[-1].status is StepStatus.DENIED
+
+
+def test_plan_denial_preserves_existing_context_but_runs_no_actions() -> None:
+    workflow = ResearchWorkflow(_plan())
+    context = ExecutionContext(values={"input": 7})
+    calls: list[str] = []
+
+    def load(_ctx: ExecutionContext) -> str:
+        calls.append("load")
+        return "loaded"
+
+    workflow.register("load", load)
+    result = workflow.execute(approve=lambda _step: False, context=context)
+
+    assert calls == []
+    assert result.details == {"input": 7}
+    assert result.trace.events[-1].status is StepStatus.DENIED
 
 
 def test_workflow_executes_in_order_and_skips_unregistered_step() -> None:
@@ -89,20 +109,37 @@ def test_workflow_executes_in_order_and_skips_unregistered_step() -> None:
     assert audit_event.status is StepStatus.SKIPPED
 
 
-def test_step_level_approval_can_skip_material_change() -> None:
+def test_step_level_approval_denial_stops_downstream_actions() -> None:
     workflow = ResearchWorkflow(_plan())
-    workflow.register("load", lambda _ctx: "loaded")
-    workflow.register("fit", lambda _ctx: "fit")
-    workflow.register("audit", lambda _ctx: "audited")
+    calls: list[str] = []
+
+    def load(_ctx: ExecutionContext) -> str:
+        calls.append("load")
+        return "loaded"
+
+    def fit(_ctx: ExecutionContext) -> str:
+        calls.append("fit")
+        return "fit"
+
+    def audit(_ctx: ExecutionContext) -> str:
+        calls.append("audit")
+        return "audited"
+
+    workflow.register("load", load)
+    workflow.register("fit", fit)
+    workflow.register("audit", audit)
 
     def approve(step: PlanStep | None) -> bool:
         return step is None or step.id != "fit"
 
     result = workflow.execute(approve=approve)
-    assert "fit" not in result.details
-    assert result.details["audit"] == "audited"
+    assert calls == ["load"]
+    assert result.details == {"load": "loaded"}
+    assert result.summary == "Analysis stopped because approval for step 'fit' was denied."
+    assert result.warnings == ["approval denied for workflow step 'fit'"]
     fit_event = [event for event in result.trace.events if event.step_id == "fit"][-1]
-    assert fit_event.status is StepStatus.SKIPPED
+    assert fit_event.status is StepStatus.DENIED
+    assert not any(event.step_id == "audit" for event in result.trace.events)
 
 
 def test_failure_stops_workflow_and_records_error() -> None:
