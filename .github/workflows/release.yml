@@ -4,10 +4,10 @@ name: Release
 #
 # Normal path: bump the package version in BOTH pyproject.toml and
 # src/cds/_version.py, merge to main, and this workflow builds and verifies the
-# wheel/sdist, publishes those exact files to PyPI via Trusted Publishing
-# (OIDC), then creates the matching vX.Y.Z tag and a metadata-only GitHub
-# Release. Distribution files remain on PyPI only; GitHub Release assets must
-# never contain .whl or .tar.gz files.
+# wheel/sdist, attests those exact runner-local files, publishes them to PyPI
+# via Trusted Publishing (OIDC), then creates the matching vX.Y.Z tag and a
+# metadata-only GitHub Release. Distribution files remain on PyPI only; GitHub
+# Release assets must never contain .whl or .tar.gz files.
 #
 # The workflow is intentionally idempotent after a partial release failure. If
 # the exact version already exists on PyPI, its filenames, sizes, and SHA-256
@@ -26,6 +26,7 @@ permissions:
   contents: write
   deployments: write
   id-token: write
+  attestations: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -40,6 +41,7 @@ jobs:
       contents: write
       deployments: write
       id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -137,6 +139,11 @@ jobs:
         env:
           EXPECTED_VERSION: ${{ steps.release.outputs.version }}
         run: python scripts/verify_cli_install.py --expected-version "$EXPECTED_VERSION"
+
+      - name: Attest verified runner-local build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "dist/*"
 
       - name: Inspect existing public PyPI release for safe recovery
         id: pypi_state
