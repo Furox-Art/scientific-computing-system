@@ -210,7 +210,7 @@ def buffon_needle(
     p = crossings / n_throws
     estimate = (2 * needle_length) / (line_spacing * p)
     se_p = math.sqrt(p * (1 - p) / n_throws)
-    se = (2 * needle_length * se_p) / (line_spacing * p * p) if p > 0 else 0.0
+    se = (2 * needle_length * se_p) / (line_spacing * p * p)
     return MCResult(estimate=estimate, samples=n_throws, std_error=se)
 
 
