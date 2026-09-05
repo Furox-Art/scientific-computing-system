@@ -277,7 +277,9 @@ class ResearchOrchestrator:
         execution = workflow.execute(approve=approval, context=execution_context)
         run_manifest.record_decision(
             action=f"select {selected.candidate.name}",
-            rationale=plan.recommendation.rationale if plan.recommendation is not None else "selected",
+            rationale=plan.recommendation.rationale
+            if plan.recommendation is not None
+            else "selected",
             approved_by_user=plan_approved,
         )
 
@@ -319,7 +321,9 @@ class ResearchOrchestrator:
                     missing_checks=gate.missing_checks,
                 )
 
-        rationale = "; ".join(gate.reasons) if gate.reasons else "all configured research gates passed"
+        rationale = (
+            "; ".join(gate.reasons) if gate.reasons else "all configured research gates passed"
+        )
         run_manifest.record_decision(
             action="final research gate",
             rationale=rationale,
