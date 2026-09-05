@@ -50,8 +50,8 @@ jobs:
       - name: Verify exact release from public PyPI
         run: python scripts/verify_pypi_release.py
 
-  sync-release-assets:
-    name: synchronize GitHub Release assets with public PyPI
+  github-release-policy:
+    name: enforce metadata-only GitHub Release policy
     needs: registry-cli
     runs-on: ubuntu-latest
     permissions:
@@ -83,58 +83,30 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
-      - name: Download exact wheel and sdist from public PyPI and verify SHA-256
-        env:
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
-        run: |
-          python - <<'PY'
-          import hashlib
-          import json
-          import os
-          import pathlib
-          import urllib.request
-
-          project = "scientific-computing-system"
-          version = os.environ["RELEASE_VERSION"]
-          api_url = f"https://pypi.org/pypi/{project}/{version}/json"
-          with urllib.request.urlopen(api_url) as response:
-              payload = json.load(response)
-
-          wanted = {"bdist_wheel", "sdist"}
-          files = [item for item in payload["urls"] if item.get("packagetype") in wanted]
-          if len(files) != 2:
-              raise SystemExit(f"Expected exactly wheel + sdist on PyPI, found {len(files)} files")
-          if {item["packagetype"] for item in files} != wanted:
-              raise SystemExit("PyPI release does not contain exactly one wheel and one sdist")
-
-          dist = pathlib.Path("dist")
-          dist.mkdir(exist_ok=True)
-          for item in files:
-              filename = item["filename"]
-              target = dist / filename
-              with urllib.request.urlopen(item["url"]) as response:
-                  data = response.read()
-              digest = hashlib.sha256(data).hexdigest()
-              expected = item["digests"]["sha256"]
-              if digest != expected:
-                  raise SystemExit(
-                      f"SHA-256 mismatch for {filename}: downloaded={digest}, PyPI={expected}"
-                  )
-              target.write_bytes(data)
-              print(f"VERIFIED {filename} sha256={digest}")
-          PY
-
-      - name: Synchronize exact PyPI files to matching GitHub Release
+      - name: Remove forbidden wheel and sdist assets from matching GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        shell: bash
         run: |
           set -euo pipefail
-          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
-          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" dist/* --clobber
-          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json tagName,assets
+          release_id="$(
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq '.id'
+          )"
+          asset_ids="$(
+            gh api --paginate "repos/$GITHUB_REPOSITORY/releases/$release_id/assets" \
+              --jq '.[] | select((.name | endswith(".whl")) or (.name | endswith(".tar.gz"))) | .id'
+          )"
+          if [ -z "$asset_ids" ]; then
+            echo "No forbidden distribution assets found on $RELEASE_TAG."
+          else
+            for asset_id in $asset_ids; do
+              echo "Deleting forbidden GitHub Release distribution asset id=$asset_id"
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id"
+            done
+          fi
 
-      - name: Verify synchronized PyPI and GitHub Release parity
+      - name: Verify public PyPI and asset-free GitHub Release policy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
