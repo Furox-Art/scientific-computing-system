@@ -8,6 +8,7 @@ from cds.tools.adapters import (
     z3_satisfiability,
 )
 from cds.tools.registry import (
+    ToolLocality,
     ToolRegistry,
     ToolSpec,
     ToolStatus,
@@ -17,6 +18,7 @@ from cds.tools.registry import (
 __all__ = [
     "OptimizationResult",
     "Satisfiability",
+    "ToolLocality",
     "ToolRegistry",
     "ToolSpec",
     "ToolStatus",

@@ -5,8 +5,16 @@ from __future__ import annotations
 import importlib
 import importlib.util
 from dataclasses import dataclass
+from enum import Enum
 from importlib import metadata
 from types import ModuleType
+
+
+class ToolLocality(str, Enum):
+    """Where a scientific backend executes relative to the user's data."""
+
+    LOCAL = "local"
+    REMOTE = "remote"
 
 
 @dataclass(frozen=True)
@@ -18,12 +26,18 @@ class ToolSpec:
     distribution: str
     capabilities: tuple[str, ...]
     purpose: str
+    locality: ToolLocality = ToolLocality.LOCAL
+    data_egress: bool = False
 
     def __post_init__(self) -> None:
         if not self.name.strip() or not self.module.strip() or not self.distribution.strip():
             raise ValueError("tool name, module, and distribution must not be empty")
         if not self.capabilities:
             raise ValueError("tool must declare at least one capability")
+        if self.locality is ToolLocality.REMOTE and not self.data_egress:
+            raise ValueError("remote tools must explicitly declare data_egress=True")
+        if self.locality is ToolLocality.LOCAL and self.data_egress:
+            raise ValueError("local tools cannot declare data egress")
 
 
 @dataclass(frozen=True)

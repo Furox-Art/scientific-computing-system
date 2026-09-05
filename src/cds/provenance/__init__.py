@@ -3,6 +3,8 @@
 from cds.provenance.manifest import (
     DecisionRecord,
     RunManifest,
+    canonical_sha256,
+    detect_git_sha,
     load_checkpoint,
     save_checkpoint,
     sha256_bytes,
@@ -13,6 +15,8 @@ from cds.provenance.manifest import (
 __all__ = [
     "DecisionRecord",
     "RunManifest",
+    "canonical_sha256",
+    "detect_git_sha",
     "load_checkpoint",
     "save_checkpoint",
     "sha256_bytes",
