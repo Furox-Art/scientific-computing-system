@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import re
-import tomllib
 from pathlib import Path
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
@@ -93,7 +93,8 @@ def test_ci_gates_optional_dependency_audit_and_version_discipline() -> None:
     ci = _text(CI_WORKFLOW)
     assert "optional_audit:" in ci
     assert "version_discipline:" in ci
-    assert "pip-audit --local --strict" in ci
+    assert "pip freeze --exclude scientific-computing-system" in ci
+    assert "pip-audit -r /tmp/scientific-io-resolved.txt --strict" in ci
     assert 'pip install pip-audit ".[test,scientific,io]"' in ci
     assert "scripts/check_version_discipline.py --base-ref HEAD^1" in ci
     assert "- optional_audit" in ci
