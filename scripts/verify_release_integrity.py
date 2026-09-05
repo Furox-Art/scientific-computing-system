@@ -151,9 +151,7 @@ def verify_release_integrity(
                     f"{list(prohibited)}"
                 )
             for artifact in manifest.values():
-                print(
-                    f"PYPI {artifact.filename} size={artifact.size} sha256={artifact.sha256}"
-                )
+                print(f"PYPI {artifact.filename} size={artifact.size} sha256={artifact.sha256}")
             print(
                 f"Release integrity verified: {DIST_NAME} {version}; "
                 "GitHub Release is distribution-asset-free"
