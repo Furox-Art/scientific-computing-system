@@ -10,8 +10,10 @@ on:
     branches:
       - main
     paths:
+      - ".github/workflows/release.yml"
       - ".github/workflows/pypi-registry-smoke.yml"
       - "scripts/verify_pypi_release.py"
+      - "scripts/verify_release_integrity.py"
 
 permissions:
   contents: read
@@ -131,3 +133,12 @@ jobs:
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
           gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" dist/* --clobber
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json tagName,assets
+
+      - name: Verify synchronized PyPI and GitHub Release parity
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: >-
+          python scripts/verify_release_integrity.py
+          --version "$RELEASE_VERSION"
+          --repository "$GITHUB_REPOSITORY"
