@@ -1,13 +1,13 @@
-"""Advanced parameter fitting with diagnostics, bounds, robust losses, and multi-start."""
+"""Advanced parameter fitting with replayable out-of-core observations."""
 
 from __future__ import annotations
 
 import math
 import random
-from collections.abc import Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from statistics import NormalDist
-from typing import Literal
+from typing import Literal, TypeAlias
 
 from cds.core._numeric import DEFAULT_TOLERANCE, GD_DEFAULT_LR
 from cds.modeling.model import MathModel
@@ -15,11 +15,19 @@ from cds.optimization import adam, gradient_descent, nelder_mead, projected_grad
 
 FitLoss = Literal["squared", "absolute", "huber"]
 FitOptimizer = Literal["auto", "gradient_descent", "adam", "nelder_mead", "projected_gradient"]
+Observation: TypeAlias = tuple[dict[str, float], float]
+ObservationFactory: TypeAlias = Callable[[], Iterable[Observation]]
+ObservationSource: TypeAlias = Sequence[Observation] | ObservationFactory
 
 
 @dataclass(frozen=True)
 class FitDiagnostics:
-    """Diagnostics attached to an advanced parameter fit."""
+    """Diagnostics attached to an advanced parameter fit.
+
+    ``residuals`` is empty when ``store_residuals=False``.  Summary metrics,
+    uncertainty normal equations, and identifiability diagnostics are still
+    accumulated exactly in bounded memory.
+    """
 
     residuals: tuple[float, ...]
     rmse: float
@@ -28,6 +36,10 @@ class FitDiagnostics:
     standard_errors: dict[str, float] | None
     confidence_intervals: dict[str, tuple[float, float]] | None
     identifiable: bool
+    condition_number: float | None = None
+    identifiability_reason: str = "not evaluated"
+    observations: int = 0
+    residuals_stored: bool = True
 
 
 @dataclass(frozen=True)
@@ -86,12 +98,7 @@ def _make_starts(
 
 
 def _invert_matrix(matrix: Sequence[Sequence[float]]) -> list[list[float]]:
-    """Invert a small dense matrix with Gauss-Jordan elimination.
-
-    Parameter-covariance matrices are typically only ``p x p`` where ``p`` is
-    the number of fitted parameters. Keeping this helper local avoids making
-    the modeling layer depend on the lower-level public linear-algebra module.
-    """
+    """Invert a small dense matrix with Gauss-Jordan elimination."""
     n = len(matrix)
     if n == 0:
         raise ValueError("matrix must be non-empty")
@@ -119,61 +126,226 @@ def _invert_matrix(matrix: Sequence[Sequence[float]]) -> list[list[float]]:
     return [row[n:] for row in augmented]
 
 
+def _matrix_inf_norm(matrix: Sequence[Sequence[float]]) -> float:
+    return max((sum(abs(value) for value in row) for row in matrix), default=0.0)
+
+
+def _condition_number_inf(
+    matrix: Sequence[Sequence[float]], inverse: Sequence[Sequence[float]]
+) -> float:
+    """Estimate conditioning with the exact induced infinity norm."""
+    return _matrix_inf_norm(matrix) * _matrix_inf_norm(inverse)
+
+
+def _as_factory(observed: ObservationSource) -> ObservationFactory:
+    if callable(observed):
+        return observed
+
+    def replay() -> Iterator[Observation]:
+        return iter(observed)
+
+    return replay
+
+
+def _validated_count(factory: ObservationFactory) -> int:
+    count = 0
+    for env, observed_value in factory():
+        count += 1
+        if not math.isfinite(float(observed_value)):
+            raise ValueError("observed values must be finite")
+        if any(not math.isfinite(float(value)) for value in env.values()):
+            raise ValueError("observation environments must contain only finite values")
+    if count == 0:
+        raise ValueError("observed must contain at least one (env, value) pair")
+    return count
+
+
+def _residual(
+    model: MathModel,
+    target_label: str,
+    env: dict[str, float],
+    observed_value: float,
+    names: Sequence[str],
+    values: Sequence[float],
+) -> float:
+    params = {**model.parameters, **dict(zip(names, values))}
+    result = model.equation(target_label).evaluate({**env, **params}) - observed_value
+    if not math.isfinite(result):
+        raise ArithmeticError("model produced a non-finite residual")
+    return result
+
+
 def _prediction_residuals(
     model: MathModel,
-    observations: Sequence[tuple[dict[str, float], float]],
+    observations: Sequence[Observation],
     names: Sequence[str],
     values: Sequence[float],
     target_label: str,
 ) -> list[float]:
-    target = model.equation(target_label)
-    params = {**model.parameters, **dict(zip(names, values))}
+    """Compatibility helper for callers that explicitly request a sequence."""
     return [
-        target.evaluate({**env, **params}) - observed_value for env, observed_value in observations
+        _residual(model, target_label, env, observed_value, names, values)
+        for env, observed_value in observations
     ]
 
 
-def _uncertainty(
+def _objective(
+    factory: ObservationFactory,
     model: MathModel,
-    observations: Sequence[tuple[dict[str, float], float]],
     names: Sequence[str],
     values: Sequence[float],
     target_label: str,
-    residuals: Sequence[float],
+    loss: FitLoss,
+    huber_delta: float,
+) -> float:
+    total = 0.0
+    seen = 0
+    for env, observed_value in factory():
+        seen += 1
+        residual = _residual(model, target_label, env, observed_value, names, values)
+        total += _loss_value(residual, loss, huber_delta)
+    if seen == 0:
+        raise ValueError("replayable observation source returned no rows")
+    return total
+
+
+def _normal_equations(
+    factory: ObservationFactory,
+    model: MathModel,
+    names: Sequence[str],
+    values: Sequence[float],
+    target_label: str,
+) -> tuple[list[list[float]], float, int]:
+    p = len(names)
+    jtj = [[0.0] * p for _ in range(p)]
+    rss = 0.0
+    count = 0
+    params = {**model.parameters, **dict(zip(names, values))}
+    target = model.equation(target_label)
+    derivatives = [model.gradient(target_label, name) for name in names]
+    for env, observed_value in factory():
+        bindings = {**env, **params}
+        prediction = target.evaluate(bindings)
+        residual = prediction - observed_value
+        row = [derivative.evaluate(bindings) for derivative in derivatives]
+        if not math.isfinite(residual) or any(not math.isfinite(value) for value in row):
+            raise ArithmeticError("non-finite value encountered while building fitting diagnostics")
+        count += 1
+        rss += residual * residual
+        for i in range(p):
+            for j in range(p):
+                jtj[i][j] += row[i] * row[j]
+    return jtj, rss, count
+
+
+def _uncertainty_details(
+    model: MathModel,
+    factory: ObservationFactory,
+    names: Sequence[str],
+    values: Sequence[float],
+    target_label: str,
     confidence: float,
-) -> tuple[dict[str, float] | None, dict[str, tuple[float, float]] | None, bool]:
-    n = len(observations)
+    condition_limit: float,
+) -> tuple[
+    dict[str, float] | None,
+    dict[str, tuple[float, float]] | None,
+    bool,
+    float | None,
+    str,
+]:
+    jtj, rss, n = _normal_equations(factory, model, names, values, target_label)
     p = len(names)
     if n <= p:
-        return None, None, False
-
-    params = {**model.parameters, **dict(zip(names, values))}
-    derivatives = [model.gradient(target_label, name) for name in names]
-    jacobian = [
-        [derivative.evaluate({**env, **params}) for derivative in derivatives]
-        for env, _ in observations
-    ]
-    jtj = [[sum(row[i] * row[j] for row in jacobian) for j in range(p)] for i in range(p)]
+        return None, None, False, None, "underdetermined: observations must exceed parameters"
     try:
         inverse = _invert_matrix(jtj)
     except ValueError:
-        return None, None, False
+        return None, None, False, math.inf, "singular local information matrix"
 
-    rss = sum(residual * residual for residual in residuals)
+    condition = _condition_number_inf(jtj, inverse)
+    if not math.isfinite(condition) or condition > condition_limit:
+        return (
+            None,
+            None,
+            False,
+            condition,
+            f"practically non-identifiable: condition number exceeds {condition_limit:g}",
+        )
+
     sigma2 = rss / (n - p)
-    variances = [max(0.0, sigma2 * inverse[i][i]) for i in range(p)]
+    variances = [max(0.0, sigma2 * inverse[index][index]) for index in range(p)]
     standard_errors = {name: math.sqrt(variance) for name, variance in zip(names, variances)}
     z = NormalDist().inv_cdf(0.5 + confidence / 2.0)
     intervals = {
         name: (value - z * standard_errors[name], value + z * standard_errors[name])
         for name, value in zip(names, values)
     }
-    return standard_errors, intervals, True
+    return standard_errors, intervals, True, condition, "locally identifiable"
+
+
+def _uncertainty(
+    model: MathModel,
+    observations: Sequence[Observation],
+    names: Sequence[str],
+    values: Sequence[float],
+    target_label: str,
+    residuals: Sequence[float],
+    confidence: float,
+) -> tuple[dict[str, float] | None, dict[str, tuple[float, float]] | None, bool]:
+    """Backward-compatible uncertainty helper used by the historical tests."""
+    del residuals
+    standard_errors, intervals, identifiable, _, _ = _uncertainty_details(
+        model,
+        _as_factory(observations),
+        names,
+        values,
+        target_label,
+        confidence,
+        1e10,
+    )
+    return standard_errors, intervals, identifiable
+
+
+def _summary_diagnostics(
+    factory: ObservationFactory,
+    model: MathModel,
+    names: Sequence[str],
+    values: Sequence[float],
+    target_label: str,
+    *,
+    store_residuals: bool,
+) -> tuple[tuple[float, ...], int, float, float, float]:
+    residuals: list[float] = []
+    count = 0
+    squared_error = 0.0
+    absolute_error = 0.0
+    observed_mean = 0.0
+    observed_m2 = 0.0
+    for env, observed_value in factory():
+        residual = _residual(model, target_label, env, observed_value, names, values)
+        count += 1
+        squared_error += residual * residual
+        absolute_error += abs(residual)
+        delta = observed_value - observed_mean
+        observed_mean += delta / count
+        observed_m2 += delta * (observed_value - observed_mean)
+        if store_residuals:
+            residuals.append(residual)
+    if count == 0:
+        raise ValueError("replayable observation source returned no rows")
+    rmse = math.sqrt(squared_error / count)
+    mae = absolute_error / count
+    r_squared = (
+        1.0 - squared_error / observed_m2
+        if observed_m2 > 0.0
+        else (1.0 if squared_error == 0.0 else 0.0)
+    )
+    return tuple(residuals), count, rmse, mae, r_squared
 
 
 def fit_parameters_advanced(
     model: MathModel,
-    observed: Sequence[tuple[dict[str, float], float]],
+    observed: ObservationSource,
     parameter_names: Sequence[str],
     x0: Sequence[float] | None = None,
     *,
@@ -188,23 +360,30 @@ def fit_parameters_advanced(
     lr: float = GD_DEFAULT_LR,
     tol: float = DEFAULT_TOLERANCE,
     max_iter: int = 10000,
+    store_residuals: bool = True,
+    identifiability_condition_limit: float = 1e10,
 ) -> AdvancedFitResult:
-    """Fit model parameters with method selection, robust losses, and diagnostics.
+    """Fit parameters from a sequence or replayable out-of-core row factory.
 
-    This API complements the backward-compatible :func:`fit_parameters`.
-    It never silently removes observations and returns enough diagnostics to
-    assess fit quality and parameter identifiability.
+    For large datasets pass a zero-argument callable that opens/replays the
+    source on every invocation, for example a CSV/HDF5 batch reader flattened
+    to ``(env, observed_value)`` rows.  Optimizer evaluations, final metrics,
+    and ``J^T J`` uncertainty diagnostics then use bounded memory.  Set
+    ``store_residuals=False`` to avoid retaining the final residual vector.
+
+    Practical identifiability is rejected when the local information matrix is
+    singular, underdetermined, or its induced infinity-norm condition number
+    exceeds ``identifiability_condition_limit``.
     """
     names = list(parameter_names)
-    observations = list(observed)
     if not names:
         raise ValueError("parameter_names must list at least one parameter to fit")
     if len(set(names)) != len(names):
         raise ValueError("parameter_names must contain unique names")
     if not model.equations:
         raise ValueError("model must contain at least one equation to fit")
-    if not observations:
-        raise ValueError("observed must contain at least one (env, value) pair")
+    factory = _as_factory(observed)
+    observation_count = _validated_count(factory)
     start = list(x0) if x0 is not None else [0.0] * len(names)
     if len(start) != len(names):
         raise ValueError("x0 length must exactly match parameter_names")
@@ -214,6 +393,11 @@ def fit_parameters_advanced(
         raise ValueError("huber_delta must be positive")
     if not 0.0 < confidence < 1.0:
         raise ValueError("confidence must be strictly between 0 and 1")
+    if (
+        not math.isfinite(identifiability_condition_limit)
+        or identifiability_condition_limit <= 1.0
+    ):
+        raise ValueError("identifiability_condition_limit must be finite and greater than 1")
     if bounds is not None:
         if len(bounds) != len(names):
             raise ValueError("bounds must have the same length as parameter_names")
@@ -228,8 +412,7 @@ def fit_parameters_advanced(
     model.equation(label)
 
     def objective(values: list[float]) -> float:
-        residuals = _prediction_residuals(model, observations, names, values, label)
-        return sum(_loss_value(residual, loss, huber_delta) for residual in residuals)
+        return _objective(factory, model, names, values, label, loss, huber_delta)
 
     chosen, rationale = _select_optimizer(optimizer, loss, bounds)
     starts = _make_starts(start, multi_start, bounds, seed)
@@ -285,37 +468,46 @@ def fit_parameters_advanced(
     if best_values is None:
         raise ArithmeticError("all fitting attempts produced non-finite objective values")
 
-    residuals = _prediction_residuals(model, observations, names, best_values, label)
-    n = len(residuals)
-    rmse = math.sqrt(sum(value * value for value in residuals) / n)
-    mae = sum(abs(value) for value in residuals) / n
-    observed_values = [value for _, value in observations]
-    observed_mean = sum(observed_values) / len(observed_values)
-    total_variation = sum((value - observed_mean) ** 2 for value in observed_values)
-    rss = sum(value * value for value in residuals)
-    r_squared = 1.0 - rss / total_variation if total_variation > 0 else (1.0 if rss == 0 else 0.0)
+    residuals, counted, rmse, mae, r_squared = _summary_diagnostics(
+        factory,
+        model,
+        names,
+        best_values,
+        label,
+        store_residuals=store_residuals,
+    )
+    if counted != observation_count:
+        raise ValueError("replayable observation source changed row count between passes")
 
     if loss == "squared":
-        standard_errors, intervals, identifiable = _uncertainty(
+        standard_errors, intervals, identifiable, condition, reason = _uncertainty_details(
             model,
-            observations,
+            factory,
             names,
             best_values,
             label,
-            residuals,
             confidence,
+            identifiability_condition_limit,
         )
     else:
-        standard_errors, intervals, identifiable = None, None, False
+        standard_errors = None
+        intervals = None
+        identifiable = False
+        condition = None
+        reason = f"identifiability covariance is not computed for {loss} loss"
 
     diagnostics = FitDiagnostics(
-        residuals=tuple(residuals),
+        residuals=residuals,
         rmse=rmse,
         mae=mae,
         r_squared=r_squared,
         standard_errors=standard_errors,
         confidence_intervals=intervals,
         identifiable=identifiable,
+        condition_number=condition,
+        identifiability_reason=reason,
+        observations=observation_count,
+        residuals_stored=store_residuals,
     )
     return AdvancedFitResult(
         parameters=dict(zip(names, best_values)),
