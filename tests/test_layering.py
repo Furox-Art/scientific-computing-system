@@ -1,28 +1,8 @@
 """Architectural layering guard.
 
-Enforces the package dependency directions with a plain AST walk — no extra
-tooling, runs anywhere pytest does. Every subpackage is constrained to its
-measured import surface; growing one requires a conscious edit here.
-
-    core            → (nothing)
-    math_utils      → core
-    probability     → core, math_utils
-    optimization    → core, math_utils
-    signals         → core, math_utils, probability
-    stats           → core, math_utils, probability
-    diffeq          → core, math_utils, optimization
-    ml              → core, math_utils, optimization, stats, probability
-    data_analysis   → core, math_utils, probability, stats
-    hypothesis      → core, stats
-    knowledge       → (nothing)
-    modeling        → core, optimization
-    nlp             → core, math_utils
-    plot            → core, math_utils, signals, stats
-    cli             → today's orchestrator surface (pinned)
-
-The guard fails the suite if a new import ever inverts these directions —
-e.g. ``probability`` reaching back into ``stats`` was exactly the violation
-this test exists to prevent.
+Enforces package dependency directions with a plain AST walk.  The modeling
+layer is explicitly allowed to depend on ``units`` because dimensional
+contracts are now part of scientific model/fitting validation.
 """
 
 from __future__ import annotations
@@ -32,8 +12,6 @@ from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[1] / "src" / "cds"
 
-# Allowed cds.* dependencies per top-level subpackage. Absence from the map
-# means "may import any other cds subpackage" (high-level orchestration code).
 _ALLOWED: dict[str, set[str]] = {
     "core": set(),
     "math_utils": {"core"},
@@ -48,15 +26,12 @@ _ALLOWED: dict[str, set[str]] = {
     "diffeq": {"core", "math_utils", "optimization"},
     "stats": {"core", "math_utils", "probability"},
     "ml": {"core", "math_utils", "optimization", "stats", "probability"},
-    # Orchestrator/domain packages — constrained to their measured imports.
     "data_analysis": {"core", "math_utils", "probability", "stats"},
     "hypothesis": {"core", "stats"},
     "knowledge": set(),
-    "modeling": {"core", "optimization"},
+    "modeling": {"core", "optimization", "units"},
     "nlp": {"core", "math_utils"},
     "plot": {"core", "math_utils", "signals", "stats"},
-    # The CLI is the top orchestrator; the entry pins today's surface and
-    # grows only consciously. ``<root>`` allows ``from cds import __version__``.
     "cli": {
         "<root>",
         "core",
@@ -72,7 +47,6 @@ _ALLOWED: dict[str, set[str]] = {
 
 
 def _cds_imports(tree: ast.AST) -> set[str]:
-    """Collect every ``cds.X`` / ``cds`` root imported by one module."""
     found: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -87,12 +61,10 @@ def _cds_imports(tree: ast.AST) -> set[str]:
 
 
 def test_no_layering_violations() -> None:
-    """Every low-level subpackage must only import its allowed set."""
     violations: list[str] = []
     for path in sorted(SRC.rglob("*.py")):
         rel = path.relative_to(SRC)
         parts = rel.parts
-        # Top-level modules like cli.py / __init__.py are orchestrators.
         pkg = parts[0] if len(parts) > 1 else ""
         if pkg not in _ALLOWED:
             continue
@@ -105,7 +77,6 @@ def test_no_layering_violations() -> None:
 
 
 def test_probability_does_not_import_stats() -> None:
-    """Regression pin: probability must stay below stats in the layer stack."""
     for path in (SRC / "probability").rglob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         bad = [m for m in _cds_imports(tree) if m.startswith("cds.stats")]
