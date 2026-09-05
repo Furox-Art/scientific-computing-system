@@ -48,7 +48,7 @@ def test_release_recovery_is_idempotent_and_refuses_tag_rewrite() -> None:
 
 def test_release_workflow_cleans_legacy_distribution_assets() -> None:
     release = _text(RELEASE_WORKFLOW)
-    assert "endswith(\".whl\") or endswith(\".tar.gz\")" in release
+    assert 'endswith(".whl") or endswith(".tar.gz")' in release
     assert 'gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id"' in release
     assert "GitHub-generated" in release
 
