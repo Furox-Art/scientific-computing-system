@@ -125,9 +125,7 @@ def assess_data_adequacy(
                 ValidationCheck(
                     name=f"{name_prefix}:parameter-support",
                     status=CheckStatus.FAIL,
-                    message=(
-                        "parameter count is required to evaluate observations per parameter"
-                    ),
+                    message=("parameter count is required to evaluate observations per parameter"),
                     details={
                         "observations": profile.observations,
                         "parameters": profile.parameters,
