@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
 
 from cds.validation import (
@@ -37,20 +39,23 @@ def test_data_profile_missing_fraction_handles_empty_and_nonempty_data() -> None
 
 
 @pytest.mark.parametrize(
-    ("kwargs", "message"),
+    ("factory", "message"),
     [
-        ({"min_observations": -1}, "min_observations"),
-        ({"max_missing_fraction": -0.1}, "max_missing_fraction"),
-        ({"max_missing_fraction": 1.1}, "max_missing_fraction"),
-        ({"min_observations_per_parameter": 0.0}, "min_observations_per_parameter"),
+        (lambda: DataRequirement(min_observations=-1), "min_observations"),
+        (lambda: DataRequirement(max_missing_fraction=-0.1), "max_missing_fraction"),
+        (lambda: DataRequirement(max_missing_fraction=1.1), "max_missing_fraction"),
+        (
+            lambda: DataRequirement(min_observations_per_parameter=0.0),
+            "min_observations_per_parameter",
+        ),
     ],
 )
 def test_data_requirement_rejects_invalid_thresholds(
-    kwargs: dict[str, int | float],
+    factory: Callable[[], DataRequirement],
     message: str,
 ) -> None:
     with pytest.raises(ValueError, match=message):
-        DataRequirement(**kwargs)
+        factory()
 
 
 def test_assess_data_adequacy_passes_explicit_requirements() -> None:
