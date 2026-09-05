@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 
 import pytest
 
@@ -63,7 +64,7 @@ def test_global_sensitivity_validates_configuration_and_outputs() -> None:
 
 
 def test_global_sensitivity_detects_nonfinite_perturbation() -> None:
-    def model(values: list[float] | tuple[float, ...]) -> float:
+    def model(values: Sequence[float]) -> float:
         if values[0] > 0.5:
             return math.nan
         return values[0]
