@@ -153,9 +153,7 @@ def verify_release_integrity(
                     f"found {list(forbidden)}"
                 )
             for artifact in artifacts.values():
-                print(
-                    f"PYPI {artifact.filename} size={artifact.size} sha256={artifact.sha256}"
-                )
+                print(f"PYPI {artifact.filename} size={artifact.size} sha256={artifact.sha256}")
             print(
                 f"Release integrity verified: {DIST_NAME} {version} is on PyPI and {tag} "
                 "contains no GitHub distribution assets"
