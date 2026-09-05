@@ -25,6 +25,32 @@ class MCResult:
     std_error: float
 
 
+def _validate_positive_count(value: int, name: str) -> None:
+    """Require a genuine positive integer for a Monte Carlo sample count."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"{name} must be an integer")
+    if value <= 0:
+        raise ValueError(f"{name} must be positive")
+
+
+def _validate_walk(steps: int, step_size: float) -> None:
+    """Validate random-walk dimensions while allowing a zero-length walk."""
+    if isinstance(steps, bool) or not isinstance(steps, int):
+        raise TypeError("steps must be an integer")
+    if steps < 0:
+        raise ValueError("steps must be non-negative")
+    if not math.isfinite(step_size) or step_size < 0:
+        raise ValueError("step_size must be finite and non-negative")
+
+
+def _validate_finite_interval(a: float, b: float, *, ordered: bool) -> None:
+    """Validate endpoints for uniform Monte Carlo sampling."""
+    if not (math.isfinite(a) and math.isfinite(b)):
+        raise ValueError("interval bounds must be finite")
+    if ordered and a >= b:
+        raise ValueError("a must be less than b")
+
+
 def _pi_worker(samples_seed: tuple[int, int | None]) -> int:
     """Worker function for parallel pi estimation."""
     samples, seed = samples_seed
@@ -39,17 +65,16 @@ def _pi_worker(samples_seed: tuple[int, int | None]) -> int:
 
 
 def estimate_pi(n_samples: int = 100_000, seed: int | None = None) -> MCResult:
-    """Estimate π using the unit-circle method (Parallelized).
+    """Estimate π using the unit-circle method (parallelized).
 
     Throw random points into the unit square [0,1]×[0,1].
     Fraction inside the quarter-circle ≈ π/4.
 
     Args:
-        n_samples: number of random points
-        seed: optional random seed
+        n_samples: positive number of random points.
+        seed: optional random seed.
     """
-    if n_samples <= 0:
-        return MCResult(0.0, n_samples, 0.0)
+    _validate_positive_count(n_samples, "n_samples")
 
     cores = min(multiprocessing.cpu_count(), n_samples)
     chunk_size = n_samples // cores
@@ -83,17 +108,15 @@ def mc_integrate(
     n_samples: int = 100_000,
     seed: int | None = None,
 ) -> MCResult:
-    """Monte Carlo integration of f over [a, b].
+    """Monte Carlo integration of ``f`` over the finite interval [a, b].
 
-    E[f(X)] * (b-a) where X ~ Uniform(a, b).
-
-    Args:
-        f: function to integrate
-        a: lower bound
-        b: upper bound
-        n_samples: number of random evaluations
-        seed: optional random seed
+    The estimator is ``E[f(X)] * (b-a)`` for a uniform draw between the two
+    endpoints. Reversed bounds are supported and produce a signed integral;
+    the reported standard error remains non-negative.
     """
+    _validate_positive_count(n_samples, "n_samples")
+    _validate_finite_interval(a, b, ordered=False)
+
     rng = random.Random(seed)
     total = 0.0
     total_sq = 0.0
@@ -107,7 +130,7 @@ def mc_integrate(
     mean_val = total / n_samples
     estimate = mean_val * width
     var = (total_sq / n_samples - mean_val**2) if n_samples > 1 else 0.0
-    se = width * math.sqrt(var / n_samples) if var > 0 else 0.0
+    se = abs(width) * math.sqrt(max(0.0, var) / n_samples)
     return MCResult(estimate=estimate, samples=n_samples, std_error=se)
 
 
@@ -118,16 +141,10 @@ def random_walk_1d(
 ) -> list[float]:
     """1D symmetric random walk.
 
-    At each step, move +step_size or -step_size with equal probability.
-
-    Args:
-        steps: number of steps
-        step_size: size of each step
-        seed: optional random seed
-
-    Returns:
-        list of positions at each step (length = steps + 1)
+    At each step, move +step_size or -step_size with equal probability. A
+    zero-step walk is valid and contains only the origin.
     """
+    _validate_walk(steps, step_size)
     rng = random.Random(seed)
     positions = [0.0]
     pos = 0.0
@@ -144,16 +161,10 @@ def random_walk_2d(
 ) -> list[tuple[float, float]]:
     """2D random walk on a plane.
 
-    At each step, move in a random direction (uniform angle).
-
-    Args:
-        steps: number of steps
-        step_size: size of each step
-        seed: optional random seed
-
-    Returns:
-        list of (x, y) positions at each step (length = steps + 1)
+    At each step, move in a random direction (uniform angle). A zero-step walk
+    is valid and contains only the origin.
     """
+    _validate_walk(steps, step_size)
     rng = random.Random(seed)
     positions: list[tuple[float, float]] = [(0.0, 0.0)]
     x, y = 0.0, 0.0
@@ -173,22 +184,16 @@ def buffon_needle(
 ) -> MCResult:
     """Buffon's needle experiment for estimating π.
 
-    Drop a needle of length L onto parallel lines spaced D apart.
-    P(crossing) = 2L / (πD), so π ≈ 2L / (D * P(crossing)).
-
-    Reference: Buffon (1777).
-
-    Args:
-        needle_length: length of the needle (must be <= line_spacing)
-        line_spacing: distance between parallel lines
-        n_throws: number of needle drops
-        seed: optional random seed
-
-    Raises:
-        ValueError: if needle_length > line_spacing
+    The classical short-needle formula requires finite positive dimensions and
+    ``needle_length <= line_spacing``. ``n_throws`` must be positive.
     """
+    _validate_positive_count(n_throws, "n_throws")
+    if not math.isfinite(needle_length) or needle_length <= 0:
+        raise ValueError("needle_length must be finite and positive")
+    if not math.isfinite(line_spacing) or line_spacing <= 0:
+        raise ValueError("line_spacing must be finite and positive")
     if needle_length > line_spacing:
-        raise ValueError("needle must be shorter than line spacing")
+        raise ValueError("needle must be shorter than or equal to line spacing")
     rng = random.Random(seed)
 
     crossings = 0
@@ -221,10 +226,8 @@ def mc_expectation(
     Differs from :func:`mc_integrate` by **not** multiplying by ``(b-a)`` —
     this is the expectation, not the integral.
     """
-    if n_samples <= 0:
-        raise ValueError("n_samples must be positive")
-    if a >= b:
-        raise ValueError("a must be less than b")
+    _validate_positive_count(n_samples, "n_samples")
+    _validate_finite_interval(a, b, ordered=True)
     rng = random.Random(seed)
     width = b - a
     total = 0.0
@@ -249,13 +252,14 @@ def hit_or_miss(
 ) -> MCResult:
     """Estimate the area of a 2-D region defined by ``predicate(x, y)``.
 
-    Samples uniformly in the bounding box ``x_range × y_range`` and returns
-    ``area_box * fraction_true``.
+    Samples uniformly in the finite bounding box ``x_range × y_range`` and
+    returns ``area_box * fraction_true``.
     """
-    if n_samples <= 0:
-        raise ValueError("n_samples must be positive")
+    _validate_positive_count(n_samples, "n_samples")
     x0, x1 = x_range
     y0, y1 = y_range
+    if not all(math.isfinite(value) for value in (x0, x1, y0, y1)):
+        raise ValueError("ranges must contain finite bounds")
     if x0 >= x1 or y0 >= y1:
         raise ValueError("ranges must be non-empty (lo < hi)")
     rng = random.Random(seed)
