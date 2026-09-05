@@ -8,17 +8,15 @@ name: Release
 # its CLI, then publishes those exact distribution files to PyPI via Trusted
 # Publishing (OIDC). GitHub receives only the matching vX.Y.Z tag and release
 # metadata; wheel/sdist files are never uploaded as Actions artifacts or GitHub
-# Release assets. The _version.py change is the only release trigger; ordinary
-# pyproject.toml packaging edits do not publish a release. The tag created after
-# a successful PyPI state does not trigger a second publish run.
+# Release assets. The _version.py change is the only release trigger.
 #
 # The workflow is intentionally idempotent after a partial release failure. If
 # the exact version already exists on PyPI, its filenames, sizes, and SHA-256
-# digests must match the locally verified build; only then is the upload skipped
-# and the workflow allowed to recover the GitHub tag/release. An existing tag is
-# accepted only when it resolves to the current release commit. The final gate
-# verifies public PyPI and enforces that the GitHub Release has no wheel/sdist
-# assets.
+# digests must match the locally verified build before recovery can continue.
+# Existing release tags are never rewritten. The final gate verifies public
+# PyPI and enforces the metadata-only GitHub Release policy. A cleanup step also
+# removes legacy wheel/sdist assets from older GitHub Releases; GitHub-generated
+# source archives are not Release assets and are left untouched.
 
 on:
   push:
@@ -68,10 +66,9 @@ jobs:
           print(project["version"])
           PY
           )"
-          tag="v${version}"
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "Release candidate: $tag"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "Release candidate: v$version"
 
       - name: Install build backend
         run: |
@@ -258,22 +255,32 @@ jobs:
         run: |
           set -euo pipefail
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Metadata-only release $RELEASE_TAG already exists; verifying asset policy."
+            echo "Metadata-only release $RELEASE_TAG already exists."
           else
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
               --generate-notes --title "$RELEASE_TAG"
           fi
 
-          distribution_assets="$(
-            gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets \
-              --jq '.assets[].name | select(endswith(".whl") or endswith(".tar.gz"))'
-          )"
-          if [ -n "$distribution_assets" ]; then
-            echo "::error::GitHub Release must not store wheel/sdist files:"
-            printf '%s\n' "$distribution_assets"
-            exit 1
+      - name: Remove legacy wheel and sdist assets from GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          assets_file="$(mktemp)"
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq '.[] | .assets[]? | select(.name | endswith(".whl") or endswith(".tar.gz")) | [.id, .name] | @tsv' \
+            > "$assets_file"
+
+          if [ ! -s "$assets_file" ]; then
+            echo "No legacy wheel/sdist GitHub Release assets found."
+          else
+            while IFS=$'\t' read -r asset_id asset_name; do
+              echo "Deleting legacy GitHub Release asset: $asset_name (id=$asset_id)"
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id"
+            done < "$assets_file"
           fi
-          echo "GitHub Release is metadata-only; wheel/sdist files remain on PyPI only."
+          rm -f "$assets_file"
 
       - name: Verify PyPI publication and GitHub asset-free release policy
         env:
