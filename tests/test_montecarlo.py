@@ -91,9 +91,7 @@ class TestMCIntegrate:
         with pytest.raises(ArithmeticError, match="integral became non-finite"):
             mc_integrate(lambda _x: 1e154, 0.0, 1e155, n_samples=1, seed=1)
 
-        with mock.patch(
-            "cds.montecarlo.methods.random.Random.random", side_effect=[0.25, 0.75]
-        ):
+        with mock.patch("cds.montecarlo.methods.random.Random.random", side_effect=[0.25, 0.75]):
             with pytest.raises(ArithmeticError, match="standard error"):
                 mc_integrate(
                     lambda x: -2.0 if x < 0.0 else 2.0,
