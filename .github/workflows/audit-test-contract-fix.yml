@@ -1,0 +1,111 @@
+name: Audit Test Contract Fix
+
+on:
+  push:
+    branches: [fix/repo-audit-hardening]
+    paths:
+      - ".github/workflows/audit-test-contract-fix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-tests:
+    if: github.event.head_commit.message != 'test: align hypothesis evaluator semantics'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: fix/repo-audit-hardening
+
+      - name: Align legacy tests with evidence-only evaluation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          mining = Path("tests/test_hypothesis_mining.py")
+          text = mining.read_text(encoding="utf-8")
+          old = "    assert result.is_significant\n    assert hypo.status == HypothesisStatus.VALIDATED\n"
+          new = (
+              "    assert result.is_significant\n"
+              "    assert result.evidence_interpretation == \"supported\"\n"
+              "    assert hypo.status == HypothesisStatus.TESTABLE\n"
+          )
+          if text.count(old) != 1:
+              raise SystemExit(f"unexpected hypothesis_mining replacement count: {text.count(old)}")
+          mining.write_text(text.replace(old, new), encoding="utf-8")
+
+          edge = Path("tests/test_edge_quantum_evaluator_cli.py")
+          text = edge.read_text(encoding="utf-8")
+          replacements = {
+              "    assert result.is_significant\n    assert hypo.status == HypothesisStatus.VALIDATED\n": (
+                  "    assert result.is_significant\n"
+                  "    assert result.evidence_interpretation == \"supported\"\n"
+                  "    assert hypo.status == HypothesisStatus.NEW\n"
+              ),
+              "    assert not result.is_significant\n    assert hypo.status == HypothesisStatus.REJECTED\n": (
+                  "    assert not result.is_significant\n"
+                  "    assert result.evidence_interpretation == \"inconclusive\"\n"
+                  "    assert hypo.status == HypothesisStatus.NEW\n"
+              ),
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit(f"unexpected evaluator status replacement count: {text.count(old)}")
+              text = text.replace(old, new)
+
+          if text.count('    assert result.test_name == "Two-sample t-test"\n    assert result.is_significant\n') < 1:
+              raise SystemExit("paired test-name assertion not found")
+          paired_marker = '''def test_evaluator_paired() -> None:
+    hypo = _make_hypothesis()
+    evaluator = HypothesisEvaluator()
+    result = evaluator.evaluate(
+        hypo,
+        {"paired": ([1.0, 2.0, 3.0, 4.0], [10.0, 11.0, 12.0, 13.0])},
+    )
+    assert result.test_name == "Two-sample t-test"
+    assert result.is_significant
+'''
+          paired_replacement = paired_marker.replace('"Two-sample t-test"', '"Paired t-test"')
+          if text.count(paired_marker) != 1:
+              raise SystemExit(f"unexpected paired dispatch replacement count: {text.count(paired_marker)}")
+          text = text.replace(paired_marker, paired_replacement)
+
+          effect_marker = '''def test_evaluator_paired_reports_cohens_d() -> None:
+    # Paired path routes through compare_groups -> 2-sample t-test + Cohen's d
+    hypo = _make_hypothesis()
+    evaluator = HypothesisEvaluator()
+    result = evaluator.evaluate(
+        hypo,
+        {"paired": ([1.0, 2.0, 3.0, 4.0], [10.0, 11.0, 12.0, 13.0])},
+    )
+    assert result.test_name == "Two-sample t-test"
+    assert result.effect_size is not None
+    assert result.effect_size_label == "Cohen's d"
+'''
+          effect_replacement = '''def test_evaluator_paired_reports_cohens_d() -> None:
+    # Paired path reports the paired test and paired-standardized Cohen's dz.
+    hypo = _make_hypothesis()
+    evaluator = HypothesisEvaluator()
+    result = evaluator.evaluate(
+        hypo,
+        {"paired": ([1.0, 2.0, 3.0, 4.0], [10.0, 11.0, 12.0, 13.0])},
+    )
+    assert result.test_name == "Paired t-test"
+    assert result.effect_size is not None
+    assert result.effect_size_label == "Cohen's dz"
+'''
+          if text.count(effect_marker) != 1:
+              raise SystemExit(f"unexpected paired effect replacement count: {text.count(effect_marker)}")
+          edge.write_text(text.replace(effect_marker, effect_replacement), encoding="utf-8")
+          PY
+
+      - name: Commit exact test-only changes
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/test_hypothesis_mining.py tests/test_edge_quantum_evaluator_cli.py
+          git diff --cached --check
+          git commit -m "test: align hypothesis evaluator semantics"
+          git push origin HEAD:fix/repo-audit-hardening
