@@ -12,7 +12,9 @@ name: Release
 #
 # The installed CLI must pass against the built wheel before anything is
 # published. PyPI publication succeeds before the GitHub tag/release is created,
-# preventing orphan GitHub releases when registry publishing fails.
+# preventing orphan GitHub releases when registry publishing fails. The final
+# integrity gate compares filenames, sizes, and SHA-256 digests on public PyPI
+# and the GitHub Release before the workflow can finish successfully.
 
 on:
   push:
@@ -186,6 +188,15 @@ jobs:
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
               --generate-notes --title "$RELEASE_TAG" dist/*
           fi
+
+      - name: Verify PyPI and GitHub Release artifact parity
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: >-
+          python scripts/verify_release_integrity.py
+          --version "$RELEASE_VERSION"
+          --repository "$GITHUB_REPOSITORY"
 
       - name: Set PyPI deployment status
         if: always() && steps.deployment.outputs.id != ''
