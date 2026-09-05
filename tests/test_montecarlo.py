@@ -131,7 +131,7 @@ def test_random_walk_rejects_negative_steps(walk: object) -> None:
     callable_walk = walk
     assert callable(callable_walk)
     with pytest.raises(ValueError, match="steps must be non-negative"):
-        callable_walk(-1)  # type: ignore[operator]
+        callable_walk(-1)
 
 
 @pytest.mark.parametrize("walk", [random_walk_1d, random_walk_2d])
@@ -140,7 +140,7 @@ def test_random_walk_rejects_noninteger_steps(walk: object, steps: object) -> No
     callable_walk = walk
     assert callable(callable_walk)
     with pytest.raises(TypeError, match="steps must be an integer"):
-        callable_walk(steps)  # type: ignore[operator]
+        callable_walk(steps)
 
 
 @pytest.mark.parametrize("walk", [random_walk_1d, random_walk_2d])
@@ -149,7 +149,7 @@ def test_random_walk_rejects_invalid_step_size(walk: object, step_size: float) -
     callable_walk = walk
     assert callable(callable_walk)
     with pytest.raises(ValueError, match="step_size must be finite and non-negative"):
-        callable_walk(1, step_size=step_size)  # type: ignore[operator]
+        callable_walk(1, step_size=step_size)
 
 
 class TestBuffonNeedle:
