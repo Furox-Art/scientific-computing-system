@@ -44,7 +44,7 @@ def test_qubit_rejects_non_finite_and_zero_norm_measurement_state() -> None:
 
 
 def test_quantum_gate_validates_shape_finiteness_and_unitarity() -> None:
-    identity = [1, 0, 0, 1]
+    identity: list[complex] = [1, 0, 0, 1]
     assert QuantumGate("I", identity).matrix == [1 + 0j, 0j, 0j, 1 + 0j]
 
     with pytest.raises(ValueError, match="name"):
