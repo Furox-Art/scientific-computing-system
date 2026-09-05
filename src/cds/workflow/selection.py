@@ -379,18 +379,31 @@ def _compare(value: object, operator: ConditionOperator, expected: object) -> bo
         return value not in expected
 
     if isinstance(value, (int, float)) and isinstance(expected, (int, float)):
-        left = float(value)
-        right = float(expected)
-    elif isinstance(value, str) and isinstance(expected, str):
-        left = value
-        right = expected
-    else:
-        raise TypeError("ordered comparison requires compatible numeric or string values")
+        return _compare_ordered(float(value), operator, float(expected))
+    if isinstance(value, str) and isinstance(expected, str):
+        return _compare_ordered(value, operator, expected)
+    raise TypeError("ordered comparison requires compatible numeric or string values")
 
-    if operator is ConditionOperator.LT:
-        return left < right
-    if operator is ConditionOperator.LTE:
-        return left <= right
-    if operator is ConditionOperator.GT:
-        return left > right
-    return left >= right
+
+def _compare_ordered(
+    left: float | str,
+    operator: ConditionOperator,
+    right: float | str,
+) -> bool:
+    if isinstance(left, float) and isinstance(right, float):
+        if operator is ConditionOperator.LT:
+            return left < right
+        if operator is ConditionOperator.LTE:
+            return left <= right
+        if operator is ConditionOperator.GT:
+            return left > right
+        return left >= right
+    if isinstance(left, str) and isinstance(right, str):
+        if operator is ConditionOperator.LT:
+            return left < right
+        if operator is ConditionOperator.LTE:
+            return left <= right
+        if operator is ConditionOperator.GT:
+            return left > right
+        return left >= right
+    raise TypeError("ordered comparison requires values of the same type")
