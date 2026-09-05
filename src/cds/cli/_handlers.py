@@ -321,4 +321,3 @@ def _cmd_calc(args: argparse.Namespace) -> int:
         _print(_render(f"[red]Error:[/] {str(e)}"))
         return 1
     return 0
-
