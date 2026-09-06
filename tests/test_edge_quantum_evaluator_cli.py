@@ -59,7 +59,6 @@ def test_measure_superposition_distribution() -> None:
     for _ in range(2000):
         q = Qubit(alpha=complex(inv), beta=complex(inv))
         counts[measure(q)] += 1
-    # Both outcomes should occur in 2000 shots
     assert counts[0] > 0 and counts[1] > 0
 
 
@@ -76,9 +75,6 @@ def test_simulate_seed_reproducible() -> None:
 # ---------------------------------------------------------------------------
 def test_main_module_runs() -> None:
     """`python -m cds --version` exits 0 and prints the version."""
-    # Resolve `cds` from the source tree — a fresh subprocess does not
-    # inherit pytest's `pythonpath = ["src"]` config, so add src/ to
-    # PYTHONPATH explicitly so the local package wins over any stale install.
     import os
 
     root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -108,33 +104,34 @@ def _make_hypothesis() -> Hypothesis:
 
 def test_evaluator_one_sample_significant() -> None:
     hypo = _make_hypothesis()
+    initial_status = hypo.status
     evaluator = HypothesisEvaluator()
-    # Sample mean well above the reference mean
     result = evaluator.evaluate(
         hypo,
         {"one_sample": [10.2, 10.5, 9.8, 11.0, 10.4], "popmean": 5.0},
     )
     assert result.test_name == "One-sample t-test"
     assert result.is_significant
-    assert hypo.status == HypothesisStatus.VALIDATED
+    assert result.evidence_interpretation == "supported"
+    assert hypo.status is initial_status is HypothesisStatus.NEW
 
 
 def test_evaluator_one_sample_not_significant() -> None:
     hypo = _make_hypothesis()
+    initial_status = hypo.status
     evaluator = HypothesisEvaluator()
-    # Sample mean close to the reference mean
     result = evaluator.evaluate(
         hypo,
         {"one_sample": [10.0, 10.1, 9.9, 10.0, 10.1], "popmean": 10.0},
     )
     assert not result.is_significant
-    assert hypo.status == HypothesisStatus.REJECTED
+    assert result.evidence_interpretation == "inconclusive"
+    assert hypo.status is initial_status is HypothesisStatus.NEW
 
 
 def test_evaluator_chi_square_gof() -> None:
     hypo = _make_hypothesis()
     evaluator = HypothesisEvaluator()
-    # Strongly skewed observed vs uniform expected -> significant
     result = evaluator.evaluate(
         hypo,
         {"chi_square_gof": {"observed": [50, 10, 10, 30]}},
@@ -146,7 +143,6 @@ def test_evaluator_chi_square_gof() -> None:
 def test_evaluator_chi_square_independence() -> None:
     hypo = _make_hypothesis()
     evaluator = HypothesisEvaluator()
-    # Strong association between rows and columns
     table: list[list[float]] = [[100.0, 10.0], [10.0, 100.0]]
     result = evaluator.evaluate(hypo, {"chi_square_independence": table})
     assert result.test_name == "Chi-square independence"
@@ -160,7 +156,7 @@ def test_evaluator_paired() -> None:
         hypo,
         {"paired": ([1.0, 2.0, 3.0, 4.0], [10.0, 11.0, 12.0, 13.0])},
     )
-    assert result.test_name == "Two-sample t-test"
+    assert result.test_name == "Paired t-test"
     assert result.is_significant
 
 
@@ -168,9 +164,6 @@ def test_evaluator_unsupported_format_raises() -> None:
     hypo = _make_hypothesis()
     evaluator = HypothesisEvaluator()
     try:
-        # ``EvaluationData`` is a TypedDict and rejects unknown keys at type-check
-        # time; this test deliberately exercises the runtime ValueError path, so
-        # ``cast`` bypasses the type checker on purpose.
         evaluator.evaluate(hypo, cast(EvaluationData, {"unknown_key": [1, 2, 3]}))
         raise AssertionError("Expected ValueError for unsupported data format")
     except ValueError as exc:
@@ -221,7 +214,6 @@ def test_evaluator_one_sample_too_few_raises() -> None:
 # Evaluator: effect-size reporting on each dispatch path
 # ---------------------------------------------------------------------------
 def test_evaluator_two_sample_reports_cohens_d() -> None:
-    # Large separation between two groups -> significant + Cohen's d reported
     hypo = _make_hypothesis()
     evaluator = HypothesisEvaluator()
     result = evaluator.evaluate(
@@ -231,12 +223,10 @@ def test_evaluator_two_sample_reports_cohens_d() -> None:
     assert result.test_name == "Two-sample t-test"
     assert result.effect_size is not None
     assert result.effect_size_label == "Cohen's d"
-    # Separation of 5 units on pooled SD ~1.58 -> |d| ~3.16 (large)
     assert abs(result.effect_size) > 2.0
 
 
 def test_evaluator_anova_reports_eta_squared() -> None:
-    # Three groups with between-group spread -> ANOVA + eta-squared reported
     hypo = _make_hypothesis()
     evaluator = HypothesisEvaluator()
     result = evaluator.evaluate(
@@ -250,7 +240,6 @@ def test_evaluator_anova_reports_eta_squared() -> None:
 
 
 def test_evaluator_one_sample_reports_cohens_d() -> None:
-    # Sample shifted far from the reference mean -> significant + Cohen's d
     hypo = _make_hypothesis()
     evaluator = HypothesisEvaluator()
     result = evaluator.evaluate(
@@ -260,12 +249,10 @@ def test_evaluator_one_sample_reports_cohens_d() -> None:
     assert result.test_name == "One-sample t-test"
     assert result.effect_size is not None
     assert result.effect_size_label == "Cohen's d"
-    # Shift of ~5 on sample SD ~0.46 -> |d| ~10 (very large)
     assert result.effect_size > 5.0
 
 
 def test_evaluator_independence_reports_cramers_v() -> None:
-    # Strong diagonal association -> significant + Cramer's V reported
     hypo = _make_hypothesis()
     evaluator = HypothesisEvaluator()
     table: list[list[float]] = [[100.0, 10.0], [10.0, 100.0]]
@@ -277,7 +264,6 @@ def test_evaluator_independence_reports_cramers_v() -> None:
 
 
 def test_evaluator_goodness_of_fit_has_no_effect_size() -> None:
-    # Chi-square GOF has no single accepted effect size -> fields stay None
     hypo = _make_hypothesis()
     evaluator = HypothesisEvaluator()
     result = evaluator.evaluate(hypo, {"chi_square_gof": {"observed": [50, 10, 10, 30]}})
@@ -287,7 +273,6 @@ def test_evaluator_goodness_of_fit_has_no_effect_size() -> None:
 
 
 def test_evaluator_conclusion_mentions_effect_size() -> None:
-    # The conclusion string should surface the effect size for readability
     hypo = _make_hypothesis()
     evaluator = HypothesisEvaluator()
     result = evaluator.evaluate(
@@ -298,25 +283,21 @@ def test_evaluator_conclusion_mentions_effect_size() -> None:
 
 
 def test_evaluator_paired_reports_cohens_d() -> None:
-    # Paired path routes through compare_groups -> 2-sample t-test + Cohen's d
     hypo = _make_hypothesis()
     evaluator = HypothesisEvaluator()
     result = evaluator.evaluate(
         hypo,
         {"paired": ([1.0, 2.0, 3.0, 4.0], [10.0, 11.0, 12.0, 13.0])},
     )
-    assert result.test_name == "Two-sample t-test"
+    assert result.test_name == "Paired t-test"
     assert result.effect_size is not None
-    assert result.effect_size_label == "Cohen's d"
+    assert result.effect_size_label == "Cohen's dz"
 
 
 # ---------------------------------------------------------------------------
 # Evaluator: evaluate_batch (Bonferroni multiple-comparison correction)
 # ---------------------------------------------------------------------------
 def test_evaluator_batch_applies_bonferroni() -> None:
-    # Family of 3 hypotheses at alpha=0.05. One has a genuinely small p
-    # (well below corrected 0.0167), one is borderline-significant alone
-    # (0.04 < 0.05 but > 0.0167), one is clearly non-significant.
     h1 = _make_hypothesis()
     h2 = _make_hypothesis()
     h3 = _make_hypothesis()
@@ -324,30 +305,23 @@ def test_evaluator_batch_applies_bonferroni() -> None:
     results = evaluator.evaluate_batch(
         [h1, h2, h3],
         [
-            # Strong effect: p far below 0.05/3 ~= 0.0167
             {"groups": [[1.0, 2.0, 3.0, 4.0, 5.0], [20.0, 21.0, 22.0, 23.0, 24.0]]},
-            # Modest effect: significant alone but not after correction
             {"groups": [[1.0, 2.0, 3.0, 4.0, 5.0], [3.0, 4.0, 5.0, 6.0, 7.0]]},
-            # No effect: clearly non-significant
             {"groups": [[1.0, 2.0, 3.0, 4.0, 5.0], [1.5, 2.5, 3.0, 3.5, 4.5]]},
         ],
     )
     assert len(results) == 3
-    # The corrected alpha should appear in each conclusion
     for r in results:
         assert "alpha=0.016" in r.conclusion
 
 
 def test_evaluator_batch_single_comparison_matches_evaluate() -> None:
-    # k=1 -> corrected alpha == uncorrected alpha, so the batch result for a
-    # single hypothesis must agree with evaluate() on is_significant.
     hypo = _make_hypothesis()
     evaluator = HypothesisEvaluator()
     single = evaluator.evaluate(
         hypo,
         {"groups": [[1.0, 2.0, 3.0, 4.0, 5.0], [6.0, 7.0, 8.0, 9.0, 10.0]]},
     )
-    # Reset status mutated by the single evaluate, then re-run in batch.
     hypo2 = _make_hypothesis()
     batched = evaluator.evaluate_batch(
         [hypo2],
@@ -381,12 +355,11 @@ def test_cli_plot_valid(capsys: pytest.CaptureFixture[str]) -> None:
 def test_cli_plot_invalid(capsys: pytest.CaptureFixture[str]) -> None:
     rc = main(["plot", "1,abc,3"])
     out = capsys.readouterr().out
-    assert rc == 1  # CLI catches the ValueError and returns non-zero
+    assert rc == 1
     assert "Error" in out
 
 
 def test_cli_plot_file_png(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    """``cds plot ... --file`` saves a PNG when matplotlib is available."""
     pytest.importorskip("matplotlib")
     path = tmp_path / "cli_plot.png"
     rc = main(["plot", "1,5,3,8,2", "--title", "PNG", "--file", str(path)])
@@ -400,7 +373,6 @@ def test_cli_plot_file_png(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
 def test_cli_plot_file_success_without_matplotlib(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Happy path for ``--file`` without requiring real matplotlib (minimal-deps CI)."""
     import cds.plot as plot_mod
 
     saved: list[str] = []
@@ -476,7 +448,6 @@ def test_cli_plot_ascii_rejects_hist(capsys: pytest.CaptureFixture[str]) -> None
 def test_cli_plot_file_missing_matplotlib(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Missing matplotlib yields a clear install hint when --file is used."""
     import builtins
     import sys
 
@@ -509,7 +480,6 @@ def test_cli_constants(capsys: pytest.CaptureFixture[str]) -> None:
 def test_cli_dashboard_missing_file(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Dashboard command reports an error when the app file is absent."""
     monkeypatch.setattr(Path, "exists", lambda self: False)
     rc = main(["dashboard"])
     out = capsys.readouterr().out
@@ -525,7 +495,6 @@ def test_cli_calc_unknown_formula(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_cli_no_command_shows_help(capsys: pytest.CaptureFixture[str]) -> None:
-    """Invoking the CLI with no subcommand prints help."""
     rc = main([])
     out = capsys.readouterr().out
     assert "help" in out.lower() or "Usage" in out
@@ -536,14 +505,12 @@ def test_cli_hypothesis_show_prompt(capsys: pytest.CaptureFixture[str]) -> None:
     rc = main(["hypothesis", "Test question", "--show-prompt"])
     out = capsys.readouterr().out
     assert rc == 0
-    # The prompt template text (not a "Prompt Template" panel title anymore) is printed.
     assert "Test question" in out
 
 
 def test_cli_calc_input_error(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """calc command with non-numeric input prints error."""
     monkeypatch.setattr("builtins.input", lambda _: "not_a_number")
     rc = main(["calc", "ke"])
     out = capsys.readouterr().out
@@ -554,8 +521,6 @@ def test_cli_calc_input_error(
 def test_cli_calc_generic_exception(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """calc command with an unexpected exception prints error."""
-
     def bad_prompt(_: str) -> None:
         raise RuntimeError("surprise")
 
@@ -569,8 +534,6 @@ def test_cli_calc_generic_exception(
 def test_cli_dashboard_launch(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Dashboard command: mock subprocess so streamlit is not actually launched."""
-
     def fake_run(cmd: list[str], **kwargs: object) -> None:
         raise KeyboardInterrupt()
 
@@ -586,8 +549,6 @@ def test_cli_dashboard_launch(
 def test_cli_dashboard_streamlit_missing(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Dashboard command: FileNotFoundError when streamlit is not installed."""
-
     def fake_run(cmd: list[str], **kwargs: object) -> None:
         raise FileNotFoundError("streamlit not found")
 
@@ -601,7 +562,6 @@ def test_cli_dashboard_streamlit_missing(
 
 
 def test_cli_modules_end_line(capsys: pytest.CaptureFixture[str]) -> None:
-    """modules command: verify the final lines are printed."""
     rc = main(["modules"])
     out = capsys.readouterr().out
     assert rc == 0
@@ -609,12 +569,10 @@ def test_cli_modules_end_line(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_import_main() -> None:
-    """Ensure cds.__main__ can be imported without side effects."""
     import cds.__main__  # noqa: F401
 
 
 def test_import_cli_main_module() -> None:
-    """Ensure cds.cli.__main__ (the ``python -m cds.cli`` entry) imports cleanly."""
     import cds.cli.__main__  # noqa: F401
 
 
@@ -622,28 +580,22 @@ def test_import_cli_main_module() -> None:
 # Monte Carlo: _pi_worker (parallel worker) and edge cases
 # ---------------------------------------------------------------------------
 def test_pi_worker_counts_inside() -> None:
-    """_pi_worker counts points inside the unit quarter-circle."""
     inside = _pi_worker((1000, 42))
-    # With 1000 samples roughly 785 +/- 30 should be inside (pi/4 * 1000)
     assert 700 < inside < 850
 
 
 def test_pi_worker_no_seed() -> None:
-    """_pi_worker runs without a seed (random seed)."""
     inside = _pi_worker((500, None))
     assert 0 <= inside <= 500
 
 
 def test_estimate_pi_zero_samples() -> None:
-    """estimate_pi with 0 samples returns a zero result."""
-    result = estimate_pi(n_samples=0)
-    assert result.estimate == 0.0
-    assert result.samples == 0
-    assert result.std_error == 0.0
+    """A zero-sample Monte Carlo estimate is undefined and rejected."""
+    with pytest.raises(ValueError, match="n_samples"):
+        estimate_pi(n_samples=0)
 
 
 def test_buffon_needle_no_crossings() -> None:
-    """buffon_needle with a very short needle can produce 0 crossings."""
-    # Short needle, large spacing -> few/no crossings. Guard against div-by-zero.
-    result = buffon_needle(needle_length=0.01, line_spacing=2.0, n_throws=5, seed=1)
-    assert result.samples == 5
+    """Zero crossings make the inverse-probability estimator undefined."""
+    with pytest.raises(ArithmeticError, match="zero crossings"):
+        buffon_needle(needle_length=0.01, line_spacing=2.0, n_throws=5, seed=1)

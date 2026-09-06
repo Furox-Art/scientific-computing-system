@@ -71,6 +71,8 @@ def test_profile_file_recommends_memory_bounded_blocks(tmp_path: Path) -> None:
         profile_file(path, max_block_size=0)
     with pytest.raises(ValueError, match="must not exceed"):
         profile_file(path, min_block_size=8, max_block_size=4)
+    with pytest.raises(ValueError, match="memory_budget_bytes"):
+        profile_file(path, memory_budget_bytes=4, min_block_size=8, max_block_size=16)
 
 
 def test_iter_csv_batches_preserves_headers_and_batch_size(tmp_path: Path) -> None:
@@ -99,6 +101,8 @@ def test_iter_csv_batches_preserves_headers_and_batch_size(tmp_path: Path) -> No
         list(iter_csv_batches(path, batch_size=0))
     with pytest.raises(ValueError, match="delimiter"):
         list(iter_csv_batches(path, delimiter=""))
+    with pytest.raises(ValueError, match="one character"):
+        list(iter_csv_batches(path, delimiter="||"))
 
 
 def test_optional_hdf5_backend_is_lazy(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

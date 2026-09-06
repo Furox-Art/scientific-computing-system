@@ -23,6 +23,8 @@ from cds.stats.hypothesis_tests import (
     f_sf,
     one_sample_ttest,
     one_way_anova,
+    paired_cohens_d,
+    paired_ttest,
     t_sf,
     two_sample_ttest,
 )
@@ -62,6 +64,7 @@ __all__ = [
     "TestResult",
     "one_sample_ttest",
     "two_sample_ttest",
+    "paired_ttest",
     "chi_square_gof",
     "chi_square_independence",
     "one_way_anova",
@@ -69,10 +72,10 @@ __all__ = [
     "chi2_sf",
     "f_sf",
     "cohens_d",
+    "paired_cohens_d",
     "eta_squared_from_f",
     "cramers_v",
     "bonferroni_corrected_alpha",
-    # Time-series analysis
     "autocorrelation",
     "autocorrelation_function",
     "partial_autocorrelation",
@@ -84,14 +87,11 @@ __all__ = [
     "ljung_box",
     "LjungBoxResult",
     "StationarityResult",
-    # Nonparametric tests
     "mann_whitney_u",
     "wilcoxon_signed_rank",
-    # Bootstrap resampling
     "BootstrapResult",
     "bootstrap_ci",
     "bootstrap_diff_ci",
-    # Power analysis
     "PowerResult",
     "power_t_test",
     "power_proportion_test",

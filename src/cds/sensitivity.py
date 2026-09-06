@@ -80,8 +80,13 @@ def local_sensitivity(
     ``max(abs(p) * relative_step, absolute_step)``. Normalized sensitivity is
     ``(d output / d p) * p / output`` when the baseline output is non-zero.
     """
-    if relative_step <= 0 or absolute_step <= 0:
-        raise ValueError("relative_step and absolute_step must be positive")
+    if (
+        not math.isfinite(relative_step)
+        or relative_step <= 0
+        or not math.isfinite(absolute_step)
+        or absolute_step <= 0
+    ):
+        raise ValueError("relative_step and absolute_step must be positive and finite")
 
     baseline = tuple(float(value) for value in parameters)
     if any(not math.isfinite(value) for value in baseline):

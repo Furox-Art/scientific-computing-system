@@ -167,6 +167,17 @@ def test_checkpoint_roundtrip_and_validation(tmp_path: Path) -> None:
         load_checkpoint(missing)
 
 
+def test_checkpoint_removes_temporary_file_if_serialization_fails(tmp_path: Path) -> None:
+    manifest = RunManifest.create("Q")
+    destination = tmp_path / "run.json"
+
+    with pytest.raises(TypeError, match="JSON serializable"):
+        save_checkpoint(destination, manifest, {"not-json": object()})
+
+    assert not destination.exists()
+    assert list(tmp_path.iterdir()) == []
+
+
 def test_checkpoint_removes_temporary_file_if_replace_fails(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -180,6 +191,24 @@ def test_checkpoint_removes_temporary_file_if_replace_fails(
 
     monkeypatch.setattr(Path, "replace", fail_replace)
     with pytest.raises(OSError, match="replace failed"):
+        save_checkpoint(destination, manifest, {"x": 1})
+
+    assert not destination.exists()
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_checkpoint_creation_failure_does_not_mask_original_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manifest = RunManifest.create("Q")
+    destination = tmp_path / "run.json"
+
+    def fail_create(*_args: object, **_kwargs: object) -> object:
+        raise OSError("temporary creation failed")
+
+    monkeypatch.setattr("cds.provenance.manifest.tempfile.NamedTemporaryFile", fail_create)
+    with pytest.raises(OSError, match="temporary creation failed"):
         save_checkpoint(destination, manifest, {"x": 1})
 
     assert not destination.exists()
