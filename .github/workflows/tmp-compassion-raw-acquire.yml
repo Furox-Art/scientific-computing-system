@@ -1,0 +1,140 @@
+name: tmp compassion raw acquisition
+
+on:
+  push:
+    paths:
+      - '.github/workflows/tmp-compassion-raw-acquire.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --disable-pip-version-check requests beautifulsoup4
+      - name: Acquire verified public raw data
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib, json, re, zipfile, time
+          from pathlib import Path
+          from urllib.parse import urljoin, urlparse
+          import requests
+          from bs4 import BeautifulSoup
+
+          out=Path('raw'); out.mkdir(exist_ok=True)
+          diag=out/'diagnostics'; diag.mkdir(exist_ok=True)
+          ua={'User-Agent':'Mozilla/5.0 (reproducibility data acquisition; contact via repository owner)'}
+          status={'retrieved_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'datasets':{}}
+          def sha(p):
+              h=hashlib.sha256()
+              with open(p,'rb') as f:
+                  for b in iter(lambda:f.read(1024*1024),b''): h.update(b)
+              return h.hexdigest()
+          def record(k,p,source,license_):
+              status['datasets'][k]={'ok':True,'filename':p.name,'bytes':p.stat().st_size,'sha256':sha(p),'source':source,'license':license_}
+
+          # 05: exact OSF raw Excel referenced by openESM cleaning script.
+          try:
+              s=requests.Session(); s.headers.update(ua)
+              meta=s.get('https://api.osf.io/v2/files/qvtgc/',timeout=60); meta.raise_for_status()
+              j=meta.json(); (diag/'05_osf_metadata.json').write_text(json.dumps(j,indent=2),encoding='utf-8')
+              u=j['data']['links']['download']
+              r=s.get(u,timeout=120,allow_redirects=True); r.raise_for_status()
+              p=out/'0050_pronizius_ts_raw.xlsx'; p.write_bytes(r.content)
+              with zipfile.ZipFile(p) as z:
+                  assert 'xl/workbook.xml' in z.namelist()
+              record('05',p,'OSF qvtgc / openESM canonical raw file','CC BY 4.0')
+          except Exception as e:
+              status['datasets']['05']={'ok':False,'error':repr(e)}
+
+          # 07: Mendeley Data public API; select the published data XLS file.
+          try:
+              s=requests.Session(); s.headers.update(ua)
+              api='https://data.mendeley.com/public-api/datasets/wbng2phzmm/files?folder_id=root&version=1'
+              r=s.get(api,timeout=60); r.raise_for_status(); files=r.json()
+              (diag/'07_mendeley_files.json').write_text(json.dumps(files,indent=2),encoding='utf-8')
+              candidates=[]
+              for f in files:
+                  name=(f.get('name') or f.get('filename') or '').lower()
+                  url=((f.get('content_details') or {}).get('download_url') or f.get('download_url'))
+                  if url and (name.endswith('.xls') or 'data' in name): candidates.append((f,url,name))
+              if not candidates: raise RuntimeError('No XLS/data file exposed by Mendeley public API')
+              # Prefer xls; expected file is the raw per-subject data.
+              f,u,name=sorted(candidates,key=lambda x:(not x[2].endswith('.xls'),x[2]))[0]
+              rr=s.get(u,timeout=120,allow_redirects=True); rr.raise_for_status()
+              p=out/(f.get('name') or f.get('filename') or 'mmc2.xls'); p.write_bytes(rr.content)
+              sig=p.read_bytes()[:8]
+              if not (p.suffix.lower()=='.xls' and sig==bytes.fromhex('d0cf11e0a1b11ae1')):
+                  # Preserve source filename but reject HTML/error bodies.
+                  raise RuntimeError(f'Unexpected XLS signature/name: {p.name} {sig.hex()}')
+              record('07',p,'Mendeley Data DOI 10.17632/wbng2phzmm.1','CC BY 4.0')
+          except Exception as e:
+              status['datasets']['07']={'ok':False,'error':repr(e)}
+
+          # 06: FSD3588 open-access package. Reproduce the visitor session and submit download form.
+          try:
+              s=requests.Session(); s.headers.update(ua)
+              page='https://services.fsd.tuni.fi/catalogue/FSD3588?lang=en&study_language=en&tab=download'
+              r=s.get(page,timeout=60); r.raise_for_status(); html=r.text
+              (diag/'06_fsd_page.html').write_text(html,encoding='utf-8')
+              soup=BeautifulSoup(html,'html.parser')
+              attempts=[]; result=None
+              # Forms first: preserve all hidden fields and submit controls whose text/value indicates download.
+              for form in soup.find_all('form'):
+                  action=urljoin(r.url,form.get('action') or r.url); method=(form.get('method') or 'get').lower()
+                  fields={}
+                  for el in form.find_all(['input','button','select']):
+                      n=el.get('name')
+                      if not n: continue
+                      if el.name=='select':
+                          opt=el.find('option',selected=True) or el.find('option')
+                          fields[n]=opt.get('value','') if opt else ''
+                      else: fields[n]=el.get('value','')
+                  blob=(action+' '+form.get_text(' ',strip=True)+' '+json.dumps(fields)).lower()
+                  if not any(x in blob for x in ['download','lataa','fsd3588']): continue
+                  try:
+                      rr=s.post(action,data=fields,timeout=120,allow_redirects=True) if method=='post' else s.get(action,params=fields,timeout=120,allow_redirects=True)
+                      info={'kind':'form','action':action,'method':method,'status':rr.status_code,'final_url':rr.url,'ct':rr.headers.get('content-type'),'cd':rr.headers.get('content-disposition'),'bytes':len(rr.content)}; attempts.append(info)
+                      cd=(rr.headers.get('content-disposition') or '')
+                      if rr.ok and (rr.content[:4]==b'PK\x03\x04' or 'attachment' in cd.lower() or 'filename=' in cd.lower()): result=rr; break
+                  except Exception as e: attempts.append({'kind':'form','action':action,'error':repr(e)})
+              # Then direct links with likely download semantics.
+              if result is None:
+                  for a in soup.find_all('a',href=True):
+                      u=urljoin(r.url,a['href']); blob=(u+' '+a.get_text(' ',strip=True)).lower()
+                      if not any(x in blob for x in ['download','lataa','.zip','.csv','.sav','.por']): continue
+                      if not ((urlparse(u).hostname or '').endswith('tuni.fi')): continue
+                      try:
+                          rr=s.get(u,timeout=120,allow_redirects=True)
+                          info={'kind':'link','url':u,'status':rr.status_code,'final_url':rr.url,'ct':rr.headers.get('content-type'),'cd':rr.headers.get('content-disposition'),'bytes':len(rr.content)}; attempts.append(info)
+                          cd=(rr.headers.get('content-disposition') or '')
+                          if rr.ok and (rr.content[:4]==b'PK\x03\x04' or 'attachment' in cd.lower() or 'filename=' in cd.lower()): result=rr; break
+                      except Exception as e: attempts.append({'kind':'link','url':u,'error':repr(e)})
+              (diag/'06_attempts.json').write_text(json.dumps(attempts,indent=2,ensure_ascii=False),encoding='utf-8')
+              if result is None: raise RuntimeError('FSD page accessible but download endpoint was not resolved')
+              cd=result.headers.get('content-disposition','')
+              m=re.search(r"filename\*?=(?:UTF-8''|)[\"']?([^\"';]+)",cd,re.I)
+              name=(m.group(1) if m else 'FSD3588_distribution.zip').strip()
+              if result.content[:4]==b'PK\x03\x04' and not name.lower().endswith('.zip'): name='FSD3588_distribution.zip'
+              p=out/name; p.write_bytes(result.content)
+              record('06',p,page,'CC BY 4.0')
+          except Exception as e:
+              status['datasets']['06']={'ok':False,'error':repr(e)}
+
+          (out/'acquisition_status.json').write_text(json.dumps(status,indent=2,ensure_ascii=False),encoding='utf-8')
+          print(json.dumps(status,indent=2,ensure_ascii=False))
+          PY
+      - name: Upload acquisition artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compassion-raw-acquisition
+          path: raw/
+          retention-days: 1
+          if-no-files-found: error
