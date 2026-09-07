@@ -29,7 +29,7 @@ jobs:
 
           out=Path('raw'); out.mkdir(exist_ok=True)
           diag=out/'diagnostics'; diag.mkdir(exist_ok=True)
-          ua={'User-Agent':'Mozilla/5.0 (reproducibility data acquisition; contact via repository owner)'}
+          ua={'User-Agent':'Mozilla/5.0 reproducibility-data-acquisition/1.0'}
           status={'retrieved_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'datasets':{}}
           def sha(p):
               h=hashlib.sha256()
@@ -38,94 +38,119 @@ jobs:
               return h.hexdigest()
           def record(k,p,source,license_):
               status['datasets'][k]={'ok':True,'filename':p.name,'bytes':p.stat().st_size,'sha256':sha(p),'source':source,'license':license_}
+          def is_binary_data(rr):
+              cd=(rr.headers.get('content-disposition') or '').lower(); ct=(rr.headers.get('content-type') or '').lower(); b=rr.content
+              return rr.ok and len(b)>1000 and (b[:4]==b'PK\x03\x04' or b[:8]==bytes.fromhex('d0cf11e0a1b11ae1') or 'attachment' in cd or 'filename=' in cd or any(x in ct for x in ['application/zip','application/octet-stream','application/vnd.ms-excel','x-spss']))
 
-          # 05: exact OSF raw Excel referenced by openESM cleaning script.
+          # 05 canonical OSF raw workbook
           try:
               s=requests.Session(); s.headers.update(ua)
-              meta=s.get('https://api.osf.io/v2/files/qvtgc/',timeout=60); meta.raise_for_status()
-              j=meta.json(); (diag/'05_osf_metadata.json').write_text(json.dumps(j,indent=2),encoding='utf-8')
-              u=j['data']['links']['download']
-              r=s.get(u,timeout=120,allow_redirects=True); r.raise_for_status()
-              p=out/'0050_pronizius_ts_raw.xlsx'; p.write_bytes(r.content)
-              with zipfile.ZipFile(p) as z:
-                  assert 'xl/workbook.xml' in z.namelist()
-              record('05',p,'OSF qvtgc / openESM canonical raw file','CC BY 4.0')
-          except Exception as e:
-              status['datasets']['05']={'ok':False,'error':repr(e)}
+              meta=s.get('https://api.osf.io/v2/files/qvtgc/',timeout=60); meta.raise_for_status(); j=meta.json()
+              u=j['data']['links']['download']; rr=s.get(u,timeout=120,allow_redirects=True); rr.raise_for_status()
+              p=out/'0050_pronizius_ts_raw.xlsx'; p.write_bytes(rr.content)
+              with zipfile.ZipFile(p) as z: assert 'xl/workbook.xml' in z.namelist()
+              record('05',p,'https://osf.io/qvtgc','CC BY 4.0')
+          except Exception as e: status['datasets']['05']={'ok':False,'error':repr(e)}
 
-          # 07: Mendeley Data public API; select the published data XLS file.
+          # 07 official Europe PMC supplementary bundle; extract exact mmc2.xls
           try:
               s=requests.Session(); s.headers.update(ua)
-              api='https://data.mendeley.com/public-api/datasets/wbng2phzmm/files?folder_id=root&version=1'
-              r=s.get(api,timeout=60); r.raise_for_status(); files=r.json()
-              (diag/'07_mendeley_files.json').write_text(json.dumps(files,indent=2),encoding='utf-8')
-              candidates=[]
-              for f in files:
-                  name=(f.get('name') or f.get('filename') or '').lower()
-                  url=((f.get('content_details') or {}).get('download_url') or f.get('download_url'))
-                  if url and (name.endswith('.xls') or 'data' in name): candidates.append((f,url,name))
-              if not candidates: raise RuntimeError('No XLS/data file exposed by Mendeley public API')
-              # Prefer xls; expected file is the raw per-subject data.
-              f,u,name=sorted(candidates,key=lambda x:(not x[2].endswith('.xls'),x[2]))[0]
-              rr=s.get(u,timeout=120,allow_redirects=True); rr.raise_for_status()
-              p=out/(f.get('name') or f.get('filename') or 'mmc2.xls'); p.write_bytes(rr.content)
-              sig=p.read_bytes()[:8]
-              if not (p.suffix.lower()=='.xls' and sig==bytes.fromhex('d0cf11e0a1b11ae1')):
-                  # Preserve source filename but reject HTML/error bodies.
-                  raise RuntimeError(f'Unexpected XLS signature/name: {p.name} {sig.hex()}')
-              record('07',p,'Mendeley Data DOI 10.17632/wbng2phzmm.1','CC BY 4.0')
-          except Exception as e:
-              status['datasets']['07']={'ok':False,'error':repr(e)}
-
-          # 06: FSD3588 open-access package. Reproduce the visitor session and submit download form.
-          try:
-              s=requests.Session(); s.headers.update(ua)
-              page='https://services.fsd.tuni.fi/catalogue/FSD3588?lang=en&study_language=en&tab=download'
-              r=s.get(page,timeout=60); r.raise_for_status(); html=r.text
-              (diag/'06_fsd_page.html').write_text(html,encoding='utf-8')
-              soup=BeautifulSoup(html,'html.parser')
-              attempts=[]; result=None
-              # Forms first: preserve all hidden fields and submit controls whose text/value indicates download.
-              for form in soup.find_all('form'):
-                  action=urljoin(r.url,form.get('action') or r.url); method=(form.get('method') or 'get').lower()
-                  fields={}
-                  for el in form.find_all(['input','button','select']):
-                      n=el.get('name')
-                      if not n: continue
-                      if el.name=='select':
-                          opt=el.find('option',selected=True) or el.find('option')
-                          fields[n]=opt.get('value','') if opt else ''
-                      else: fields[n]=el.get('value','')
-                  blob=(action+' '+form.get_text(' ',strip=True)+' '+json.dumps(fields)).lower()
-                  if not any(x in blob for x in ['download','lataa','fsd3588']): continue
+              candidates=[
+                'https://www.ebi.ac.uk/europepmc/webservices/rest/PMC7182700/supplementaryFiles',
+                'https://www.ebi.ac.uk/europepmc/webservices/rest/PMC7182700/fullTextXML',
+                'https://pmc.ncbi.nlm.nih.gov/articles/PMC7182700/bin/mmc2.xls',
+                'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7182700/bin/mmc2.xls'
+              ]
+              attempts=[]; p=None
+              for u in candidates:
                   try:
-                      rr=s.post(action,data=fields,timeout=120,allow_redirects=True) if method=='post' else s.get(action,params=fields,timeout=120,allow_redirects=True)
-                      info={'kind':'form','action':action,'method':method,'status':rr.status_code,'final_url':rr.url,'ct':rr.headers.get('content-type'),'cd':rr.headers.get('content-disposition'),'bytes':len(rr.content)}; attempts.append(info)
-                      cd=(rr.headers.get('content-disposition') or '')
-                      if rr.ok and (rr.content[:4]==b'PK\x03\x04' or 'attachment' in cd.lower() or 'filename=' in cd.lower()): result=rr; break
-                  except Exception as e: attempts.append({'kind':'form','action':action,'error':repr(e)})
-              # Then direct links with likely download semantics.
-              if result is None:
-                  for a in soup.find_all('a',href=True):
-                      u=urljoin(r.url,a['href']); blob=(u+' '+a.get_text(' ',strip=True)).lower()
-                      if not any(x in blob for x in ['download','lataa','.zip','.csv','.sav','.por']): continue
-                      if not ((urlparse(u).hostname or '').endswith('tuni.fi')): continue
+                      rr=s.get(u,timeout=120,allow_redirects=True)
+                      attempts.append({'url':u,'status':rr.status_code,'final_url':rr.url,'ct':rr.headers.get('content-type'),'cd':rr.headers.get('content-disposition'),'bytes':len(rr.content),'sig':rr.content[:8].hex()})
+                      if not rr.ok: continue
+                      if rr.content[:4]==b'PK\x03\x04':
+                          bundle=out/'PMC7182700_supplementary.zip'; bundle.write_bytes(rr.content)
+                          with zipfile.ZipFile(bundle) as z:
+                              names=z.namelist(); (diag/'07_bundle_members.json').write_text(json.dumps(names,indent=2),encoding='utf-8')
+                              hit=next((n for n in names if Path(n).name.lower()=='mmc2.xls'),None)
+                              if hit:
+                                  p=out/'mmc2.xls'; p.write_bytes(z.read(hit)); break
+                      if rr.content[:8]==bytes.fromhex('d0cf11e0a1b11ae1'):
+                          p=out/'mmc2.xls'; p.write_bytes(rr.content); break
+                      # fullTextXML can contain href to supplementary file
+                      if b'<article' in rr.content[:5000] or b'<supplementary-material' in rr.content:
+                          txt=rr.text
+                          for href in re.findall(r'(?:xlink:href|href)=[\"\']([^\"\']+)[\"\']',txt):
+                              if 'mmc2' not in href.lower(): continue
+                              hu=urljoin(rr.url,href); fr=s.get(hu,timeout=120,allow_redirects=True)
+                              attempts.append({'url':hu,'status':fr.status_code,'final_url':fr.url,'ct':fr.headers.get('content-type'),'bytes':len(fr.content),'sig':fr.content[:8].hex()})
+                              if fr.ok and fr.content[:8]==bytes.fromhex('d0cf11e0a1b11ae1'):
+                                  p=out/'mmc2.xls'; p.write_bytes(fr.content); break
+                          if p: break
+                  except Exception as e: attempts.append({'url':u,'error':repr(e)})
+              (diag/'07_attempts.json').write_text(json.dumps(attempts,indent=2),encoding='utf-8')
+              if p is None or p.read_bytes()[:8] != bytes.fromhex('d0cf11e0a1b11ae1'): raise RuntimeError('mmc2.xls not resolved or invalid')
+              record('07',p,'PMC7182700 official supplementary material / mmc2.xls','article supplementary data')
+          except Exception as e: status['datasets']['07']={'ok':False,'error':repr(e)}
+
+          # 06 FSD3588: enter the open-access download flow, then inspect receipt page recursively.
+          try:
+              s=requests.Session(); s.headers.update(ua)
+              start='https://services.fsd.tuni.fi/catalogue/FSD3588?lang=en&study_language=en&tab=download'
+              landing=s.get(start,timeout=60); landing.raise_for_status()
+              attempts=[]; result=None
+              # Known open-data gateway discovered from catalogue page.
+              q=['https://services.fsd.tuni.fi/catalogue/download?lang=en&study_language=en']
+              seen=set()
+              for depth in range(5):
+                  nq=[]
+                  for u in q:
+                      if u in seen: continue
+                      seen.add(u)
                       try:
                           rr=s.get(u,timeout=120,allow_redirects=True)
-                          info={'kind':'link','url':u,'status':rr.status_code,'final_url':rr.url,'ct':rr.headers.get('content-type'),'cd':rr.headers.get('content-disposition'),'bytes':len(rr.content)}; attempts.append(info)
-                          cd=(rr.headers.get('content-disposition') or '')
-                          if rr.ok and (rr.content[:4]==b'PK\x03\x04' or 'attachment' in cd.lower() or 'filename=' in cd.lower()): result=rr; break
-                      except Exception as e: attempts.append({'kind':'link','url':u,'error':repr(e)})
-              (diag/'06_attempts.json').write_text(json.dumps(attempts,indent=2,ensure_ascii=False),encoding='utf-8')
-              if result is None: raise RuntimeError('FSD page accessible but download endpoint was not resolved')
+                          rec={'depth':depth,'url':u,'status':rr.status_code,'final_url':rr.url,'ct':rr.headers.get('content-type'),'cd':rr.headers.get('content-disposition'),'bytes':len(rr.content),'sig':rr.content[:8].hex()}; attempts.append(rec)
+                          if is_binary_data(rr): result=rr; break
+                          if 'html' in (rr.headers.get('content-type') or '').lower():
+                              fname=f'06_page_{depth}_{len(attempts)}.html'; (diag/fname).write_bytes(rr.content)
+                              soup=BeautifulSoup(rr.text,'html.parser')
+                              for a in soup.find_all('a',href=True):
+                                  hu=urljoin(rr.url,a['href']); blob=(hu+' '+a.get_text(' ',strip=True)).lower()
+                                  host=urlparse(hu).hostname or ''
+                                  if host.endswith('tuni.fi') and any(x in blob for x in ['download','lataa','receipt','file','zip','csv','sav','por','fsd3588']): nq.append(hu)
+                              for form in soup.find_all('form'):
+                                  action=urljoin(rr.url,form.get('action') or rr.url); host=urlparse(action).hostname or ''
+                                  if not host.endswith('tuni.fi'): continue
+                                  fields={}
+                                  for el in form.find_all(['input','button']):
+                                      if el.get('name'): fields[el['name']]=el.get('value','')
+                                  try:
+                                      method=(form.get('method') or 'get').lower()
+                                      fr=s.post(action,data=fields,timeout=120,allow_redirects=True) if method=='post' else s.get(action,params=fields,timeout=120,allow_redirects=True)
+                                      attempts.append({'depth':depth,'kind':'form','url':action,'method':method,'fields':fields,'status':fr.status_code,'final_url':fr.url,'ct':fr.headers.get('content-type'),'cd':fr.headers.get('content-disposition'),'bytes':len(fr.content),'sig':fr.content[:8].hex()})
+                                      if is_binary_data(fr): result=fr; break
+                                      if 'html' in (fr.headers.get('content-type') or '').lower():
+                                          fs=BeautifulSoup(fr.text,'html.parser')
+                                          for a in fs.find_all('a',href=True):
+                                              hu=urljoin(fr.url,a['href']); blob=(hu+' '+a.get_text(' ',strip=True)).lower(); host=urlparse(hu).hostname or ''
+                                              if host.endswith('tuni.fi') and any(x in blob for x in ['download','lataa','receipt','file','zip','csv','sav','por','fsd3588']): nq.append(hu)
+                                  except Exception as e: attempts.append({'kind':'form','url':action,'error':repr(e)})
+                                  if result: break
+                          if result: break
+                      except Exception as e: attempts.append({'url':u,'error':repr(e)})
+                  if result: break
+                  q=list(dict.fromkeys(nq))
+                  if not q: break
+              (diag/'06_attempts_v2.json').write_text(json.dumps(attempts,indent=2,ensure_ascii=False),encoding='utf-8')
+              if result is None: raise RuntimeError('FSD receipt flow did not expose binary')
               cd=result.headers.get('content-disposition','')
               m=re.search(r"filename\*?=(?:UTF-8''|)[\"']?([^\"';]+)",cd,re.I)
               name=(m.group(1) if m else 'FSD3588_distribution.zip').strip()
               if result.content[:4]==b'PK\x03\x04' and not name.lower().endswith('.zip'): name='FSD3588_distribution.zip'
               p=out/name; p.write_bytes(result.content)
-              record('06',p,page,'CC BY 4.0')
-          except Exception as e:
-              status['datasets']['06']={'ok':False,'error':repr(e)}
+              if p.suffix.lower()=='.zip' or p.read_bytes()[:4]==b'PK\x03\x04':
+                  with zipfile.ZipFile(p) as z: (diag/'06_bundle_members.json').write_text(json.dumps(z.namelist(),indent=2,ensure_ascii=False),encoding='utf-8')
+              record('06',p,start,'CC BY 4.0')
+          except Exception as e: status['datasets']['06']={'ok':False,'error':repr(e)}
 
           (out/'acquisition_status.json').write_text(json.dumps(status,indent=2,ensure_ascii=False),encoding='utf-8')
           print(json.dumps(status,indent=2,ensure_ascii=False))
@@ -134,7 +159,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: compassion-raw-acquisition
+          name: compassion-raw-acquisition-v2
           path: raw/
           retention-days: 1
           if-no-files-found: error
