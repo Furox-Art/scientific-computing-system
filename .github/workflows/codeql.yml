@@ -1,21 +1,8 @@
 name: CodeQL
 
-# Static security analysis via GitHub's CodeQL. Runs on every push to main,
-# every PR into main, and weekly on schedule so new CodeQL query packs and
-# newly-written code are both covered. Results surface as code-scanning
-# alerts under the repo's Security tab.
-#
-# Complements (does not replace) attest.yml: that workflow signs release
-# artifacts with build provenance; this one analyzes the source for vulns.
-# Dependabot (.github/dependabot.yml) handles dependency CVEs separately.
-
 on:
   push:
     branches: [main]
-    # CodeQL only analyses Python here, so a commit that touches no code and no
-    # dependency pin cannot change the result. Mirrors tests.yml and is applied
-    # to `push` only for the same reason: a workflow skipped by paths-ignore
-    # never reports its status context.
     paths-ignore:
       - '.github/CODEOWNERS'
       - '.github/FUNDING.yml'
@@ -31,47 +18,38 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: "37 4 * * 1"  # weekly, off-peak
+    - cron: "37 4 * * 1"
 
-# One analysis per ref. This was the second-busiest workflow in the repo
-# (29 runs a fortnight) and a superseded analysis has no value: code-scanning
-# alerts reflect the latest commit that finished, so racing runs only cost
-# checkouts.
 concurrency:
   group: codeql-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
-  security-events: write  # required to upload CodeQL results
+  security-events: write
 
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     strategy:
       fail-fast: false
       matrix:
-        # CDS is pure Python; no native extensions to scan with cpp.
         language: [python]
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
-
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@6f5948dfacef28e207b48d0905cf90c03365536d # v3
         with:
           languages: ${{ matrix.language }}
-          # security-and-quality = default + maintainability/reliability queries.
           queries: security-and-quality
-
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-
+        uses: github/codeql-action/autobuild@6f5948dfacef28e207b48d0905cf90c03365536d # v3
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@6f5948dfacef28e207b48d0905cf90c03365536d # v3
         with:
           category: "/language:${{ matrix.language }}"

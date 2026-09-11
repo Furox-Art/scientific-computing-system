@@ -8,9 +8,11 @@ on:
       - "v*"
   workflow_dispatch:
 
+# Benchmark execution itself is read-only. The only mutation path uses a
+# short-lived GitHub App token passed directly to create-pull-request, so the
+# workflow's default GITHUB_TOKEN never needs write scope.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: benchmarks-${{ github.ref }}
@@ -23,24 +25,15 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      # On tag pushes the checkout would land in detached HEAD at the tag, so
-      # there is no branch to commit back to. Always target the repo's default
-      # branch (main): tag/schedule/dispatch all check out main, run the
-      # benchmarks, and open a PR back into main. This mirrors changelog.yml
-      # (ref: main, base: main) which is the proven working pattern in this
-      # repo. Previously this resolved the branch from github.event.base_ref
-      # with a GITHUB_REF_NAME fallback, but base_ref is empty on most tag
-      # pushes and GITHUB_REF_NAME is the *tag name* (e.g. "v1.1.2"), not a
-      # branch — create-pull-request then tried to rebase onto a tag ref and
-      # failed every release with "cannot update ref 'refs/heads/v1.1.2'".
       - name: Checkout default branch (full history for SHA)
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
           ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
 
@@ -49,8 +42,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install ".[all]"
 
-      - name: Run benchmarks
-        run: python benchmarks/run_benchmarks.py
+      - name: Run reproducible robust benchmarks
+        run: python benchmarks/robust_runner.py
 
       - name: Verify artifacts changed
         id: changed
@@ -61,20 +54,6 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # main is protected (PR + required status checks), so a direct bot
-      # push is rejected with GH006. Instead, open a PR with the regenerated
-      # artifacts; it merges through the normal review flow, keeping branch
-      # protection intact. create-pull-request auto-commits on the remote
-      # branch and only acts when there are uncommitted changes (guarded by
-      # steps.changed above). base is always the default branch (main)
-      # regardless of trigger.
-      #
-      # CONFIG GUARD: if the shared App is not configured yet, stop cleanly
-      # with a green job instead of letting create-github-app-token throw
-      # "Input required and not supplied: app-id" and turn every scheduled
-      # / release run red. The guard pattern mirrors bot-reviewer.yml. Once
-      # secrets BOT_APP_ID + BOT_APP_PRIVATE_KEY are added this branch is
-      # always taken.
       - name: Check App credentials configured
         id: cfg
         env:
@@ -84,37 +63,22 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::BOT_APP_ID not set — Benchmarks cannot open a PR that triggers CI. Stopping cleanly (see header)."
+            echo "::notice::BOT_APP_ID not set — Benchmarks cannot open a PR."
           fi
 
-      # TOKEN CHOICE — why a GitHub App token, not the default GITHUB_TOKEN:
-      # A PR opened with the built-in GITHUB_TOKEN does NOT trigger
-      # downstream `pull_request` workflows (CI, CodeQL). GitHub blocks
-      # those runs to prevent recursive loops. The result was that every
-      # benchmark PR stayed `action_required` (0s, never ran) under branch
-      # protection and could only be unblocked by a manual empty commit
-      # pushed under a real user token — see PR #65. A short-lived GitHub
-      # App installation token is exempt from this restriction, so the CI
-      # and CodeQL checks fire normally and the PR can merge unattended.
-      # See CHANGELOG / docs for the one-time App + secret setup steps.
       - name: Generate GitHub App token (triggers downstream CI)
         id: app-token
         if: steps.cfg.outputs.configured == 'true'
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
 
       - name: Open PR with regenerated artifacts
         if: steps.changed.outputs.changed == 'true' && steps.cfg.outputs.configured == 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
         with:
           token: ${{ steps.app-token.outputs.token }}
-          # base must be a branch, not a tag. On tag pushes the workspace
-          # checkout targets main (see above), so always pass the repo's
-          # default branch explicitly rather than letting
-          # create-pull-request infer it (which previously resolved to the
-          # tag name and crashed).
           base: ${{ github.event.repository.default_branch }}
           commit-message: "ci(benchmarks): regenerate report and results.json"
           branch: ci/benchmark-regen
@@ -125,7 +89,9 @@ jobs:
             - `docs/benchmarks.md`
             - `benchmarks/results.json`
 
-            Generated by the Benchmarks workflow. No code changes.
+            The JSON includes schema version, package/source identity, environment
+            metadata, deterministic seed metadata, warmup policy, and median/MAD/p95
+            timing distributions. No code changes.
           add-paths: |
             docs/benchmarks.md
             benchmarks/results.json

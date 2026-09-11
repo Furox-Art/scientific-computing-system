@@ -130,22 +130,13 @@ class TestChiSquare:
         with pytest.raises(ValueError):
             chi_square_independence([[1.0, 2.0]])
 
-    def test_independence_zero_row_total(self) -> None:
-        # Row with all zeros -> some expected frequencies are 0 ->
-        # the `if exp > 0` branch in chi_square_independence skips them.
-        # Result should still be a valid TestResult.
-        table: list[list[float]] = [[10.0, 20.0], [0.0, 0.0]]
-        r = chi_square_independence(table)
-        assert r.df == 1
-        assert r.statistic >= 0
-        assert 0.0 <= r.p_value <= 1.0
+    def test_independence_zero_row_total_rejected(self) -> None:
+        with pytest.raises(ValueError, match="positive marginal"):
+            chi_square_independence([[10.0, 20.0], [0.0, 0.0]])
 
-    def test_independence_zero_col_total(self) -> None:
-        # Column with all zeros -> some expected frequencies are 0.
-        table: list[list[float]] = [[10.0, 0.0], [20.0, 0.0]]
-        r = chi_square_independence(table)
-        assert r.df == 1
-        assert r.statistic >= 0
+    def test_independence_zero_col_total_rejected(self) -> None:
+        with pytest.raises(ValueError, match="positive marginal"):
+            chi_square_independence([[10.0, 0.0], [20.0, 0.0]])
 
 
 class TestANOVA:

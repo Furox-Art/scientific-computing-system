@@ -12,7 +12,6 @@ from cds.causal import (
 )
 from cds.validation import CheckStatus
 
-
 IDENTIFIED = CausalAssumptions(
     temporal_order=True,
     no_unmeasured_confounding=True,
@@ -73,7 +72,10 @@ def test_linear_backdoor_without_covariates_and_pivoting() -> None:
 
 def test_observational_effect_is_fail_closed_when_assumptions_are_unresolved() -> None:
     assumptions = CausalAssumptions(True, None, False, True)
-    with pytest.raises(ValueError, match="no_unmeasured_confounding, positivity"):
+    with pytest.raises(
+        ValueError,
+        match=r"positivity.*no_unmeasured_confounding|no_unmeasured_confounding.*positivity",
+    ):
         linear_backdoor_effect([1.0, 2.0], [0.0, 1.0], [[], []], assumptions=assumptions)
 
 

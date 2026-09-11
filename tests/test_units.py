@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import cast
 
 import pytest
 
@@ -38,6 +39,15 @@ def test_dimension_algebra_and_dimensionless() -> None:
     assert not length.is_dimensionless
 
 
+def test_dimension_requires_integer_exponents() -> None:
+    with pytest.raises(ValueError, match="exponent must be an integer"):
+        Dimension(mass=True)
+    with pytest.raises(ValueError, match="exponent must be an integer"):
+        Dimension(length=cast(int, 0.5))
+    with pytest.raises(ValueError, match="exponent must be an integer"):
+        _ = METER.dimension ** cast(int, 0.5)
+
+
 def test_unit_validation_and_algebra() -> None:
     centimeter = Unit("cm", 0.01, METER.dimension)
     speed = METER / SECOND
@@ -55,6 +65,8 @@ def test_unit_validation_and_algebra() -> None:
         Unit("bad", 0.0, Dimension())
     with pytest.raises(ValueError, match="scale"):
         Unit("bad", math.inf, Dimension())
+    with pytest.raises(ValueError, match="exponent must be an integer"):
+        _ = METER ** cast(int, 0.5)
 
 
 def test_quantity_conversion_addition_and_subtraction() -> None:
@@ -71,6 +83,13 @@ def test_quantity_conversion_addition_and_subtraction() -> None:
         meter.to(SECOND)
     with pytest.raises(ValueError, match="quantity value"):
         Quantity(math.nan, METER)
+
+
+def test_quantity_si_conversion_rejects_overflow() -> None:
+    enormous_unit = Unit("huge", 1e308, METER.dimension)
+    quantity = Quantity(1e308, enormous_unit)
+    with pytest.raises(ArithmeticError, match="SI value"):
+        _ = quantity.si_value
 
 
 def test_quantity_multiplication_division_power_and_scalars() -> None:
@@ -94,6 +113,9 @@ def test_quantity_multiplication_division_power_and_scalars() -> None:
     area = distance**2
     assert area.value == 100.0
     assert area.unit.dimension == METER.dimension**2
+
+    with pytest.raises(ValueError, match="exponent must be an integer"):
+        _ = distance**True
 
 
 def test_predefined_derived_units_have_correct_dimensions() -> None:

@@ -94,6 +94,27 @@ def _covariance_matrix(
     return matrix
 
 
+def _cholesky(matrix: Sequence[Sequence[float]]) -> tuple[tuple[float, ...], ...]:
+    """Return a PSD Cholesky-like factor or reject an invalid covariance matrix."""
+    size = len(matrix)
+    lower = [[0.0] * size for _ in range(size)]
+    scale = max(1.0, max((abs(value) for row in matrix for value in row), default=0.0))
+    tolerance = 1e-12 * scale
+    for row in range(size):
+        for column in range(row + 1):
+            subtotal = sum(lower[row][k] * lower[column][k] for k in range(column))
+            residual = matrix[row][column] - subtotal
+            if row == column:
+                if residual < -tolerance:
+                    raise ValueError("covariance must be positive semidefinite")
+                lower[row][column] = math.sqrt(max(0.0, residual))
+            elif lower[column][column] > 0:
+                lower[row][column] = residual / lower[column][column]
+            elif not math.isclose(residual, 0.0, abs_tol=tolerance):
+                raise ValueError("covariance must be positive semidefinite")
+    return tuple(tuple(row) for row in lower)
+
+
 def _evaluate(function: Callable[..., float], values: Sequence[float]) -> float:
     result = float(function(*values))
     if not math.isfinite(result):
@@ -139,42 +160,21 @@ def propagate_linear(
     """Propagate covariance through ``function`` using first-order sensitivities.
 
     The Jacobian is estimated with symmetric finite differences. Correlated
-    inputs are supported through a full covariance matrix.
+    inputs are supported through a full positive-semidefinite covariance matrix.
     """
 
     normalized_means = _validate_means(means)
     matrix = _covariance_matrix(len(normalized_means), standard_uncertainties, covariance)
+    _cholesky(matrix)
     value = _evaluate(function, normalized_means)
     sensitivities = _sensitivities(function, normalized_means, relative_step)
-    variance = _quadratic_form(sensitivities, matrix)
-    scale = max(1.0, max((abs(entry) for row in matrix for entry in row), default=0.0))
-    if variance < -1e-12 * scale:
-        raise ValueError("covariance produced a negative propagated variance")
-    variance = max(0.0, variance)
+    variance = max(0.0, _quadratic_form(sensitivities, matrix))
     return PropagationResult(
         value=value,
         standard_uncertainty=math.sqrt(variance),
         variance=variance,
         sensitivities=sensitivities,
     )
-
-
-def _cholesky(matrix: Sequence[Sequence[float]]) -> tuple[tuple[float, ...], ...]:
-    size = len(matrix)
-    lower = [[0.0] * size for _ in range(size)]
-    for row in range(size):
-        for column in range(row + 1):
-            subtotal = sum(lower[row][k] * lower[column][k] for k in range(column))
-            if row == column:
-                diagonal = matrix[row][row] - subtotal
-                if diagonal < -1e-12:
-                    raise ValueError("covariance must be positive semidefinite")
-                lower[row][column] = math.sqrt(max(0.0, diagonal))
-            elif lower[column][column] > 0:
-                lower[row][column] = (matrix[row][column] - subtotal) / lower[column][column]
-            elif not math.isclose(matrix[row][column] - subtotal, 0.0, abs_tol=1e-12):
-                raise ValueError("covariance must be positive semidefinite")
-    return tuple(tuple(row) for row in lower)
 
 
 def _quantile(sorted_values: Sequence[float], probability: float) -> float:

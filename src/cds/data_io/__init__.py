@@ -11,6 +11,10 @@ from cds.data_io.scientific import (
 )
 from cds.data_io.streaming import (
     FileProfile,
+    OnlineMoments,
+    StreamingLinearAccumulator,
+    StreamingLinearFit,
+    fit_linear_csv_streaming,
     iter_csv_batches,
     iter_file_blocks,
     open_hdf5,
@@ -21,7 +25,11 @@ from cds.data_io.streaming import (
 __all__ = [
     "ArrayChunk",
     "FileProfile",
+    "OnlineMoments",
     "ScientificArrayProfile",
+    "StreamingLinearAccumulator",
+    "StreamingLinearFit",
+    "fit_linear_csv_streaming",
     "iter_array_chunks",
     "iter_csv_batches",
     "iter_file_blocks",

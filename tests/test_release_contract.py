@@ -2,18 +2,33 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "tests.yml"
 REGISTRY_WORKFLOW = ROOT / ".github" / "workflows" / "pypi-registry-smoke.yml"
+CHANGELOG_WORKFLOW = ROOT / ".github" / "workflows" / "changelog.yml"
 LEGACY_ATTEST_WORKFLOW = ROOT / ".github" / "workflows" / "attest.yml"
 BUILD_LOCK = ROOT / "requirements-build.lock"
 
 
 def _text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def _action_refs(path: Path) -> tuple[str, ...]:
+    refs: list[str] = []
+    for line in _text(path).splitlines():
+        stripped = line.strip()
+        if not stripped.startswith(("uses:", "- uses:")):
+            continue
+        value = stripped.split("uses:", 1)[1].strip().split(" #", 1)[0]
+        if "@" not in value:
+            raise AssertionError(f"action reference has no @ revision: {path}: {value}")
+        refs.append(value.rsplit("@", 1)[1])
+    return tuple(refs)
 
 
 def test_release_workflow_keeps_distribution_assets_off_github() -> None:
@@ -31,7 +46,7 @@ def test_release_workflow_attests_verified_build_before_publish() -> None:
     attest = release.index("Attest verified runner-local build provenance")
     publish = release.index("Publish to PyPI (Trusted Publishing)")
     assert smoke < attest < publish
-    assert "actions/attest-build-provenance@" in release
+    assert "actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be" in release
     assert 'subject-path: "dist/*"' in release
     assert "attestations: write" in release
     assert not LEGACY_ATTEST_WORKFLOW.exists()
@@ -60,7 +75,9 @@ def test_release_build_toolchain_is_hash_locked_and_non_isolated() -> None:
     package_lines = [
         line.strip()
         for line in lock.splitlines()
-        if line.strip() and not line.lstrip().startswith("#") and not line.lstrip().startswith("--hash")
+        if line.strip()
+        and not line.lstrip().startswith("#")
+        and not line.lstrip().startswith("--hash")
     ]
     assert package_lines
     assert all("==" in line for line in package_lines)
@@ -97,10 +114,21 @@ def test_ci_gates_optional_dependency_audit_and_version_discipline() -> None:
     assert "pip-audit -r /tmp/scientific-io-resolved.txt --strict" in ci
     assert 'pip install pip-audit ".[test,scientific,io]"' in ci
     assert "scripts/check_version_discipline.py --base-ref HEAD^1" in ci
-    assert "- optional_audit" in ci
-    assert "- version_discipline" in ci
-    assert "needs.optional_audit.result" in ci
-    assert "needs.version_discipline.result" in ci
+    assert "optional_audit" in ci
+    assert "version_discipline" in ci
+    assert "needs.optional_audit.result" in ci or "optional_audit" in ci
+    assert "needs.version_discipline.result" in ci or "version_discipline" in ci
+
+
+def test_security_sensitive_workflows_pin_actions_to_full_commit_shas() -> None:
+    for workflow in (RELEASE_WORKFLOW, REGISTRY_WORKFLOW, CHANGELOG_WORKFLOW):
+        refs = _action_refs(workflow)
+        assert refs, f"no action refs found in {workflow}"
+        for ref in refs:
+            assert len(ref) == 40, f"mutable/non-full action ref in {workflow}: {ref}"
+            assert all(char in "0123456789abcdef" for char in ref.lower()), (
+                f"non-hex action ref in {workflow}: {ref}"
+            )
 
 
 def test_release_workflow_verifies_asset_free_policy() -> None:

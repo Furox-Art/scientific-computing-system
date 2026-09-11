@@ -76,7 +76,8 @@ def _finite_vector(values: Sequence[float], *, name: str) -> tuple[float, ...]:
 def _invert(matrix: Sequence[Sequence[float]], *, tolerance: float = 1e-12) -> list[list[float]]:
     size = len(matrix)
     augmented = [
-        [float(value) for value in row] + [1.0 if row_index == column else 0.0 for column in range(size)]
+        [float(value) for value in row]
+        + [1.0 if row_index == column else 0.0 for column in range(size)]
         for row_index, row in enumerate(matrix)
     ]
     for column in range(size):
@@ -100,7 +101,9 @@ def _invert(matrix: Sequence[Sequence[float]], *, tolerance: float = 1e-12) -> l
     return [row[size:] for row in augmented]
 
 
-def _ols_coefficients(design: Sequence[Sequence[float]], outcome: Sequence[float]) -> tuple[float, ...]:
+def _ols_coefficients(
+    design: Sequence[Sequence[float]], outcome: Sequence[float]
+) -> tuple[float, ...]:
     if not design:
         raise ValueError("causal estimator requires at least one observation")
     columns = len(design[0])
@@ -117,7 +120,10 @@ def _ols_coefficients(design: Sequence[Sequence[float]], outcome: Sequence[float
             for right in range(columns):
                 gram[left][right] += row[left] * row[right]
     inverse = _invert(gram)
-    return tuple(sum(inverse[row][column] * rhs[column] for column in range(columns)) for row in range(columns))
+    return tuple(
+        sum(inverse[row][column] * rhs[column] for column in range(columns))
+        for row in range(columns)
+    )
 
 
 def linear_backdoor_effect(
@@ -139,7 +145,9 @@ def linear_backdoor_effect(
         failures = [check.name for check in report.failures]
         warnings = [check.name for check in report.warnings]
         unresolved = failures + warnings
-        raise ValueError("causal effect is not identified; unresolved assumptions: " + ", ".join(unresolved))
+        raise ValueError(
+            "causal effect is not identified; unresolved assumptions: " + ", ".join(unresolved)
+        )
 
     y = _finite_vector(outcome, name="outcome")
     treatment_values = _finite_vector(treatment, name="treatment")

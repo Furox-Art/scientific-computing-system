@@ -295,7 +295,7 @@ jobs:
 
       - name: Publish to PyPI (Trusted Publishing)
         if: steps.pypi_state.outputs.already_published != 'true'
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1 snapshot
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
 
       - name: Create or verify release tag after successful PyPI state
         env:

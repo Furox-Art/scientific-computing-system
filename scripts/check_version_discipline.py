@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,7 +51,9 @@ def _python_version(text: str) -> str:
 def _citation_versions(text: str) -> tuple[str, str]:
     matches = re.findall(r"^\s*version:\s*[\"']?([^\s\"']+)[\"']?\s*$", text, re.MULTILINE)
     if len(matches) != 2:
-        raise ValueError("CITATION.cff must contain top-level and preferred-citation version fields")
+        raise ValueError(
+            "CITATION.cff must contain top-level and preferred-citation version fields"
+        )
     return matches[0], matches[1]
 
 
@@ -89,7 +92,9 @@ def check_version_discipline(base_ref: str) -> None:
     """Require a monotonic synchronized bump for package-affecting changes."""
     current = assert_metadata_sync()
     changed = _changed_paths(base_ref)
-    package_changed = any(path.startswith("src/cds/") or path == "pyproject.toml" for path in changed)
+    package_changed = any(
+        path.startswith("src/cds/") or path == "pyproject.toml" for path in changed
+    )
     if not package_changed:
         print(f"Version metadata synchronized at {current}; no package-affecting change detected.")
         return

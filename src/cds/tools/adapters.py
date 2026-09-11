@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import math
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
@@ -56,6 +57,74 @@ class _Solver(Protocol):
     def add(self, *constraints: object) -> object: ...
 
     def check(self) -> object: ...
+
+
+_SAFE_SYMPY_FUNCTIONS = frozenset(
+    {
+        "Abs",
+        "acos",
+        "asin",
+        "atan",
+        "cos",
+        "cosh",
+        "exp",
+        "log",
+        "sin",
+        "sinh",
+        "sqrt",
+        "tan",
+        "tanh",
+    }
+)
+_SAFE_BINARY_OPERATORS = (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow)
+_SAFE_UNARY_OPERATORS = (ast.UAdd, ast.USub)
+
+
+def _validate_sympy_expression(expression: str) -> None:
+    """Reject Python-evaluation features before handing text to SymPy."""
+    if len(expression) > 4096:
+        raise ValueError("identity expression is too long")
+    try:
+        tree = ast.parse(expression, mode="eval")
+    except SyntaxError as exc:
+        raise ValueError("identity expression is not valid arithmetic syntax") from exc
+
+    nodes = list(ast.walk(tree))
+    if len(nodes) > 256:
+        raise ValueError("identity expression is too complex")
+
+    for node in nodes:
+        if isinstance(node, (ast.Expression, ast.Load)):
+            continue
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, bool) or not isinstance(node.value, (int, float, complex)):
+                raise ValueError("identity expressions may contain only numeric constants")
+            continue
+        if isinstance(node, ast.Name):
+            if node.id.startswith("_"):
+                raise ValueError("private names are not allowed in identity expressions")
+            continue
+        if isinstance(node, ast.BinOp):
+            if not isinstance(node.op, _SAFE_BINARY_OPERATORS):
+                raise ValueError("unsupported operator in identity expression")
+            continue
+        if isinstance(node, _SAFE_BINARY_OPERATORS):
+            continue
+        if isinstance(node, ast.UnaryOp):
+            if not isinstance(node.op, _SAFE_UNARY_OPERATORS):
+                raise ValueError("unsupported unary operator in identity expression")
+            continue
+        if isinstance(node, _SAFE_UNARY_OPERATORS):
+            continue
+        if isinstance(node, ast.Call):
+            if (
+                not isinstance(node.func, ast.Name)
+                or node.func.id not in _SAFE_SYMPY_FUNCTIONS
+                or node.keywords
+            ):
+                raise ValueError("only approved mathematical function calls are allowed")
+            continue
+        raise ValueError(f"unsupported syntax in identity expression: {type(node).__name__}")
 
 
 def _registry(registry: ToolRegistry | None) -> ToolRegistry:
@@ -113,9 +182,16 @@ def sympy_verify_identity(
     *,
     registry: ToolRegistry | None = None,
 ) -> bool:
-    """Return whether SymPy can simplify ``left - right`` exactly to zero."""
+    """Return whether SymPy can simplify ``left - right`` exactly to zero.
+
+    String expressions are restricted to arithmetic syntax and a small
+    allowlist of mathematical functions before they reach SymPy. This keeps
+    agent/user-provided expressions from exposing Python evaluation features.
+    """
     if not left.strip() or not right.strip():
         raise ValueError("identity expressions must not be empty")
+    _validate_sympy_expression(left)
+    _validate_sympy_expression(right)
     sympy = cast(_SympyModule, _registry(registry).load("sympy"))
     left_expr = sympy.sympify(left)
     right_expr = sympy.sympify(right)

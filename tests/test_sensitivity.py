@@ -7,7 +7,7 @@ from collections.abc import Sequence
 
 import pytest
 
-from cds.sensitivity import global_sensitivity, local_identifiability, local_sensitivity
+from cds.sensitivity import local_identifiability, local_sensitivity, variance_global_sensitivity
 
 
 def test_local_sensitivity_derivatives_normalization_and_ranking() -> None:
@@ -39,10 +39,14 @@ def test_zero_output_and_empty_parameter_report() -> None:
 
 
 def test_local_sensitivity_validation() -> None:
-    with pytest.raises(ValueError, match="must be positive"):
+    with pytest.raises(ValueError, match="positive and finite"):
         local_sensitivity(lambda _values: 1.0, [1.0], relative_step=0.0)
-    with pytest.raises(ValueError, match="must be positive"):
+    with pytest.raises(ValueError, match="positive and finite"):
         local_sensitivity(lambda _values: 1.0, [1.0], absolute_step=-1.0)
+    with pytest.raises(ValueError, match="positive and finite"):
+        local_sensitivity(lambda _values: 1.0, [1.0], relative_step=math.inf)
+    with pytest.raises(ValueError, match="positive and finite"):
+        local_sensitivity(lambda _values: 1.0, [1.0], absolute_step=math.nan)
     with pytest.raises(ValueError, match="finite values"):
         local_sensitivity(lambda _values: 1.0, [math.inf])
     with pytest.raises(ValueError, match="baseline output"):
@@ -55,12 +59,12 @@ def test_local_sensitivity_validation() -> None:
         local_sensitivity(unstable, [1.0])
 
 
-def test_global_sensitivity_ranks_dominant_parameter_and_is_reproducible() -> None:
+def test_variance_global_sensitivity_ranks_dominant_parameter_and_is_reproducible() -> None:
     def model(parameters: Sequence[float]) -> float:
         return 4.0 * parameters[0] + 0.25 * parameters[1]
 
-    first = global_sensitivity(model, [(-1.0, 1.0), (-1.0, 1.0)], samples=2048, seed=7)
-    second = global_sensitivity(model, [(-1.0, 1.0), (-1.0, 1.0)], samples=2048, seed=7)
+    first = variance_global_sensitivity(model, [(-1.0, 1.0), (-1.0, 1.0)], samples=2048, seed=7)
+    second = variance_global_sensitivity(model, [(-1.0, 1.0), (-1.0, 1.0)], samples=2048, seed=7)
 
     assert first == second
     assert first.samples == 2048
@@ -72,34 +76,36 @@ def test_global_sensitivity_ranks_dominant_parameter_and_is_reproducible() -> No
     assert first.parameters[0].first_order > first.parameters[1].first_order
 
 
-def test_global_sensitivity_detects_interaction_as_total_order_effect() -> None:
+def test_variance_global_sensitivity_detects_interaction_as_total_order_effect() -> None:
     def interaction(parameters: Sequence[float]) -> float:
         return parameters[0] * parameters[1]
 
-    report = global_sensitivity(interaction, [(0.0, 1.0), (0.0, 1.0)], samples=4096, seed=11)
+    report = variance_global_sensitivity(
+        interaction, [(0.0, 1.0), (0.0, 1.0)], samples=4096, seed=11
+    )
     assert all(parameter.total_order > 0.4 for parameter in report.parameters)
     assert all(parameter.first_order < parameter.total_order for parameter in report.parameters)
 
 
-def test_global_sensitivity_validation_and_nonfinite_output() -> None:
+def test_variance_global_sensitivity_validation_and_nonfinite_output() -> None:
     with pytest.raises(ValueError, match="samples must be at least 2"):
-        global_sensitivity(lambda values: values[0], [(0.0, 1.0)], samples=1)
+        variance_global_sensitivity(lambda values: values[0], [(0.0, 1.0)], samples=1)
     with pytest.raises(ValueError, match="variance_tolerance"):
-        global_sensitivity(
+        variance_global_sensitivity(
             lambda values: values[0],
             [(0.0, 1.0)],
             variance_tolerance=0.0,
         )
     with pytest.raises(ValueError, match="at least one parameter"):
-        global_sensitivity(lambda _values: 1.0, [])
+        variance_global_sensitivity(lambda _values: 1.0, [])
     with pytest.raises(ValueError, match="finite values"):
-        global_sensitivity(lambda values: values[0], [(0.0, math.inf)])
+        variance_global_sensitivity(lambda values: values[0], [(0.0, math.inf)])
     with pytest.raises(ValueError, match="smaller"):
-        global_sensitivity(lambda values: values[0], [(1.0, 1.0)])
+        variance_global_sensitivity(lambda values: values[0], [(1.0, 1.0)])
     with pytest.raises(ValueError, match="too small"):
-        global_sensitivity(lambda _values: 3.0, [(0.0, 1.0)], samples=8)
+        variance_global_sensitivity(lambda _values: 3.0, [(0.0, 1.0)], samples=8)
     with pytest.raises(ValueError, match="outputs must be finite"):
-        global_sensitivity(lambda _values: math.nan, [(0.0, 1.0)], samples=8)
+        variance_global_sensitivity(lambda _values: math.nan, [(0.0, 1.0)], samples=8)
 
 
 def test_local_identifiability_full_rank_and_singular_models() -> None:

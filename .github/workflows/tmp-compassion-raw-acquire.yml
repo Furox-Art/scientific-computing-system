@@ -1,0 +1,63 @@
+name: tmp compassion raw acquisition
+
+on:
+  push:
+    paths:
+      - '.github/workflows/tmp-compassion-raw-acquire.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --disable-pip-version-check requests beautifulsoup4
+      - name: Fetch FSD3588 open distribution
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib, html, json, re, zipfile
+          from pathlib import Path
+          from urllib.parse import urljoin
+          import requests
+          from bs4 import BeautifulSoup
+
+          out=Path('raw'); out.mkdir(exist_ok=True)
+          s=requests.Session(); s.headers.update({'User-Agent':'Mozilla/5.0 reproducibility-data-acquisition/1.0'})
+          start='https://services.fsd.tuni.fi/catalogue/FSD3588?lang=en&study_language=en&tab=download'
+          r=s.get(start,timeout=60); r.raise_for_status()
+          receipt=s.get('https://services.fsd.tuni.fi/catalogue/download?lang=en&study_language=en',timeout=60,allow_redirects=True)
+          receipt.raise_for_status()
+          soup=BeautifulSoup(receipt.text,'html.parser')
+          meta=soup.find('meta',attrs={'http-equiv':re.compile(r'^refresh$',re.I)})
+          if not meta: raise RuntimeError('Receipt meta refresh not found')
+          content=html.unescape(meta.get('content',''))
+          m=re.search(r'url\s*=\s*(.+)$',content,re.I)
+          if not m: raise RuntimeError('Receipt refresh URL missing')
+          dip=urljoin(receipt.url,m.group(1).strip(' \"\''))
+          rr=s.get(dip,timeout=120,allow_redirects=True); rr.raise_for_status()
+          if rr.content[:4] != b'PK\x03\x04':
+              raise RuntimeError(f'FSD download was not ZIP: status={rr.status_code} ct={rr.headers.get("content-type")} sig={rr.content[:8].hex()} bytes={len(rr.content)}')
+          p=out/'FSD3588_distribution.zip'; p.write_bytes(rr.content)
+          with zipfile.ZipFile(p) as z:
+              members=z.namelist()
+          required=['daF3588_fin.csv','daF3588_fin.por','FSD3588_eng.xml','FSD3588_fin.xml']
+          missing=[x for x in required if not any(n.endswith(x) for n in members)]
+          if missing: raise RuntimeError(f'FSD ZIP missing expected files: {missing}')
+          h=hashlib.sha256(p.read_bytes()).hexdigest()
+          status={'ok':True,'filename':p.name,'bytes':p.stat().st_size,'sha256':h,'source':start,'download_endpoint':'/catalogue/dip (fresh receipt)','license':'CC BY 4.0','members':members}
+          (out/'FSD3588_acquisition_status.json').write_text(json.dumps(status,indent=2,ensure_ascii=False),encoding='utf-8')
+          print(json.dumps(status,indent=2,ensure_ascii=False))
+          PY
+      - name: Upload FSD3588 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FSD3588-open-distribution
+          path: raw/
+          retention-days: 1
+          if-no-files-found: error

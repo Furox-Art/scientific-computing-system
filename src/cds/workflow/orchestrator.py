@@ -228,6 +228,7 @@ class ResearchOrchestrator:
             steps=blueprint.steps,
             recommendation=selection.to_recommendation(),
         )
+        run_manifest.record_plan_hash(plan)
         workflow = ResearchWorkflow(plan)
         execution_context = context if context is not None else ExecutionContext()
 
@@ -245,7 +246,7 @@ class ResearchOrchestrator:
                     manifest=run_manifest,
                     preferred=tool_action.preferred,
                 )
-        except (KeyError, ModuleNotFoundError, ValueError) as exc:
+        except (KeyError, ModuleNotFoundError, PermissionError, ValueError) as exc:
             gate = GateDecision(
                 status=GateStatus.BLOCKED,
                 reasons=(f"tool registration failed: {type(exc).__name__}: {exc}",),

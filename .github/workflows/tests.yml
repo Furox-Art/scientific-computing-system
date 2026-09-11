@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths-ignore:
       - '.github/CODEOWNERS'
       - '.github/FUNDING.yml'
@@ -14,7 +14,7 @@ on:
       - 'LICENSE'
       - 'SECURITY.md'
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -32,233 +32,233 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13"]
-
     steps:
-    - uses: actions/checkout@v5
-
-    - name: Set up Python
-      uses: actions/setup-python@v7
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install ".[test,dev,docs,pandas,plot]"
-
-    - name: Lint with Ruff
-      run: ruff check .
-
-    - name: Format check with Ruff
-      run: ruff format --check .
-
-    - name: Type check with Mypy (src)
-      run: mypy src/
-
-    - name: Type check with Mypy (tests)
-      run: mypy tests/
-
-    - name: Run tests with pytest
-      shell: bash
-      run: |
-        set -e
-        if [ "$RUNNER_OS" = "Linux" ] && [ "${{ matrix.python-version }}" = "3.12" ]; then
-          pytest tests/ --cov=cds --cov-branch --cov-report=xml --cov-report=term
-        else
-          pytest tests/ --cov=cds --cov-branch --cov-report=term --no-cov-on-fail
-        fi
-
-    - name: Upload coverage to Codecov
-      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-      uses: codecov/codecov-action@v5
-      with:
-        files: ./coverage.xml
-        fail_ci_if_error: false
-        token: ${{ secrets.CODECOV_TOKEN }}
-
-    - name: Build documentation
-      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-      run: mkdocs build --strict
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[test,dev,docs,pandas,plot]"
+      - name: Lint with Ruff
+        run: ruff check .
+      - name: Format check with Ruff
+        run: ruff format --check .
+      - name: Type check with Mypy (src)
+        run: mypy src/
+      - name: Type check with Mypy (tests)
+        run: mypy tests/
+      - name: Run tests with pytest
+        shell: bash
+        run: |
+          set -e
+          if [ "$RUNNER_OS" = "Linux" ] && [ "${{ matrix.python-version }}" = "3.12" ]; then
+            pytest tests/ --cov=cds --cov-branch --cov-report=xml --cov-report=term
+          else
+            pytest tests/ --cov=cds --cov-branch --cov-report=term --no-cov-on-fail
+          fi
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Build documentation
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: mkdocs build --strict
 
   audit:
-    name: pip-audit committed locks on Linux with Python 3.12
+    name: lock-file audit on Linux with Python 3.12
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Install pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+      - name: Audit runtime lock
+        run: pip-audit -r requirements.lock --strict
+      - name: Audit dev/docs/test lock
+        run: pip-audit -r requirements-dev.lock --strict
 
-    - name: Set up Python
-      uses: actions/setup-python@v7
-      with:
-        python-version: "3.12"
-
-    - name: Install pip-audit
-      run: |
-        python -m pip install --upgrade pip
-        pip install pip-audit
-
-    - name: Audit runtime lock
-      run: pip-audit -r requirements.lock --strict
-
-    - name: Audit dev/docs/test lock
-      run: pip-audit -r requirements-dev.lock --strict
-
-    - name: Audit hash-locked release build toolchain
-      run: pip-audit -r requirements-build.lock --strict
-
-  optional_audit:
-    name: scientific/io extras audit and real backend smoke
+  resolved-audit:
+    name: resolved CI environment audit on Linux with Python 3.12
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
-
-    - name: Set up Python
-      uses: actions/setup-python@v7
-      with:
-        python-version: "3.12"
-
-    - name: Install scientific and I/O extras with audit tooling
-      run: |
-        python -m pip install --upgrade pip
-        pip install pip-audit ".[test,scientific,io]"
-        pip check
-
-    - name: Audit resolved scientific and I/O environment
-      run: |
-        python -m pip freeze --exclude scientific-computing-system > /tmp/scientific-io-resolved.txt
-        pip-audit -r /tmp/scientific-io-resolved.txt --strict
-
-    - name: Exercise real HDF5 and NetCDF pipelines
-      run: pytest tests/test_data_io_optional_backends.py -v
-
-  version_discipline:
-    name: synchronized monotonic package version
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v5
-      with:
-        fetch-depth: 2
-
-    - name: Set up Python
-      uses: actions/setup-python@v7
-      with:
-        python-version: "3.12"
-
-    - name: Reject source/version/citation drift
-      run: python scripts/check_version_discipline.py --base-ref HEAD^1
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Install the exact reference-CI dependency set
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[test,dev,docs,pandas,plot]" pip-audit
+      - name: Audit the actually installed environment
+        run: pip-audit --local --strict
+      - name: Record resolved environment for diagnostics
+        run: python -m pip freeze --all | sort > resolved-ci-environment.txt
 
   property-tests:
     name: property tests on Linux with Python 3.12
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
-
-    - name: Set up Python
-      uses: actions/setup-python@v7
-      with:
-        python-version: "3.12"
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install ".[property,test,dev]"
-
-    - name: Type check with Mypy (property suite)
-      run: mypy --strict tests/test_property_invariants.py tests/test_special_invariants.py
-
-    - name: Run property-based tests
-      run: pytest tests/test_property_invariants.py tests/test_special_invariants.py -v
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[property,test,dev]"
+      - name: Type check with Mypy (property suite)
+        run: mypy --strict tests/test_property_invariants.py tests/test_special_invariants.py
+      - name: Run property-based tests
+        run: pytest tests/test_property_invariants.py tests/test_special_invariants.py -v
 
   ml-reference:
     name: ML reference parity on Linux with Python 3.12
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
-
-    - name: Set up Python
-      uses: actions/setup-python@v7
-      with:
-        python-version: "3.12"
-
-    - name: Install package (zero runtime dependencies)
-      run: |
-        python -m pip install --upgrade pip
-        pip install .
-
-    - name: Verify estimators against frozen scikit-learn reference values
-      run: python scripts/verify_ml_reference.py
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Install package (zero runtime dependencies)
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+      - name: Verify estimators against frozen scikit-learn reference values
+        run: python scripts/verify_ml_reference.py
 
   pre-commit:
     name: pre-commit on Linux with Python 3.12
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
-    - uses: actions/setup-python@v7
-      with:
-        python-version: "3.12"
-    - uses: pre-commit/action@v3.0.1
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
 
   minimal-deps:
     name: minimal-deps coverage on Linux with Python 3.12
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Install base extras only
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[test,dev]"
+      - name: Run tests and enforce core coverage at 100%
+        shell: bash
+        run: |
+          set -e
+          coverage run \
+            --branch \
+            --omit="*/cds/data_analysis/pandas_io.py,*/cds/plot/*" \
+            -m pytest tests/
+          coverage report --fail-under=100 --show-missing
 
-    - name: Set up Python
-      uses: actions/setup-python@v7
-      with:
-        python-version: "3.12"
+  optional_audit:
+    name: scientific/io extras audit and real backend smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Install scientific and I/O extras with audit tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit ".[test,scientific,io]"
+          pip check
+      - name: Audit resolved scientific and I/O environment
+        run: |
+          python -m pip freeze --exclude scientific-computing-system > /tmp/scientific-io-resolved.txt
+          pip-audit -r /tmp/scientific-io-resolved.txt --strict
+      - name: Exercise real HDF5 and NetCDF pipelines
+        run: pytest tests/test_data_io_optional_backends.py -v
 
-    - name: Install base extras only (no optional runtime deps)
-      run: |
-        python -m pip install --upgrade pip
-        pip install ".[test,dev]"
-
-    - name: Run tests and enforce core coverage at 100%
-      shell: bash
-      run: |
-        set -e
-        coverage run \
-          --branch \
-          --omit="*/cds/data_analysis/pandas_io.py,*/cds/plot/*" \
-          -m pytest tests/
-        coverage report --fail-under=100 --show-missing
+  version_discipline:
+    name: synchronized monotonic package version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Reject source/version/citation drift
+        run: python scripts/check_version_discipline.py --base-ref HEAD^1
 
   CI:
     name: CI
     if: always()
-    needs:
-      - test
-      - audit
-      - optional_audit
-      - version_discipline
-      - property-tests
-      - pre-commit
-      - minimal-deps
-      - ml-reference
+    needs: [test, audit, resolved-audit, optional_audit, version_discipline, property-tests, pre-commit, minimal-deps, ml-reference]
     runs-on: ubuntu-latest
     steps:
       - name: Report overall result
+        shell: bash
         run: |
-          echo "Aggregated results:"
-          echo "  test.result               = ${{ needs.test.result }}"
-          echo "  audit.result              = ${{ needs.audit.result }}"
-          echo "  optional_audit.result     = ${{ needs.optional_audit.result }}"
-          echo "  version_discipline.result = ${{ needs.version_discipline.result }}"
-          echo "  property-tests.result     = ${{ needs.property-tests.result }}"
-          echo "  pre-commit.result         = ${{ needs.pre-commit.result }}"
-          echo "  minimal-deps.result       = ${{ needs.minimal-deps.result }}"
-          echo "  ml-reference.result       = ${{ needs.ml-reference.result }}"
-          if [ "${{ needs.test.result }}" != "success" ] \
-             || [ "${{ needs.audit.result }}" != "success" ] \
-             || [ "${{ needs.optional_audit.result }}" != "success" ] \
-             || [ "${{ needs.version_discipline.result }}" != "success" ] \
-             || [ "${{ needs.property-tests.result }}" != "success" ] \
-             || [ "${{ needs.pre-commit.result }}" != "success" ] \
-             || [ "${{ needs.minimal-deps.result }}" != "success" ] \
-             || [ "${{ needs.ml-reference.result }}" != "success" ]; then
-            echo "::error::One or more required jobs did not succeed."
-            exit 1
-          fi
+          set -euo pipefail
+          echo "test=${{ needs.test.result }}"
+          echo "lock-audit=${{ needs.audit.result }}"
+          echo "resolved-audit=${{ needs.resolved-audit.result }}"
+          echo "optional_audit=${{ needs.optional_audit.result }}"
+          echo "version_discipline=${{ needs.version_discipline.result }}"
+          echo "property-tests=${{ needs.property-tests.result }}"
+          echo "pre-commit=${{ needs.pre-commit.result }}"
+          echo "minimal-deps=${{ needs.minimal-deps.result }}"
+          echo "ml-reference=${{ needs.ml-reference.result }}"
+          for result in \
+            "${{ needs.test.result }}" \
+            "${{ needs.audit.result }}" \
+            "${{ needs.resolved-audit.result }}" \
+            "${{ needs.optional_audit.result }}" \
+            "${{ needs.version_discipline.result }}" \
+            "${{ needs.property-tests.result }}" \
+            "${{ needs.pre-commit.result }}" \
+            "${{ needs.minimal-deps.result }}" \
+            "${{ needs.ml-reference.result }}"; do
+            if [ "$result" != "success" ]; then
+              echo "::error::One or more required jobs did not succeed."
+              exit 1
+            fi
+          done
           echo "All required jobs succeeded."
 
   deploy-docs:
@@ -272,20 +272,18 @@ jobs:
       group: deploy-docs
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
-
+          persist-credentials: false
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
-
       - name: Install docs dependencies
         run: |
           python -m pip install --upgrade pip
           pip install ".[docs]"
-
       - name: Deploy to gh-pages
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

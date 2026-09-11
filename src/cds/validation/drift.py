@@ -153,9 +153,7 @@ def screen_ood(
 
     means = tuple(sum(row[index] for row in baseline) / len(baseline) for index in range(width))
     deviations = tuple(
-        math.sqrt(
-            sum((row[index] - means[index]) ** 2 for row in baseline) / len(baseline)
-        )
+        math.sqrt(sum((row[index] - means[index]) ** 2 for row in baseline) / len(baseline))
         for index in range(width)
     )
 
@@ -178,7 +176,9 @@ def drift_validation_check(report: DriftReport, *, fail_on_drift: bool = False) 
     """Translate a drift report into the common validation gate format."""
     drifted = [feature.index for feature in report.features if feature.drifted]
     if not drifted:
-        return ValidationCheck("distribution_drift", CheckStatus.PASS, "no feature exceeded drift threshold")
+        return ValidationCheck(
+            "distribution_drift", CheckStatus.PASS, "no feature exceeded drift threshold"
+        )
     status = CheckStatus.FAIL if fail_on_drift else CheckStatus.WARNING
     return ValidationCheck(
         "distribution_drift",
@@ -189,9 +189,13 @@ def drift_validation_check(report: DriftReport, *, fail_on_drift: bool = False) 
 
 def ood_validation_check(report: OODReport, *, fail_on_ood: bool = False) -> ValidationCheck:
     """Translate an OOD report into the common validation gate format."""
-    flagged = [observation.index for observation in report.observations if observation.out_of_distribution]
+    flagged = [
+        observation.index for observation in report.observations if observation.out_of_distribution
+    ]
     if not flagged:
-        return ValidationCheck("out_of_distribution", CheckStatus.PASS, "no observation exceeded OOD threshold")
+        return ValidationCheck(
+            "out_of_distribution", CheckStatus.PASS, "no observation exceeded OOD threshold"
+        )
     status = CheckStatus.FAIL if fail_on_ood else CheckStatus.WARNING
     return ValidationCheck(
         "out_of_distribution",

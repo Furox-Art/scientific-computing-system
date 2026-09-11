@@ -33,6 +33,11 @@ class ResearchWorkflow:
     Callers construct a plan, expose it to the user, and register deterministic
     step implementations. Approval is checked once for the overall plan and
     again for individual steps marked as materially consequential.
+
+    Approval denial is fail-closed: no later workflow step is allowed to run
+    after either the overall plan or a consequential step is denied. This
+    prevents downstream side effects from occurring after the user has refused
+    a prerequisite operation.
     """
 
     def __init__(self, plan: AnalysisPlan) -> None:
@@ -58,16 +63,20 @@ class ResearchWorkflow:
 
         If the request requires plan approval, ``approve(None)`` must return
         ``True`` before any work starts. A step with ``requires_approval=True``
-        similarly calls ``approve(step)`` immediately before execution.
+        similarly calls ``approve(step)`` immediately before execution. A
+        denied approval terminates execution instead of merely skipping the
+        denied step and continuing into potentially dependent side effects.
         """
         ctx = context if context is not None else ExecutionContext()
         trace = ExecutionTrace()
 
         if self.plan.request.require_plan_approval:
             if approve is None or not approve(None):
-                trace.record("plan", StepStatus.SKIPPED, "analysis plan was not approved")
+                trace.record("plan", StepStatus.DENIED, "analysis plan was not approved")
                 return ScientificResult(
                     summary="Analysis was not executed because the plan was not approved.",
+                    details=dict(ctx.values),
+                    warnings=["analysis plan approval was denied"],
                     trace=trace,
                 )
             trace.record("plan", StepStatus.COMPLETED, "analysis plan approved")
@@ -79,8 +88,13 @@ class ResearchWorkflow:
                 continue
 
             if step.requires_approval and (approve is None or not approve(step)):
-                trace.record(step.id, StepStatus.SKIPPED, "step approval was not granted")
-                continue
+                trace.record(step.id, StepStatus.DENIED, "step approval was not granted")
+                return ScientificResult(
+                    summary=f"Analysis stopped because approval for step {step.id!r} was denied.",
+                    details=dict(ctx.values),
+                    warnings=[f"approval denied for workflow step {step.id!r}"],
+                    trace=trace,
+                )
 
             trace.record(step.id, StepStatus.RUNNING, step.description)
             try:

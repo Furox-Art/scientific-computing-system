@@ -21,18 +21,31 @@ class StepStatus(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     SKIPPED = "skipped"
+    DENIED = "denied"
     FAILED = "failed"
 
 
 @dataclass(frozen=True)
 class AnalysisRequest:
-    """A scientific question plus execution-policy constraints."""
+    """A scientific question plus execution-policy constraints.
+
+    ``sensitive_data`` is an absolute no-egress constraint. ``prefer_local``
+    gives local tools priority; when only a remote backend can satisfy a tool
+    requirement, ``allow_remote_fallback`` must also be explicitly enabled.
+    """
 
     question: str
     language: LanguageMode = LanguageMode.BOTH
     require_plan_approval: bool = True
     prefer_local: bool = True
     sensitive_data: bool = False
+    allow_remote_fallback: bool = False
+
+    def __post_init__(self) -> None:
+        if not self.question.strip():
+            raise ValueError("analysis question must not be empty")
+        if self.sensitive_data and self.allow_remote_fallback:
+            raise ValueError("sensitive_data cannot allow remote fallback")
 
 
 @dataclass(frozen=True)

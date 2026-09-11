@@ -10,15 +10,10 @@ on:
         required: true
         type: string
 
-# One run per PR. `synchronize` fires on every push to a PR branch, so without
-# this a burst of commits queues a labeler run per push.
 concurrency:
   group: pr-automation-${{ github.event.pull_request.number || inputs.pr_number }}
   cancel-in-progress: true
 
-# Deny by default; each job re-grants only what it needs. `review-checklist`
-# previously declared nothing and therefore inherited the repository default,
-# which was read-write at the time this was written.
 permissions: {}
 
 jobs:
@@ -29,51 +24,41 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/labeler@v7
+      - uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
 
   review-checklist:
     runs-on: ubuntu-latest
-    # Posts a comment on the PR via the issues API, which for a pull request
-    # is gated by `pull-requests: write`.
     permissions:
       contents: read
       pull-requests: write
-    # Runs on label 'needs-review' or manual dispatch
     if: |
       (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'needs-review')) ||
       github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/github-script@v8
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const { owner, repo } = context.repo;
             let prNumber = context.issue ? context.issue.number : null;
-
             if (context.eventName === 'workflow_dispatch') {
               prNumber = parseInt('${{ inputs.pr_number }}');
             }
-
             if (!prNumber) {
               console.log('No PR number provided');
               return;
             }
-
-            // Avoid duplicate comments
             const { data: comments } = await github.rest.issues.listComments({
               owner, repo, issue_number: prNumber
             });
-
             const hasChecklist = comments.some(c =>
               c.body.includes('PR Review Checklist') && c.user.type === 'Bot'
             );
-
             if (hasChecklist) {
               console.log('Review checklist comment already exists');
               return;
             }
-
             const checklist = `## PR Review Checklist
 
             Maintainer quick checklist for this PR:
@@ -85,12 +70,9 @@ jobs:
             - [ ] CHANGELOG updated if user-facing
 
             Feel free to ping the maintainer for review.`;
-
             await github.rest.issues.createComment({
               owner,
               repo,
               issue_number: prNumber,
               body: checklist
             });
-
-            console.log(`Posted review checklist for PR #${prNumber}`);

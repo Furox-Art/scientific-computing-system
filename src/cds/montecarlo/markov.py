@@ -28,6 +28,19 @@ class MHResult:
     acceptance_rate: float
 
 
+def _validate_integer(name: str, value: int, *, minimum: int) -> None:
+    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+        raise ValueError(f"{name} must be an integer >= {minimum}")
+
+
+def _log_density(log_target: Callable[[float], float], value: float) -> float:
+    """Evaluate a log-density, allowing finite values and ``-inf`` only."""
+    result = float(log_target(value))
+    if math.isnan(result) or result == math.inf:
+        raise ValueError("log_target must return a finite value or -inf")
+    return result
+
+
 def metropolis_hastings(
     log_target: Callable[[float], float],
     x0: float,
@@ -43,17 +56,18 @@ def metropolis_hastings(
     Proposals are Gaussian, ``x' = x + N(0, proposal_scale)``, hence symmetric
     and the acceptance rule reduces to accepting when
     ``log(U) < log_target(x') - log_target(x)`` for ``U ~ Uniform(0, 1)``.
-    ``-inf`` log-densities are treated safely: a proposal with ``-inf``
-    density is always rejected, and a current state with ``-inf`` density
-    always accepts a finite-density proposal.
+    ``-inf`` log-densities represent zero target density: such proposals are
+    rejected, while a finite-density proposal can move a chain out of a
+    zero-density starting point. ``NaN`` and ``+inf`` log-density values are
+    rejected because they make the acceptance ratio undefined.
 
     Args:
         log_target: log of the (possibly unnormalized) target density.
-        x0: initial state of the chain.
+        x0: finite initial state of the chain.
         n_samples: number of samples to keep (after burn-in and thinning).
         burn_in: initial iterations to discard.
         thin: keep only every ``thin``-th post-burn-in iterate.
-        proposal_scale: standard deviation of the Gaussian proposal.
+        proposal_scale: finite positive standard deviation of the Gaussian proposal.
         seed: optional random seed for reproducibility.
 
     Returns:
@@ -61,30 +75,31 @@ def metropolis_hastings(
         ``burn_in + n_samples * thin`` proposals.
 
     Raises:
-        ValueError: if ``n_samples < 1``, ``burn_in < 0``, ``thin < 1`` or
-            ``proposal_scale <= 0``.
+        ValueError: if counts are invalid, ``x0`` or ``proposal_scale`` is
+            non-finite, or ``log_target`` returns ``NaN``/``+inf``.
     """
-    if n_samples < 1:
-        raise ValueError("n_samples must be >= 1")
-    if burn_in < 0:
-        raise ValueError("burn_in must be >= 0")
-    if thin < 1:
-        raise ValueError("thin must be >= 1")
-    if proposal_scale <= 0:
-        raise ValueError("proposal_scale must be > 0")
+    _validate_integer("n_samples", n_samples, minimum=1)
+    _validate_integer("burn_in", burn_in, minimum=0)
+    _validate_integer("thin", thin, minimum=1)
+    if not math.isfinite(proposal_scale) or proposal_scale <= 0:
+        raise ValueError("proposal_scale must be finite and > 0")
+    if not math.isfinite(x0):
+        raise ValueError("x0 must be finite")
 
     rng = random.Random(seed)
     current = x0
-    log_current = log_target(x0)
+    log_current = _log_density(log_target, x0)
     samples: list[float] = []
     accepted = 0
     n_iters = burn_in + n_samples * thin
     for step in range(n_iters):
         proposal = current + rng.gauss(0.0, proposal_scale)
-        log_proposal = log_target(proposal)
-        if math.isinf(log_proposal):
+        if not math.isfinite(proposal):
+            raise ArithmeticError("proposal became non-finite")
+        log_proposal = _log_density(log_target, proposal)
+        if log_proposal == -math.inf:
             move = False
-        elif math.isinf(log_current):
+        elif log_current == -math.inf:
             move = True
         else:
             move = math.log(1.0 - rng.random()) < log_proposal - log_current
