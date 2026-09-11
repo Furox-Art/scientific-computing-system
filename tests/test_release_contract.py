@@ -3,8 +3,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import tomllib
-
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "tests.yml"
@@ -93,7 +91,13 @@ def test_release_workflow_rechecks_version_discipline_before_build() -> None:
 
 
 def test_current_public_version_metadata_is_synchronized() -> None:
-    pyproject = tomllib.loads(_text(ROOT / "pyproject.toml"))["project"]["version"]
+    match = re.search(
+        r'^version\s*=\s*["\']([^"\']+)["\']',
+        _text(ROOT / "pyproject.toml"),
+        re.MULTILINE,
+    )
+    assert match is not None
+    pyproject = match.group(1)
     version_source = _text(ROOT / "src" / "cds" / "_version.py")
     match = re.search(r'__version__\s*=\s*version\s*=\s*"([^"]+)"', version_source)
     assert match is not None

@@ -108,9 +108,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install ".[test,dev,docs,pandas,plot]" pip-audit
       - name: Audit the actually installed environment
-        run: pip-audit --local --strict
+        run: |
+          python -m pip freeze --exclude scientific-computing-system > resolved-ci-environment.txt
+          pip-audit -r resolved-ci-environment.txt --strict
       - name: Record resolved environment for diagnostics
-        run: python -m pip freeze --all | sort > resolved-ci-environment.txt
+        run: sort resolved-ci-environment.txt -o resolved-ci-environment.txt
 
   property-tests:
     name: property tests on Linux with Python 3.12
