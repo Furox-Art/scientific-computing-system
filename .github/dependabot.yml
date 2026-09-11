@@ -14,6 +14,13 @@ updates:
       - "github-actions"
     commit-message:
       prefix: "ci"
+    # The three CodeQL steps (init/autobuild/analyze) share one commit SHA per
+    # release and must be bumped together — mixing versions makes the scan fail:
+    #   "Loaded a configuration file for version '3.37.9', but running version '4.37.9'"
+    groups:
+      codeql:
+        patterns:
+          - "github/codeql-action*"
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
