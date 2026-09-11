@@ -55,7 +55,7 @@ jobs:
           print(json.dumps(status,indent=2,ensure_ascii=False))
           PY
       - name: Upload FSD3588 artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: FSD3588-open-distribution
           path: raw/
