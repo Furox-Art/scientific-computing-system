@@ -14,13 +14,21 @@ from cds.data_io.streaming import open_hdf5, open_netcdf
 class SliceableArray(Protocol):
     """Minimal protocol implemented by HDF5/NetCDF arrays and similar objects."""
 
+    # Stubs below raise instead of using `...`: the Protocol is never
+    # instantiated, and CodeQL's py/statement-no-effect flags a bare `...`
+    # body as a no-op statement. `raise NotImplementedError` is also listed
+    # in `[tool.coverage.report] exclude_lines`, so the 100% blended
+    # coverage gate stays green.
     @property
-    def shape(self) -> Sequence[int]: ...
+    def shape(self) -> Sequence[int]:  # pragma: no cover
+        raise NotImplementedError
 
     @property
-    def dtype(self) -> object: ...
+    def dtype(self) -> object:  # pragma: no cover
+        raise NotImplementedError
 
-    def __getitem__(self, key: tuple[slice, ...]) -> object: ...
+    def __getitem__(self, key: tuple[slice, ...]) -> object:  # pragma: no cover
+        raise NotImplementedError
 
 
 @dataclass(frozen=True)
