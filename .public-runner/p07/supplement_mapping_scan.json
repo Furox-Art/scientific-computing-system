@@ -1,0 +1,178 @@
+{
+  "status": "SUPPLEMENT_DOWNLOADED_AND_MAPPING_CANDIDATES_EXTRACTED",
+  "url": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41598-025-12695-z/MediaObjects/41598_2025_12695_MOESM1_ESM.docx",
+  "mapping_rows": [
+    {
+      "table_index": 0,
+      "row_index": 1,
+      "cells": [
+        "Q1: Did you experience anything?"
+      ]
+    },
+    {
+      "table_index": 0,
+      "row_index": 2,
+      "cells": [
+        "Q2: What did you experience?"
+      ]
+    },
+    {
+      "table_index": 1,
+      "row_index": 1,
+      "cells": [
+        "Figure S1: Distribution of awakenings for evoked data (a) and spontanuous data (b) classified as Experience, No information and No experience among all recorded files that were included in the analysis. “Excluded” here represents the number of files that were excluded in the analysis.",
+        "Figure S1: Distribution of awakenings for evoked data (a) and spontanuous data (b) classified as Experience, No information and No experience among all recorded files that were included in the analysis. “Excluded” here represents the number of files that were excluded in the analysis."
+      ]
+    },
+    {
+      "table_index": 4,
+      "row_index": 2,
+      "cells": [
+        "Figure S3: Longitudinal Values of PCIst (top) and Single-Channel LZc (bottom) across wakefulness and up to three sedation recordings. The color coding indicates experience classification: Blue for awakenings classified as Experience, Red for No experience, and Green for No information."
+      ]
+    },
+    {
+      "table_index": 7,
+      "row_index": 0,
+      "cells": [
+        "Figure S5: Boxplots of all values in all conditions from PCIst, single- and multi-channel LZc, ACE and SCE. Awake – Eyes closed: Wake condition with eyes closed, Awake – eyes open: wake condition with eyes open, Sed 1-3: first to third awakening in the sedation condition."
+      ]
+    },
+    {
+      "table_index": 8,
+      "row_index": 1,
+      "cells": [
+        "Figure S6: Inter trial phase clustering (ITPC) drop values, PCIst values for different window lengths and global mean field power (GMFP). a) Histograms of ITPC values when ITPC dropped to zero (in seconds) and number of channels for each ITPC drop value, upper histogram (blue) = No experience, lower histogram (red) = Experience, b) Mean PCIst values and standard error calculated for increasing window lengths (x-axis), experience (orange) and no experience (blue). Beneath is the result of two-sided t-test between the experience categories for each window length. A red star would have marked a significant result. The PCIst values were not significantly different for any timescale, even with no correction for multiple comparisons. c) comparison of the logarithm of mean GMFP between No experience (blue) and Experience (red)."
+      ]
+    }
+  ],
+  "relevant_paragraphs": [
+    {
+      "paragraph_index": 20,
+      "text": "We also calculated, for all frequency bands, the global mean field power (GMFP) from the evoked data for the first and last 15 and all trials. Results from Nieminen et al. (2016) displayed a correlation between the amplitude of the negative evoked deflection and the length of dream report. Since our data represented evoked data from different sources on the scalp, we chose GMFP as a similar measure."
+    },
+    {
+      "paragraph_index": 22,
+      "text": "Groups of “experience” and “no experience” underwent comparative analysis using evoked TMS-EEG data and following a similar approach outlined in Nieminen et al. (2016). Initially, the preprocessed EEG data was bandpass filtered in the alpha frequency band. For each channel in every TMS-EEG file associated with an awakening, we calculated the duration of phase locking post-TMS pulse. Phase locking values below the significance threshold of alpha = 0.05 were reset to 0. The endpoint of phase locki"
+    },
+    {
+      "paragraph_index": 23,
+      "text": "To enhance data reliability, we retained “itpc drop” values for channels that exceeded a 15 ms duration post-TMS pulse start and that occurred no later than 15 ms prior to the epoch's end at 500 ms. This step was necessary for excluding channels with low signal-to-noise ratios. Subsequently, we calculated the average “itpc drop” values for each group; “no experience” and “experience”. To assess differences in ITPC drop between the groups, we employed permutation statistics. From the combined dat"
+    },
+    {
+      "paragraph_index": 25,
+      "text": "We then employed the Wilcoxon rank sum test to analyze the GMFP data at each individual time point between groups of “no experience” and “experience”. For each comparison, we computed p-values to test the statistical significance of the observed differences between groups of “experience” to “no experience”."
+    },
+    {
+      "paragraph_index": 30,
+      "text": "Similar to our approach for PCIst and single-channel LZc, we individually employed a linear mixed model with multi-channel LZc, ACE or SCE as a dependent variable, report category as a fixed effect and participant ID as a random intercept. We report the overall results from the analysis (F-score and associated p-value)."
+    },
+    {
+      "paragraph_index": 37,
+      "text": "Multi-channel LZc, ACE and SCE does not vary with experience reports within sedation Diversity measures did not vary with experience reports within sedation state upon conducting LMMs for multi-channel LZc (F = 0.078, p = 0.925), ACE (F = 0.491, p = 0.615) or SCE (F = 0.544, p = 0.584)."
+    },
+    {
+      "paragraph_index": 39,
+      "text": "Our analysis of Inter-Trial Phase Coherence (ITPC) revealed differences between the “no-experience” and “experience” groups, specifically in the first 15 trials. However, this distinction was not evident when considering the entire range of epochs or the last 15 trials. The observations should not be considered meaningful as there is little reason to suspect that the first 15 trials of 10-minute recordings to be representative of experiences reported compared to all or last 15 trials."
+    },
+    {
+      "paragraph_index": 41,
+      "text": "Fig S6a shows the distribution of ITPC values for the “no experience” and “experience” categories at timepoints where they dropped to zero and the number of channels for each time interval. Fig S6c shows a comparison of the logarithm of mean GMFP between the “no experience” and “experience” categories."
+    }
+  ],
+  "tables": [
+    {
+      "table_index": 0,
+      "rows": 6,
+      "cols": 1,
+      "header": [
+        "Questions upon awakenings"
+      ],
+      "candidate_rows": 2
+    },
+    {
+      "table_index": 1,
+      "rows": 2,
+      "cols": 2,
+      "header": [
+        "a)",
+        "b)"
+      ],
+      "candidate_rows": 1
+    },
+    {
+      "table_index": 2,
+      "rows": 2,
+      "cols": 2,
+      "header": [
+        "a)",
+        "b)"
+      ],
+      "candidate_rows": 0
+    },
+    {
+      "table_index": 3,
+      "rows": 5,
+      "cols": 1,
+      "header": [
+        "Included"
+      ],
+      "candidate_rows": 0
+    },
+    {
+      "table_index": 4,
+      "rows": 3,
+      "cols": 1,
+      "header": [
+        ""
+      ],
+      "candidate_rows": 1
+    },
+    {
+      "table_index": 5,
+      "rows": 2,
+      "cols": 1,
+      "header": [
+        ""
+      ],
+      "candidate_rows": 0
+    },
+    {
+      "table_index": 6,
+      "rows": 15,
+      "cols": 5,
+      "header": [
+        "Measures",
+        "State 1",
+        "State 2",
+        "Z-score",
+        "p-value"
+      ],
+      "candidate_rows": 0
+    },
+    {
+      "table_index": 7,
+      "rows": 1,
+      "cols": 1,
+      "header": [
+        "Figure S5: Boxplots of all values in all conditions from PCIst, single- and multi-channel LZc, ACE and SCE. Awake – Eyes closed: Wake condition with eyes closed, Awake – eyes open: wake condition with eyes open, Sed 1-3: first to third awakening in the sedation condition."
+      ],
+      "candidate_rows": 1
+    },
+    {
+      "table_index": 8,
+      "rows": 2,
+      "cols": 1,
+      "header": [
+        ""
+      ],
+      "candidate_rows": 1
+    }
+  ],
+  "http_status": 200,
+  "final_url": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41598-025-12695-z/MediaObjects/41598_2025_12695_MOESM1_ESM.docx",
+  "bytes": 1769211,
+  "sha256": "0ee68b3ca6e4dbfa3ed9a9770b36f798ff136091b17fedcee9ffa13c5e298d43",
+  "mapping_row_count": 6,
+  "relevant_paragraph_count": 8
+}
