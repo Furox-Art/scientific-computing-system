@@ -29,7 +29,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check \
-            'nilearn==0.13.1' 'nipype==1.11.0' 'scipy>=1.11,<2'
+            'nilearn==0.13.1' 'nipype==1.11.0' 'nitime==0.12.1' 'nitime==0.12.1' 'scipy>=1.11,<2'
 
       - name: Download exact res-02 ROI artifact
         uses: actions/download-artifact@v4
