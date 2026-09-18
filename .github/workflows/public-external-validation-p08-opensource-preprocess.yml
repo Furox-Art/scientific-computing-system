@@ -1,4 +1,4 @@
-name: Public external validation P08 AFNI ANTs tedana sensitivity
+name: Public external validation P08 AFNI ANTs tedana sensitivity V2 resource-safe
 
 on:
   push:
@@ -51,7 +51,7 @@ jobs:
           expected='9f6a2c8881d6c94ea17171c0502e55cb898ad9afd50e4e23fde9a8c0997aa04b'
           curl -L --retry 4 --retry-delay 3 -o /tmp/ants.zip "$url"
           echo "$expected  /tmp/ants.zip" | sha256sum -c -
-          unzip -q /tmp/ants.zip -d /tmp/ants
+          unzip -q /tmp/ants.zip -d /tmp/ants\n          rm -f /tmp/ants.zip
           bindir="$(find /tmp/ants -type f -name antsRegistration -printf '%h\n' | head -n1)"
           test -n "$bindir"
           libdir="$(dirname "$bindir")/lib"
@@ -81,7 +81,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python tools/public_external_validation_p08_sensitivity_prepare.py             --participant "${{ matrix.participant }}"             --root .public-runner/p08/opensource
+          python tools/public_external_validation_p08_sensitivity_prepare.py             --participant "${{ matrix.participant }}"             --root .public-runner/p08/opensource-v2
 
       - name: Run AFNI + tedana + ANTs open-source sensitivity preprocessing
         id: preprocess
@@ -98,39 +98,39 @@ jobs:
         shell: bash
         run: |
           p="${{ matrix.participant }}"
-          cat ".public-runner/p08/opensource/$p/opensource_preprocessing_result.json" || true
+          cat ".public-runner/p08/opensource-v2/$p/opensource_preprocessing_result.json" || true
 
       - name: Upload compact preprocessing provenance
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: public-p08-opensource-preprocessing-provenance-${{ matrix.participant }}
+          name: public-p08-opensource-v2-preprocessing-provenance-${{ matrix.participant }}
           retention-days: 30
           if-no-files-found: warn
           path: |
-            .public-runner/p08/opensource/${{ matrix.participant }}/input_reconstruction.json
-            .public-runner/p08/opensource/${{ matrix.participant }}/opensource_preprocessing_result.json
-            .public-runner/p08/opensource/${{ matrix.participant }}/opensource_preprocessing.log
-            .public-runner/p08/opensource/${{ matrix.participant }}/ants/T1_to_MNI_0GenericAffine.mat
-            .public-runner/p08/opensource/${{ matrix.participant }}/ants/T1_to_MNI_1Warp.nii.gz
-            .public-runner/p08/opensource/${{ matrix.participant }}/ants/T1_to_MNI_Warped.nii.gz
-            .public-runner/p08/opensource/${{ matrix.participant }}/afni/*/results/*.1D
-            .public-runner/p08/opensource/${{ matrix.participant }}/afni/*/results/QC_*/
+            .public-runner/p08/opensource-v2/${{ matrix.participant }}/input_reconstruction.json
+            .public-runner/p08/opensource-v2/${{ matrix.participant }}/opensource_preprocessing_result.json
+            .public-runner/p08/opensource-v2/${{ matrix.participant }}/opensource_preprocessing.log
+            .public-runner/p08/opensource-v2/${{ matrix.participant }}/ants/T1_to_MNI_0GenericAffine.mat
+            .public-runner/p08/opensource-v2/${{ matrix.participant }}/ants/T1_to_MNI_1Warp.nii.gz
+            .public-runner/p08/opensource-v2/${{ matrix.participant }}/ants/T1_to_MNI_Warped.nii.gz
+            .public-runner/p08/opensource-v2/${{ matrix.participant }}/afni/*/results/*.1D
+            .public-runner/p08/opensource-v2/${{ matrix.participant }}/afni/*/results/QC_*/
 
       - name: Upload GLM-relevant open-source derivatives
         if: steps.preprocess.outputs.exit_code == '0'
         uses: actions/upload-artifact@v4
         with:
-          name: public-p08-opensource-preprocessed-${{ matrix.participant }}
+          name: public-p08-opensource-v2-preprocessed-${{ matrix.participant }}
           retention-days: 30
           compression-level: 0
           if-no-files-found: error
           path: |
-            .public-runner/p08/opensource/${{ matrix.participant }}/mni/*space-MNI152NLin2009cAsym_desc-optcom_bold.nii.gz
-            .public-runner/p08/opensource/${{ matrix.participant }}/tedana/*/run-*/t2smap/*
-            .public-runner/p08/opensource/${{ matrix.participant }}/bids/sub-*/ses-*/func/*task-SORPF*_events.tsv
-            .public-runner/p08/opensource/${{ matrix.participant }}/afni/*/results/*.1D
-            .public-runner/p08/opensource/${{ matrix.participant }}/opensource_preprocessing_result.json
+            .public-runner/p08/opensource-v2/${{ matrix.participant }}/mni/*space-MNI152NLin2009cAsym*_desc-optcom_bold.nii.gz
+            .public-runner/p08/opensource-v2/${{ matrix.participant }}/tedana/*/run-*/t2smap/*
+            .public-runner/p08/opensource-v2/${{ matrix.participant }}/bids/sub-*/ses-*/func/*task-SORPF*_events.tsv
+            .public-runner/p08/opensource-v2/${{ matrix.participant }}/afni/*/results/*.1D
+            .public-runner/p08/opensource-v2/${{ matrix.participant }}/opensource_preprocessing_result.json
 
       - name: Fail if preprocessing failed
         if: always()
