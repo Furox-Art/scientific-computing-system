@@ -1,0 +1,61 @@
+name: Public external validation P08 GLM toolchain preflight
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p08-glm-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install and verify pinned GLM tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'nilearn==0.13.1' 'nipype==1.11.0'
+          python - <<'PY'
+          import json, inspect
+          import nilearn, nipype
+          from nilearn.glm.first_level import FirstLevelModel
+          from nipype.algorithms.confounds import compute_dvars
+          assert nilearn.__version__ == '0.13.1'
+          assert nipype.__version__ == '1.11.0'
+          sig=str(inspect.signature(FirstLevelModel))
+          dvars_sig=str(inspect.signature(compute_dvars))
+          out={
+            'status':'P08_GLM_TOOLCHAIN_PREFLIGHT_COMPLETE',
+            'nilearn_version':nilearn.__version__,
+            'nipype_version':nipype.__version__,
+            'first_level_model_signature':sig,
+            'compute_dvars_signature':dvars_sig,
+            'planned_hrf_model':'spm',
+            'planned_noise_model':'ar1',
+            'planned_drift_model':'cosine',
+            'planned_high_pass_hz':1/128,
+            'planned_standardize':'psc',
+            'planned_signal_scaling':False,
+            'neural_effect_computed':False,
+          }
+          open('p08_glm_preflight.json','w').write(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-glm-toolchain-preflight
+          retention-days: 30
+          if-no-files-found: error
+          path: p08_glm_preflight.json
