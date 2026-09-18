@@ -1,0 +1,153 @@
+name: Public external validation P08 V2 GLM synthetic smoke
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p08-v2-glm-synthetic-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 71c8b2befe63c03c410a49117a8845590e549565
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install frozen GLM tools
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            'nilearn==0.13.1' 'nipype==1.11.0' 'scipy>=1.11,<2'
+
+      - name: Download exact res-02 ROI artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: 35403999383
+          name: public-p08-harvard-oxford-roi-preflight-v2-res02
+          path: inputs/public-p08-harvard-oxford-roi-preflight-v2-res02
+
+      - name: Generate deterministic synthetic participant input
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          import nibabel as nib
+          import numpy as np
+          import pandas as pd
+
+          participant='sub-Bubbles'
+          pre=Path('inputs/public-p08-opensource-v2-preprocessed-sub-Bubbles')
+          prov=Path('inputs/public-p08-opensource-v2-preprocessing-provenance-sub-Bubbles')
+          roi_root=Path('inputs/public-p08-harvard-oxford-roi-preflight-v2-res02')
+          func=pre/'bids'/participant/'ses-01'/'func'
+          mni=pre/'mni'
+          motion=pre/'afni'/'ses-01'/'results'
+          func.mkdir(parents=True,exist_ok=True)
+          mni.mkdir(parents=True,exist_ok=True)
+          motion.mkdir(parents=True,exist_ok=True)
+          prov.mkdir(parents=True,exist_ok=True)
+
+          fm=nib.load(roi_root/'roi-FrontalMedialCortex_mask.nii.gz')
+          pc=nib.load(roi_root/'roi-CingulateGyrusPosterior_mask.nii.gz')
+          mask=(np.asanyarray(fm.dataobj)>0)|(np.asanyarray(pc.dataobj)>0)
+          nt=30
+          rng=np.random.default_rng(20260919)
+          data=np.zeros(mask.shape+(nt,),dtype=np.float32)
+          base=1000.0 + rng.normal(0,2,(int(mask.sum()),nt)).astype(np.float32)
+          # Deterministic small task-shaped modulation; synthetic only.
+          base[:,4:8]+=2.0
+          base[:,12:16]-=1.0
+          data[mask,:]=base
+          bold=mni/f'{participant}_ses-01_task-SORPF_run-1_space-MNI152NLin2009cAsym_res-02_desc-optcom_bold.nii.gz'
+          hdr=fm.header.copy(); hdr.set_data_dtype(np.float32)
+          nib.save(nib.Nifti1Image(data,fm.affine,hdr),bold)
+
+          rows=[]
+          types=['Self','Other','Malleable','Flanker-Congruent','Flanker-Incongruent']
+          for i,on in enumerate(np.arange(0,42,3.0)):
+              rows.append({'onset':float(on),'duration':1.5,'trial_type':types[i%5]})
+          ev=pd.DataFrame(rows)
+          events=func/f'{participant}_ses-01_task-SORPF_run-1_events.tsv'
+          ev.to_csv(events,sep='\t',index=False)
+
+          np.savetxt(motion/'dfile_rall.1D',np.zeros((nt,6)),fmt='%.8f')
+
+          def sha(p):
+              h=hashlib.sha256()
+              with open(p,'rb') as f:
+                  for b in iter(lambda:f.read(8*1024*1024),b''):h.update(b)
+              return h.hexdigest()
+
+          prep={
+            'status':'P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_COMPLETE',
+            'participant':participant,
+            'preprocessing_complete':True,
+            'self_other_glm_computed':False,
+            'roi_effect_computed':False,
+            'neural_effect_computed':False,
+            'expected_run_count':1,
+            'selected_output_files':[{
+              'path':'mni/'+bold.name,
+              'bytes':bold.stat().st_size,
+              'sha256':sha(bold)
+            }]
+          }
+          (pre/'opensource_preprocessing_result.json').write_text(json.dumps(prep,indent=2)+'\n')
+          recon={
+            'participant':participant,
+            'all_exact_verified':True,
+            'files':[{
+              'path':f'{participant}/ses-01/func/{events.name}',
+              'hash_algorithm':'sha256',
+              'hash':sha(events),
+              'bytes':events.stat().st_size
+            }]
+          }
+          (prov/'input_reconstruction.json').write_text(json.dumps(recon,indent=2)+'\n')
+          print('synthetic mask voxels',int(mask.sum()),'bold bytes',bold.stat().st_size)
+          PY
+
+      - name: Run frozen participant GLM code on synthetic input
+        run: |
+          set -euo pipefail
+          python tools/public_external_validation_p08_v2_glm.py participant \
+            --participant sub-Bubbles \
+            --preproc-root inputs/public-p08-opensource-v2-preprocessed-sub-Bubbles \
+            --prov-root inputs/public-p08-opensource-v2-preprocessing-provenance-sub-Bubbles \
+            --roi-root inputs/public-p08-harvard-oxford-roi-preflight-v2-res02 \
+            --output-root synthetic-output
+          test -s synthetic-output/sub-Bubbles/participant_glm_result.json
+
+      - name: Verify smoke is explicitly synthetic
+        run: |
+          python - <<'PY'
+          import json
+          p='synthetic-output/sub-Bubbles/participant_glm_result.json'
+          d=json.load(open(p))
+          assert d['participant']=='sub-Bubbles'
+          assert d['n_runs']==1
+          print('SYNTHETIC CODE SMOKE COMPLETE; NOT A SCIENTIFIC OUTCOME')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-v2-glm-synthetic-code-smoke
+          retention-days: 7
+          if-no-files-found: error
+          path: synthetic-output/sub-Bubbles/participant_glm_result.json
