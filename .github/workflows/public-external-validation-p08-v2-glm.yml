@@ -32,13 +32,16 @@ jobs:
           python -m pip install --disable-pip-version-check \
             'nilearn==0.13.1' \
             'nipype==1.11.0' \
+            'nitime==0.12.1' \
             'scipy>=1.11,<2'
           python - <<'PY'
-          import nilearn, nipype
+          import nilearn, nipype, nitime
           assert nilearn.__version__ == '0.13.1'
           assert nipype.__version__ == '1.11.0'
+          assert nitime.__version__ == '0.12.1'
           print('nilearn', nilearn.__version__)
           print('nipype', nipype.__version__)
+          print('nitime', nitime.__version__)
           PY
 
       - name: Download exact V2 preprocessed participant artifact
@@ -126,6 +129,7 @@ jobs:
           python -m pip install --disable-pip-version-check \
             'nilearn==0.13.1' \
             'nipype==1.11.0' \
+            'nitime==0.12.1' \
             'scipy>=1.11,<2'
 
       - name: Download participant GLM artifacts
