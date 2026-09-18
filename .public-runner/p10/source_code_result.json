@@ -1,0 +1,126 @@
+{
+  "status": "ALL_SOURCE_CODE_EXACT_AND_HASH_VERIFIED",
+  "files": [
+    {
+      "path": "code/Experiment_presentation_script.m",
+      "url": "https://data.nemar.org/on004563/v1.0.0/code/Experiment_presentation_script.m",
+      "http_status": 200,
+      "final_url": "https://nemar.s3.us-east-2.amazonaws.com/on004563/objects/SHA256E-s30037--75bb4bfeff2453a04074ed598262d0e80bc177e64045455e9193930d109ddfae.m?X-Amz-Expires=3600&response-content-disposition=attachment%3Bfilename%3D%22Experiment_presentation_script.m%22%3Bfilename*%3DUTF-8%27%27Experiment_presentation_script.m&X-Amz-Date=20260918T194225Z&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASZJLRMPHZXE6VG7W%2F20260918%2Fus-east-2%2Fs3%2Faws4_request&X-Amz-SignedHeaders=host&X-Amz-Signature=763d39107e54c217c77137698013423c69e1ecf26b96a7230beb75373219318b",
+      "bytes": 30037,
+      "expected_bytes": 30037,
+      "sha256": "75bb4bfeff2453a04074ed598262d0e80bc177e64045455e9193930d109ddfae",
+      "expected_sha256": "75bb4bfeff2453a04074ed598262d0e80bc177e64045455e9193930d109ddfae",
+      "size_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "code/Step2_within_mod_decoding.m",
+      "url": "https://data.nemar.org/on004563/v1.0.0/code/Step2_within_mod_decoding.m",
+      "http_status": 200,
+      "final_url": "https://nemar.s3.us-east-2.amazonaws.com/on004563/objects/SHA256E-s5835--0345025d62cb47e7030ad5fd664b02d4de45101b94254a5b1930231ceaf029c7.m?X-Amz-Expires=3600&response-content-disposition=attachment%3Bfilename%3D%22Step2_within_mod_decoding.m%22%3Bfilename*%3DUTF-8%27%27Step2_within_mod_decoding.m&X-Amz-Date=20260918T194226Z&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASZJLRMPHZXE6VG7W%2F20260918%2Fus-east-2%2Fs3%2Faws4_request&X-Amz-SignedHeaders=host&X-Amz-Signature=14724382d24f400322f9e4891159cf2767369d7e48d2489dcf8a6623d8a30beb",
+      "bytes": 5835,
+      "expected_bytes": 5835,
+      "sha256": "0345025d62cb47e7030ad5fd664b02d4de45101b94254a5b1930231ceaf029c7",
+      "expected_sha256": "0345025d62cb47e7030ad5fd664b02d4de45101b94254a5b1930231ceaf029c7",
+      "size_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "code/Step3a_between_mod_decoding.m",
+      "url": "https://data.nemar.org/on004563/v1.0.0/code/Step3a_between_mod_decoding.m",
+      "http_status": 200,
+      "final_url": "https://nemar.s3.us-east-2.amazonaws.com/on004563/objects/SHA256E-s3731--4b1d44bf70a6663af8dc6e5e4419caaaf6ecc77c390d59644423c742f4ec7c2c.m?X-Amz-Expires=3600&response-content-disposition=attachment%3Bfilename%3D%22Step3a_between_mod_decoding.m%22%3Bfilename*%3DUTF-8%27%27Step3a_between_mod_decoding.m&X-Amz-Date=20260918T194227Z&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASZJLRMPHZXE6VG7W%2F20260918%2Fus-east-2%2Fs3%2Faws4_request&X-Amz-SignedHeaders=host&X-Amz-Signature=c725b87b2d208db7d8a3a4cc366035acdce59e10983974118b76d0cbc387bbeb",
+      "bytes": 3731,
+      "expected_bytes": 3731,
+      "sha256": "4b1d44bf70a6663af8dc6e5e4419caaaf6ecc77c390d59644423c742f4ec7c2c",
+      "expected_sha256": "4b1d44bf70a6663af8dc6e5e4419caaaf6ecc77c390d59644423c742f4ec7c2c",
+      "size_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "code/Step3b_between_mod_searchlight.m",
+      "url": "https://data.nemar.org/on004563/v1.0.0/code/Step3b_between_mod_searchlight.m",
+      "http_status": 200,
+      "final_url": "https://nemar.s3.us-east-2.amazonaws.com/on004563/objects/SHA256E-s4201--a999943080b5976ea910026a3e40674e8add8e4b182541555801d6f5d8ae2c83.m?X-Amz-Expires=3600&response-content-disposition=attachment%3Bfilename%3D%22Step3b_between_mod_searchlight.m%22%3Bfilename*%3DUTF-8%27%27Step3b_between_mod_searchlight.m&X-Amz-Date=20260918T194227Z&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASZJLRMPHZXE6VG7W%2F20260918%2Fus-east-2%2Fs3%2Faws4_request&X-Amz-SignedHeaders=host&X-Amz-Signature=a83f4263a2cc7164ee911011c3139abdde55ce48642958ac0f2d3b940d077c69",
+      "bytes": 4201,
+      "expected_bytes": 4201,
+      "sha256": "a999943080b5976ea910026a3e40674e8add8e4b182541555801d6f5d8ae2c83",
+      "expected_sha256": "a999943080b5976ea910026a3e40674e8add8e4b182541555801d6f5d8ae2c83",
+      "size_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "code/Step4a_plot_within_mod_decoding_with_searchlight.m",
+      "url": "https://data.nemar.org/on004563/v1.0.0/code/Step4a_plot_within_mod_decoding_with_searchlight.m",
+      "http_status": 200,
+      "final_url": "https://nemar.s3.us-east-2.amazonaws.com/on004563/objects/SHA256E-s12155--c1216716b7ffeec18a007305deedfe182f38af91c79727f89c9d53d190a6fc9f.m?X-Amz-Expires=3600&response-content-disposition=attachment%3Bfilename%3D%22Step4a_plot_within_mod_decoding_with_searchlight.m%22%3Bfilename*%3DUTF-8%27%27Step4a_plot_within_mod_decoding_with_searchlight.m&X-Amz-Date=20260918T194228Z&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASZJLRMPHZXE6VG7W%2F20260918%2Fus-east-2%2Fs3%2Faws4_request&X-Amz-SignedHeaders=host&X-Amz-Signature=668487f5e246b5a3d98103a0b8dde598fc4b4aef37e5d666fbad7dcde1ad6758",
+      "bytes": 12155,
+      "expected_bytes": 12155,
+      "sha256": "c1216716b7ffeec18a007305deedfe182f38af91c79727f89c9d53d190a6fc9f",
+      "expected_sha256": "c1216716b7ffeec18a007305deedfe182f38af91c79727f89c9d53d190a6fc9f",
+      "size_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "code/Step4b_plot_between_mod_decoding.m",
+      "url": "https://data.nemar.org/on004563/v1.0.0/code/Step4b_plot_between_mod_decoding.m",
+      "http_status": 200,
+      "final_url": "https://nemar.s3.us-east-2.amazonaws.com/on004563/objects/SHA256E-s14196--906fe5bff1eb151c008ee293cfb2f24b524ede2dccb6761f21d66b0d81953ab3.m?X-Amz-Expires=3600&response-content-disposition=attachment%3Bfilename%3D%22Step4b_plot_between_mod_decoding.m%22%3Bfilename*%3DUTF-8%27%27Step4b_plot_between_mod_decoding.m&X-Amz-Date=20260918T194229Z&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASZJLRMPHZXE6VG7W%2F20260918%2Fus-east-2%2Fs3%2Faws4_request&X-Amz-SignedHeaders=host&X-Amz-Signature=327c85eb32396072cbaf271c754cbaa7a18ec3cfe880701f05eab4c8fbf3ecae",
+      "bytes": 14196,
+      "expected_bytes": 14196,
+      "sha256": "906fe5bff1eb151c008ee293cfb2f24b524ede2dccb6761f21d66b0d81953ab3",
+      "expected_sha256": "906fe5bff1eb151c008ee293cfb2f24b524ede2dccb6761f21d66b0d81953ab3",
+      "size_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "code/Step4c_plot_between_mod_decoding_difference.m",
+      "url": "https://data.nemar.org/on004563/v1.0.0/code/Step4c_plot_between_mod_decoding_difference.m",
+      "http_status": 200,
+      "final_url": "https://nemar.s3.us-east-2.amazonaws.com/on004563/objects/SHA256E-s7154--ac0bffacc96ddb480d5cdb1bdbdcb68e6cba9474ff9c7664b232dea508194eda.m?X-Amz-Expires=3600&response-content-disposition=attachment%3Bfilename%3D%22Step4c_plot_between_mod_decoding_difference.m%22%3Bfilename*%3DUTF-8%27%27Step4c_plot_between_mod_decoding_difference.m&X-Amz-Date=20260918T194230Z&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASZJLRMPHZXE6VG7W%2F20260918%2Fus-east-2%2Fs3%2Faws4_request&X-Amz-SignedHeaders=host&X-Amz-Signature=0efb6ecffeb63386ec6f3d4ef985bae887c8b102fac1b24dd468dd1d2a6f6381",
+      "bytes": 7154,
+      "expected_bytes": 7154,
+      "sha256": "ac0bffacc96ddb480d5cdb1bdbdcb68e6cba9474ff9c7664b232dea508194eda",
+      "expected_sha256": "ac0bffacc96ddb480d5cdb1bdbdcb68e6cba9474ff9c7664b232dea508194eda",
+      "size_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "code/Step4d_plot_between_mod_decoding_searchlight.m",
+      "url": "https://data.nemar.org/on004563/v1.0.0/code/Step4d_plot_between_mod_decoding_searchlight.m",
+      "http_status": 200,
+      "final_url": "https://nemar.s3.us-east-2.amazonaws.com/on004563/objects/SHA256E-s6419--5b739bd3b31fa8bf492b199a839fc327bfb6a810e6a8e49b9b7c29cbd827291d.m?X-Amz-Expires=3600&response-content-disposition=attachment%3Bfilename%3D%22Step4d_plot_between_mod_decoding_searchlight.m%22%3Bfilename*%3DUTF-8%27%27Step4d_plot_between_mod_decoding_searchlight.m&X-Amz-Date=20260918T194231Z&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASZJLRMPHZXE6VG7W%2F20260918%2Fus-east-2%2Fs3%2Faws4_request&X-Amz-SignedHeaders=host&X-Amz-Signature=707112cca0117f2107bfb5e54b2e8da8cb48936a7153f1a2b818294fdb14198b",
+      "bytes": 6419,
+      "expected_bytes": 6419,
+      "sha256": "5b739bd3b31fa8bf492b199a839fc327bfb6a810e6a8e49b9b7c29cbd827291d",
+      "expected_sha256": "5b739bd3b31fa8bf492b199a839fc327bfb6a810e6a8e49b9b7c29cbd827291d",
+      "size_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "code/bayesfactor_R_wrapper.m",
+      "url": "https://data.nemar.org/on004563/v1.0.0/code/bayesfactor_R_wrapper.m",
+      "http_status": 200,
+      "final_url": "https://nemar.s3.us-east-2.amazonaws.com/on004563/objects/SHA256E-s4800--a8a7f97f9bb56dc637018e164b75816645a3aa91fe7188b8322d818c6513cf7a.m?X-Amz-Expires=3600&response-content-disposition=attachment%3Bfilename%3D%22bayesfactor_R_wrapper.m%22%3Bfilename*%3DUTF-8%27%27bayesfactor_R_wrapper.m&X-Amz-Date=20260918T194233Z&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASZJLRMPHZXE6VG7W%2F20260918%2Fus-east-2%2Fs3%2Faws4_request&X-Amz-SignedHeaders=host&X-Amz-Signature=03bfac6b5ed4687fb81db5d7f0c628ca7149333ac29c496bd5d69f60a34189b8",
+      "bytes": 4800,
+      "expected_bytes": 4800,
+      "sha256": "a8a7f97f9bb56dc637018e164b75816645a3aa91fe7188b8322d818c6513cf7a",
+      "expected_sha256": "a8a7f97f9bb56dc637018e164b75816645a3aa91fe7188b8322d818c6513cf7a",
+      "size_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "code/bayesfactor_R_wrapper_2sample.m",
+      "url": "https://data.nemar.org/on004563/v1.0.0/code/bayesfactor_R_wrapper_2sample.m",
+      "http_status": 200,
+      "final_url": "https://nemar.s3.us-east-2.amazonaws.com/on004563/objects/SHA256E-s5062--4ba7f144e48e92024f1f81b9cf7d6942f6f742cd4fc06668e2ad24a2d6414191.m?X-Amz-Expires=3600&response-content-disposition=attachment%3Bfilename%3D%22bayesfactor_R_wrapper_2sample.m%22%3Bfilename*%3DUTF-8%27%27bayesfactor_R_wrapper_2sample.m&X-Amz-Date=20260918T194234Z&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIASZJLRMPHZXE6VG7W%2F20260918%2Fus-east-2%2Fs3%2Faws4_request&X-Amz-SignedHeaders=host&X-Amz-Signature=4734515d47bf959455efc31cfcb360741ff97c6584da6369028146d802cc3816",
+      "bytes": 5062,
+      "expected_bytes": 5062,
+      "sha256": "4ba7f144e48e92024f1f81b9cf7d6942f6f742cd4fc06668e2ad24a2d6414191",
+      "expected_sha256": "4ba7f144e48e92024f1f81b9cf7d6942f6f742cd4fc06668e2ad24a2d6414191",
+      "size_match": true,
+      "sha256_match": true
+    }
+  ],
+  "all_verified": true
+}
