@@ -1,0 +1,236 @@
+name: Public external validation P08 license-free sensitivity fMRIPrep
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p08-sensitivity-fmriprep.yml'
+      - 'tools/public_external_validation_p08_sensitivity_prepare.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preprocess:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        participant: [sub-Bubbles, sub-Buttercup, sub-PILOT02]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install acquisition dependency
+        run: python -m pip install requests
+
+      - name: Record runner resources before acquisition
+        shell: bash
+        run: |
+          echo "=== disk ==="
+          df -h
+          echo "=== memory ==="
+          free -h
+          echo "=== cpu ==="
+          nproc
+
+      - name: Reconstruct exact frozen participant BIDS subset
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/public_external_validation_p08_sensitivity_prepare.py \
+            --participant "${{ matrix.participant }}"
+
+      - name: Pull and pin frozen fMRIPrep image
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image='nipreps/fmriprep:22.0.0'
+          expected='sha256:30bbf9ebc870de988b9ed7a9e32414dfdd98d57794f3b30126e1156079983402'
+          docker pull "$image"
+          repo_digest="$(docker inspect "$image" --format='{{index .RepoDigests 0}}')"
+          actual="${repo_digest##*@}"
+          echo "repo_digest=$repo_digest"
+          echo "actual_digest=$actual"
+          test "$actual" = "$expected"
+          echo "digest=$actual" >> "$GITHUB_OUTPUT"
+
+      - name: Run frozen license-free sensitivity preprocessing
+        id: fmriprep
+        shell: bash
+        run: |
+          set +e
+          p="${{ matrix.participant }}"
+          label="${p#sub-}"
+          root=".public-runner/p08/sensitivity/$p"
+          mkdir -p "$root/derivatives" "$root/work"
+          {
+            echo "Sensitivity lane only."
+            echo "Primary FreeSurfer bbregister lane remains unchanged and blocked by missing FS_LICENSE."
+            echo "Running fMRIPrep 22.0.0 with --fs-no-reconall and forced FSL BBR, 6 DOF."
+          } | tee "$root/sensitivity_execution_note.txt"
+
+          docker run --rm \
+            -v "$PWD/$root/bids:/data:ro" \
+            -v "$PWD/$root/derivatives:/out" \
+            -v "$PWD/$root/work:/work" \
+            nipreps/fmriprep:22.0.0 \
+            /data /out participant \
+            --participant-label "$label" \
+            --task-id SORPF \
+            --skip-bids-validation \
+            --fs-no-reconall \
+            --force-bbr \
+            --bold2t1w-dof 6 \
+            --output-spaces MNI152NLin2009cAsym \
+            --fd-spike-threshold 0.5 \
+            --dvars-spike-threshold 1.5 \
+            --nprocs 2 \
+            --omp-nthreads 1 \
+            --resource-monitor \
+            --stop-on-first-crash \
+            --notrack \
+            -w /work \
+            2>&1 | tee "$root/fmriprep.log"
+          code=${PIPESTATUS[0]}
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Record sensitivity preprocessing provenance
+        if: always()
+        shell: bash
+        env:
+          FMRIPREP_EXIT_CODE: ${{ steps.fmriprep.outputs.exit_code }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          set -euo pipefail
+          p="${{ matrix.participant }}"
+          root=".public-runner/p08/sensitivity/$p"
+          export P08_PARTICIPANT="$p"
+          export P08_ROOT="$root"
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+
+          p = os.environ["P08_PARTICIPANT"]
+          root = Path(os.environ["P08_ROOT"])
+          derivatives = root / "derivatives"
+          raw_exit = os.environ.get("FMRIPREP_EXIT_CODE", "")
+          try:
+              exit_code = int(raw_exit)
+          except Exception:
+              exit_code = None
+
+          files = []
+          patterns = [
+              f"{p}/func/*task-SORPF*desc-preproc_bold.nii.gz",
+              f"{p}/func/*task-SORPF*desc-confounds_timeseries.tsv",
+              f"{p}/func/*task-SORPF*desc-confounds_timeseries.json",
+              f"{p}/func/*task-SORPF*space-MNI152NLin2009cAsym*brain_mask.nii.gz",
+              f"{p}/func/*task-SORPF*T2starmap.nii.gz",
+              f"{p}.html",
+          ]
+          seen = set()
+          for pattern in patterns:
+              for path in sorted(derivatives.glob(pattern)):
+                  if not path.is_file() or path in seen:
+                      continue
+                  seen.add(path)
+                  h = hashlib.sha256()
+                  with path.open("rb") as f:
+                      for block in iter(lambda: f.read(8 * 1024 * 1024), b""):
+                          h.update(block)
+                  files.append({
+                      "path": path.relative_to(root).as_posix(),
+                      "bytes": path.stat().st_size,
+                      "sha256": h.hexdigest(),
+                  })
+
+          status = (
+              "P08_SECONDARY_SENSITIVITY_FMRIPREP_COMPLETE"
+              if exit_code == 0
+              else "P08_SECONDARY_SENSITIVITY_FMRIPREP_TECHNICAL_FAILURE"
+          )
+          out = {
+              "status": status,
+              "participant": p,
+              "lane": "secondary_sensitivity_only",
+              "primary_lane_modified": False,
+              "frozen_source_commit": "ed03c47c368000e511401021c1d13c3fb916b470",
+              "fmriprep_version": "22.0.0",
+              "container_image": "nipreps/fmriprep:22.0.0",
+              "container_digest": os.environ.get("IMAGE_DIGEST"),
+              "fs_no_reconall": True,
+              "registration": "FSL FLIRT BBR",
+              "force_bbr": True,
+              "bold2t1w_dof": 6,
+              "output_space": "MNI152NLin2009cAsym",
+              "fd_spike_threshold_mm": 0.5,
+              "dvars_spike_threshold": 1.5,
+              "task": "SORPF",
+              "fmriprep_exit_code": exit_code,
+              "selected_derivative_files": files,
+              "selected_derivative_file_count": len(files),
+              "self_other_glm_computed": False,
+              "roi_effect_computed": False,
+              "neural_effect_computed": False,
+          }
+          root.mkdir(parents=True, exist_ok=True)
+          (root / "sensitivity_preprocessing_result.json").write_text(
+              json.dumps(out, indent=2) + "\n", encoding="utf-8"
+          )
+          print(json.dumps(out, indent=2))
+          PY
+
+      - name: Remove raw and work directories before artifact upload
+        if: always()
+        shell: bash
+        run: |
+          p="${{ matrix.participant }}"
+          root=".public-runner/p08/sensitivity/$p"
+          rm -rf "$root/bids" "$root/work"
+
+      - name: Upload compact sensitivity provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-sensitivity-provenance-${{ matrix.participant }}
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            .public-runner/p08/sensitivity/${{ matrix.participant }}/input_reconstruction.json
+            .public-runner/p08/sensitivity/${{ matrix.participant }}/sensitivity_execution_note.txt
+            .public-runner/p08/sensitivity/${{ matrix.participant }}/sensitivity_preprocessing_result.json
+            .public-runner/p08/sensitivity/${{ matrix.participant }}/fmriprep.log
+
+      - name: Upload GLM-relevant sensitivity derivatives
+        if: steps.fmriprep.outputs.exit_code == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-sensitivity-derivatives-${{ matrix.participant }}
+          retention-days: 30
+          if-no-files-found: warn
+          compression-level: 0
+          path: |
+            .public-runner/p08/sensitivity/${{ matrix.participant }}/derivatives/sub-*/func/*task-SORPF*desc-preproc_bold.nii.gz
+            .public-runner/p08/sensitivity/${{ matrix.participant }}/derivatives/sub-*/func/*task-SORPF*desc-confounds_timeseries.tsv
+            .public-runner/p08/sensitivity/${{ matrix.participant }}/derivatives/sub-*/func/*task-SORPF*desc-confounds_timeseries.json
+            .public-runner/p08/sensitivity/${{ matrix.participant }}/derivatives/sub-*/func/*task-SORPF*space-MNI152NLin2009cAsym*brain_mask.nii.gz
+            .public-runner/p08/sensitivity/${{ matrix.participant }}/derivatives/sub-*/func/*task-SORPF*T2starmap.nii.gz
+            .public-runner/p08/sensitivity/${{ matrix.participant }}/derivatives/sub-*.html
+
+      - name: Fail job if fMRIPrep failed
+        if: always()
+        shell: bash
+        run: |
+          test "${{ steps.fmriprep.outputs.exit_code }}" = "0"
