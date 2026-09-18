@@ -1,0 +1,87 @@
+{
+  "status": "P08_FROZEN_PREPROCESSING_INPUT_MANIFEST_CREATED",
+  "frozen_commit": "ed03c47c368000e511401021c1d13c3fb916b470",
+  "participants": [
+    "sub-Bubbles",
+    "sub-Buttercup",
+    "sub-PILOT02"
+  ],
+  "selection_rules": [
+    "SORPF sessions are detected only from frozen task-SORPF events.tsv paths.",
+    "Include every magnitude BOLD echo and magnitude SBRef in those SORPF functional directories, plus their JSON sidecars.",
+    "Exclude phase-BOLD/phase-SBRef, dMRI, rest and unrelated tasks from the preprocessing subset.",
+    "Include all T1w anatomical inputs for each frozen participant.",
+    "For each SORPF session, include acq-func EPI fieldmaps explicitly linked to SORPF by IntendedFor; if no explicit linkage exists, conservatively include all acq-func EPI fieldmaps in that SORPF session.",
+    "Include dataset/task/session metadata required to interpret the BIDS subset."
+  ],
+  "frozen_commit_verified": true,
+  "sorpf_sessions": [
+    {
+      "participant": "sub-Bubbles",
+      "session": "ses-01"
+    },
+    {
+      "participant": "sub-Bubbles",
+      "session": "ses-04"
+    },
+    {
+      "participant": "sub-Buttercup",
+      "session": "ses-04"
+    },
+    {
+      "participant": "sub-Buttercup",
+      "session": "ses-05"
+    },
+    {
+      "participant": "sub-PILOT02",
+      "session": "ses-01"
+    }
+  ],
+  "fieldmap_selection": {
+    "sub-Bubbles/ses-01": {
+      "mode": "explicit_intendedfor",
+      "json_count": 2
+    },
+    "sub-Bubbles/ses-04": {
+      "mode": "explicit_intendedfor",
+      "json_count": 2
+    },
+    "sub-Buttercup/ses-04": {
+      "mode": "explicit_intendedfor",
+      "json_count": 2
+    },
+    "sub-Buttercup/ses-05": {
+      "mode": "explicit_intendedfor",
+      "json_count": 2
+    },
+    "sub-PILOT02/ses-01": {
+      "mode": "explicit_intendedfor",
+      "json_count": 2
+    }
+  },
+  "files_total": 188,
+  "annex_files": 85,
+  "git_blob_files": 103,
+  "annex_payload_bytes": 5818834742,
+  "git_blob_bytes": 346580,
+  "total_expected_bytes": 5819181322,
+  "counts_by_role": {
+    "root_metadata": 4,
+    "func_fmap_sidecar": 10,
+    "func_fmap_signal": 10,
+    "sorpf_magnitude_sidecar": 72,
+    "sorpf_magnitude_signal": 72,
+    "sorpf_events": 9,
+    "session_scans_metadata": 5,
+    "t1w_sidecar": 3,
+    "t1w_anatomical": 3
+  },
+  "counts_by_subject_or_root": {
+    "root": 4,
+    "sub-Bubbles": 80,
+    "sub-Buttercup": 80,
+    "sub-PILOT02": 24
+  },
+  "manifest_csv": ".public-runner/p08/raw_preprocessing_input_manifest_2026-09-18.csv",
+  "neural_effect_computed": false
+}
