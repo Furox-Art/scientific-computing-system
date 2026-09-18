@@ -26,14 +26,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install --disable-pip-version-check 'nilearn==0.13.1' 'nipype==1.11.0'
+          python -m pip install --disable-pip-version-check 'nilearn==0.13.1' 'nipype==1.11.0' 'nitime==0.12.1'
           python - <<'PY'
           import json, inspect
-          import nilearn, nipype
+          import nilearn, nipype, nitime
           from nilearn.glm.first_level import FirstLevelModel
           from nipype.algorithms.confounds import compute_dvars
           assert nilearn.__version__ == '0.13.1'
           assert nipype.__version__ == '1.11.0'
+          assert nitime.__version__ == '0.12.1'
           sig=str(inspect.signature(FirstLevelModel))
           dvars_sig=str(inspect.signature(compute_dvars))
           out={
