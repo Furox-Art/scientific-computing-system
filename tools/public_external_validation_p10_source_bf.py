@@ -101,7 +101,8 @@ def main():
             vars_meta=[{"name":n,"shape":list(sh),"class":cl} for n,sh,cl in whosmat(out)]
             mat=loadmat(out,squeeze_me=False,struct_as_record=False)
             summaries={}
-            for n,_,_ in vars_meta:
+            for meta in vars_meta:
+                n=meta["name"]
                 if n.startswith("__"): continue
                 CURRENT_VAR=n
                 try:
