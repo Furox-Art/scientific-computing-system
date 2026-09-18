@@ -15,7 +15,8 @@ from pathlib import Path
 AFNI_IMAGE = "afni/afni_make_build@sha256:c8365868751116f1ef2d0811e8a4dd2df58a689da457c74ea07fedb0e11dc0d6"
 OPEN_ROOT = Path(".public-runner/p08/opensource-v2")
 PARTICIPANTS = {"sub-Bubbles", "sub-Buttercup", "sub-PILOT02"}
-MNI_SPACE = "MNI152NLin2009cAsym"\nMNI_RESOLUTION = 2
+MNI_SPACE = "MNI152NLin2009cAsym"
+MNI_RESOLUTION = 2
 
 
 def sha256_file(path: Path) -> str:
