@@ -1,0 +1,140 @@
+{
+  "status": "EXACT_BINARY_ACQUIRED_AND_HASH_VERIFIED",
+  "expected_bytes": 2731199,
+  "expected_sha256": "f99f426a2115b5b882febf080937cf7cc1676abde16729ff19e2890fe40a4385",
+  "chunk_bytes": 262144,
+  "routes": [
+    {
+      "url": "https://data.nemar.org/on004563/v1.0.0/derivatives/crossdecoding/sub-01_task-touchdecoding_crossdecoding.mat",
+      "actual_bytes": 2731199,
+      "actual_sha256": "f99f426a2115b5b882febf080937cf7cc1676abde16729ff19e2890fe40a4385",
+      "size_match": true,
+      "sha256_match": true,
+      "chunks": [
+        {
+          "i": 0,
+          "start": 0,
+          "end": 262143,
+          "bytes": 262144,
+          "status": 206,
+          "attempt": 1,
+          "final_host": "nemar.s3.us-east-2.amazonaws.com"
+        },
+        {
+          "i": 1,
+          "start": 262144,
+          "end": 524287,
+          "bytes": 262144,
+          "status": 206,
+          "attempt": 1,
+          "final_host": "nemar.s3.us-east-2.amazonaws.com"
+        },
+        {
+          "i": 2,
+          "start": 524288,
+          "end": 786431,
+          "bytes": 262144,
+          "status": 206,
+          "attempt": 1,
+          "final_host": "nemar.s3.us-east-2.amazonaws.com"
+        },
+        {
+          "i": 3,
+          "start": 786432,
+          "end": 1048575,
+          "bytes": 262144,
+          "status": 206,
+          "attempt": 1,
+          "final_host": "nemar.s3.us-east-2.amazonaws.com"
+        },
+        {
+          "i": 4,
+          "start": 1048576,
+          "end": 1310719,
+          "bytes": 262144,
+          "status": 206,
+          "attempt": 1,
+          "final_host": "nemar.s3.us-east-2.amazonaws.com"
+        },
+        {
+          "i": 5,
+          "start": 1310720,
+          "end": 1572863,
+          "bytes": 262144,
+          "status": 206,
+          "attempt": 1,
+          "final_host": "nemar.s3.us-east-2.amazonaws.com"
+        },
+        {
+          "i": 6,
+          "start": 1572864,
+          "end": 1835007,
+          "bytes": 262144,
+          "status": 206,
+          "attempt": 1,
+          "final_host": "nemar.s3.us-east-2.amazonaws.com"
+        },
+        {
+          "i": 7,
+          "start": 1835008,
+          "end": 2097151,
+          "bytes": 262144,
+          "status": 206,
+          "attempt": 1,
+          "final_host": "nemar.s3.us-east-2.amazonaws.com"
+        },
+        {
+          "i": 8,
+          "start": 2097152,
+          "end": 2359295,
+          "bytes": 262144,
+          "status": 206,
+          "attempt": 1,
+          "final_host": "nemar.s3.us-east-2.amazonaws.com"
+        },
+        {
+          "i": 9,
+          "start": 2359296,
+          "end": 2621439,
+          "bytes": 262144,
+          "status": 206,
+          "attempt": 1,
+          "final_host": "nemar.s3.us-east-2.amazonaws.com"
+        },
+        {
+          "i": 10,
+          "start": 2621440,
+          "end": 2731198,
+          "bytes": 109759,
+          "status": 206,
+          "attempt": 1,
+          "final_host": "nemar.s3.us-east-2.amazonaws.com"
+        }
+      ]
+    }
+  ],
+  "scientific_effect_computed": false,
+  "verified_route": "https://data.nemar.org/on004563/v1.0.0/derivatives/crossdecoding/sub-01_task-touchdecoding_crossdecoding.mat",
+  "mat_inventory": {
+    "header_ascii": "MATLAB 5.0 MAT-file, Platform: MACI64, Created on: Sun May  8 04:52:13 2022                                         \u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0001IM",
+    "scipy_whosmat": [
+      {
+        "name": "res_timegen_touch2vis",
+        "shape": [
+          1,
+          1
+        ],
+        "class": "struct"
+      },
+      {
+        "name": "res_timegen_vis2touch",
+        "shape": [
+          1,
+          1
+        ],
+        "class": "struct"
+      }
+    ],
+    "format": "scipy_mat"
+  }
+}
