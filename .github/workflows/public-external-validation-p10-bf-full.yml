@@ -1,0 +1,98 @@
+name: Public external validation P10 full primary BF
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p10-bf-full.yml'
+      - 'tools/public_external_validation_p10_bf_full_prepare.py'
+      - 'tools/public_external_validation_p10_bf_full.R'
+      - 'tools/public_external_validation_p10_bf_full_aggregate.py'
+      - 'tools/public_p10_source_bf_manifest.csv'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recompute:
+    name: shard-${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python dependencies
+        run: python -m pip install requests numpy scipy
+      - name: Prepare exact shard input
+        run: python tools/public_external_validation_p10_bf_full_prepare.py --shard ${{ matrix.shard }} --n-shards 12
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.3.3'
+          use-public-rspm: true
+      - name: Install code-referenced BayesFactor
+        shell: Rscript {0}
+        run: |
+          install.packages(c('remotes','jsonlite'), repos='https://cloud.r-project.org')
+          remotes::install_version('BayesFactor', version='0.9.12-4.2', repos='https://cloud.r-project.org', upgrade='never', dependencies=TRUE)
+      - name: Recompute shard
+        shell: bash
+        run: |
+          sid=$(printf '%02d' ${{ matrix.shard }})
+          d=.public-runner/p10/bf-full/shard-$sid
+          Rscript tools/public_external_validation_p10_bf_full.R \
+            "$d/shard-$sid-input.csv" \
+            "$d/shard-$sid-recomputed.csv.gz" \
+            "$d/shard-$sid-summary.json"
+      - name: Upload shard outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: p10-bf-shard-${{ matrix.shard }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            .public-runner/p10/bf-full/shard-*/shard-*-recomputed.csv.gz
+            .public-runner/p10/bf-full/shard-*/shard-*-summary.json
+            .public-runner/p10/bf-full/shard-*/shard-*-input-manifest.json
+
+  aggregate:
+    needs: recompute
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install aggregation dependencies
+        run: python -m pip install requests numpy scipy
+      - name: Download all shard outputs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: p10-bf-shard-*
+          path: .public-runner/p10/bf-full/shards
+          merge-multiple: true
+      - name: Aggregate and validate all 553536 cells
+        run: python tools/public_external_validation_p10_bf_full_aggregate.py
+      - name: Show final result
+        run: cat .public-runner/p10/bf-full/final/p10_primary_touch2vis_bf_recomputation_result.json
+      - name: Upload final recomputation
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-p10-full-primary-bf-recomputation
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            .public-runner/p10/bf-full/final/p10_primary_touch2vis_bf_recomputation_result.json
+            .public-runner/p10/bf-full/final/p10_primary_touch2vis_recomputed_bf_maps.npz
