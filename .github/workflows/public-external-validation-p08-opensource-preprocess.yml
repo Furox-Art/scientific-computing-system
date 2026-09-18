@@ -51,7 +51,8 @@ jobs:
           expected='9f6a2c8881d6c94ea17171c0502e55cb898ad9afd50e4e23fde9a8c0997aa04b'
           curl -L --retry 4 --retry-delay 3 -o /tmp/ants.zip "$url"
           echo "$expected  /tmp/ants.zip" | sha256sum -c -
-          unzip -q /tmp/ants.zip -d /tmp/ants\n          rm -f /tmp/ants.zip
+          unzip -q /tmp/ants.zip -d /tmp/ants
+          rm -f /tmp/ants.zip
           bindir="$(find /tmp/ants -type f -name antsRegistration -printf '%h\n' | head -n1)"
           test -n "$bindir"
           libdir="$(dirname "$bindir")/lib"
