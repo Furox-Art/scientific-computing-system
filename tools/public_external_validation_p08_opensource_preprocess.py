@@ -196,7 +196,7 @@ def afni_session(part_root: Path, participant: str, session: str, runs: dict, t1
         "-out_dir", cpath(part_root, results),
         "-copy_anat", cpath(part_root, t1_n4),
         "-anat_has_skull", "yes",
-        "-blocks", "blip", "align", "volreg", "mask", "combine",
+        "-blocks", "blip", "align", "volreg", "mask",
     ]
     for rn, info in sorted(runs.items()):
         cmd += ["-dsets_me_run"] + [cpath(part_root, e["shifted"]) for e in info["echoes"]]
@@ -208,12 +208,11 @@ def afni_session(part_root: Path, participant: str, session: str, runs: dict, t1
         "-blip_forward_dset", cpath(part_root, fwd),
         "-blip_reverse_dset", cpath(part_root, rev),
         "-align_unifize_epi", "local",
-        "-align_opts_aea", "-cost", "lpc+ZZ", "-giant_move", "-check_flip",
+        "-align_opts_aea", "-cost", "lpc+ZZ", "-rigid_body", "-giant_move", "-check_flip",
         "-volreg_align_to", "MIN_OUTLIER",
         "-volreg_align_e2a",
         "-volreg_warp_final_interp", "wsinc5",
         "-mask_epi_anat", "yes",
-        "-combine_method", "mean",
         "-html_review_style", "pythonic",
         "-execute",
     ]
