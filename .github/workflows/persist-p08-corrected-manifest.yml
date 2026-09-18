@@ -1,0 +1,36 @@
+name: Persist P08 corrected manifest
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/persist-p08-corrected-manifest.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  persist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build corrected manifest
+        run: python tools/public_external_validation_p08_manifest.py
+      - name: Commit manifest text
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --rebase origin external-validation-public-runner-20260918
+          git add -- .public-runner/p08/raw_preprocessing_input_manifest_2026-09-18.csv .public-runner/p08/raw_preprocessing_input_manifest_summary_2026-09-18.json
+          git commit -m 'Persist corrected P08 preprocessing input manifest' || exit 0
+          git push origin HEAD:external-validation-public-runner-20260918
