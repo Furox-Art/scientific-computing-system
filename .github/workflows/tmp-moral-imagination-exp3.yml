@@ -1,0 +1,40 @@
+name: tmp Moral Imagination Exp3 raw
+on:
+  push:
+    paths:
+      - '.github/workflows/tmp-moral-imagination-exp3.yml'
+permissions:
+  contents: read
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --disable-pip-version-check requests openpyxl
+      - name: Fetch and inspect Experiment 3
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,requests,openpyxl
+          out=pathlib.Path('out'); out.mkdir(exist_ok=True)
+          u='https://osf.io/download/782aq/'
+          r=requests.get(u,timeout=120,headers={'User-Agent':'Mozilla/5.0 reproducibility-data-acquisition/1.0'},allow_redirects=True)
+          r.raise_for_status()
+          p=out/'GaesserKeelerYoung_Experiment3Data.xlsx'; p.write_bytes(r.content)
+          wb=openpyxl.load_workbook(p,data_only=True,read_only=True)
+          summary={'bytes':len(r.content),'sha256':hashlib.sha256(r.content).hexdigest(),'sheets':[]}
+          for ws in wb.worksheets:
+              rows=ws.iter_rows(values_only=True)
+              first=next(rows,None)
+              second=next(rows,None)
+              summary['sheets'].append({'title':ws.title,'max_row':ws.max_row,'max_column':ws.max_column,'row1':list(first or []),'row2':list(second or [])})
+          (out/'workbook_summary.json').write_text(json.dumps(summary,indent=2,ensure_ascii=False,default=str),encoding='utf-8')
+          print(json.dumps(summary,indent=2,ensure_ascii=False,default=str))
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: moral-imagination-exp3-raw
+          path: out/
+          retention-days: 1
