@@ -1,0 +1,58 @@
+name: tmp Moral Imagination OSF search
+on:
+  push:
+    paths:
+      - '.github/workflows/tmp-moral-imagination-osf-search.yml'
+permissions:
+  contents: read
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Query OSF public API
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, pathlib, requests, urllib.parse
+          s=requests.Session(); s.headers.update({'User-Agent':'Mozilla/5.0 reproducibility-data-acquisition/1.0'})
+          qs=[
+            ('title','Moral imagination'),
+            ('title','Facilitating prosocial decision-making through scene imagery and theory of mind'),
+            ('contributors','Brendan Gaesser')
+          ]
+          out=[]
+          for kind,q in qs:
+              if kind=='title':
+                  url='https://api.osf.io/v2/nodes/?filter[title]='+urllib.parse.quote(q)
+              else:
+                  url='https://api.osf.io/v2/nodes/?filter[contributors]='+urllib.parse.quote(q)
+              try:
+                  r=s.get(url,timeout=60)
+                  rec={'query':q,'url':url,'status':r.status_code}
+                  if r.ok:
+                      j=r.json()
+                      rec['results']=[{
+                        'id':x.get('id'),
+                        'title':(x.get('attributes') or {}).get('title'),
+                        'description':(x.get('attributes') or {}).get('description'),
+                        'date_created':(x.get('attributes') or {}).get('date_created'),
+                        'date_modified':(x.get('attributes') or {}).get('date_modified'),
+                        'public':(x.get('attributes') or {}).get('public'),
+                        'html':(x.get('links') or {}).get('html')
+                      } for x in j.get('data',[])]
+                  else: rec['text']=r.text[:2000]
+              except Exception as e: rec={'query':q,'url':url,'error':repr(e)}
+              out.append(rec)
+          pathlib.Path('out').mkdir(exist_ok=True)
+          pathlib.Path('out/results.json').write_text(json.dumps(out,indent=2,ensure_ascii=False),encoding='utf-8')
+          print(json.dumps(out,indent=2,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: moral-imagination-osf-search
+          path: out/
+          retention-days: 1
