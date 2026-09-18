@@ -1,0 +1,63 @@
+name: Public external validation P10 BF artifact recovery
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p10-bf-recovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recover-and-aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install requests numpy scipy
+
+      - name: Download successful shard artifacts from original run
+        uses: actions/download-artifact@v4
+        with:
+          pattern: p10-bf-full-shard-*
+          merge-multiple: true
+          path: .public-runner/p10/bf_full/recovery_download
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: 35393092022
+
+      - name: Flatten recovered shard outputs for the frozen aggregator
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .public-runner/p10/bf_full/shards
+          find .public-runner/p10/bf_full/recovery_download -type f -name 'bf_output_shard_*.csv' -print -exec cp '{}' .public-runner/p10/bf_full/shards/ \;
+          count=$(find .public-runner/p10/bf_full/shards -maxdepth 1 -type f -name 'bf_output_shard_*.csv' | wc -l)
+          echo "Recovered shard CSV count: ${count}"
+          test "${count}" -eq 16
+
+      - name: Aggregate, verify full source reproduction, summarize
+        run: python tools/public_p10_full_bf_aggregate.py
+
+      - name: Show final result
+        run: cat .public-runner/p10/bf_full/aggregate/full_primary_bf_recomputation_result.json
+
+      - name: Upload final independent BF maps and summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-p10-full-primary-bf-recomputation-recovered
+          retention-days: 14
+          path: |
+            .public-runner/p10/bf_full/aggregate/full_primary_bf_recomputation_result.json
+            .public-runner/p10/bf_full/aggregate/full_primary_touch2vis_bf_maps.npz
