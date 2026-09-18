@@ -1,0 +1,91 @@
+name: Public external validation P10 full BF recomputation
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p10-full-bf.yml'
+      - 'tools/public_p10_full_bf_prepare.py'
+      - 'tools/public_p10_full_bf_shard.R'
+      - 'tools/public_p10_full_bf_aggregate.py'
+      - 'tools/public_p10_source_bf_manifest.csv'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recompute:
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        shard: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python dependencies
+        run: python -m pip install requests numpy scipy
+      - name: Prepare exact participant-array shard input
+        run: python tools/public_p10_full_bf_prepare.py --shard ${{ matrix.shard }} --n-shards 16
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.3.3'
+          use-public-rspm: true
+      - name: Install source-version BayesFactor
+        shell: Rscript {0}
+        run: |
+          install.packages('remotes', repos='https://cloud.r-project.org')
+          remotes::install_version('BayesFactor', version='0.9.12-4.2', repos='https://cloud.r-project.org', upgrade='never', dependencies=TRUE)
+      - name: Recompute shard
+        shell: bash
+        run: |
+          printf -v S '%02d' '${{ matrix.shard }}'
+          Rscript tools/public_p10_full_bf_shard.R \
+            .public-runner/p10/bf_full/shard_${S}/bf_input_shard_${S}.csv \
+            .public-runner/p10/bf_full/shard_${S}/bf_output_shard_${S}.csv
+      - name: Upload shard output
+        uses: actions/upload-artifact@v4
+        with:
+          name: p10-bf-full-shard-${{ matrix.shard }}
+          retention-days: 14
+          path: .public-runner/p10/bf_full/shard_*/bf_output_shard_*.csv
+
+  aggregate:
+    needs: recompute
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install requests numpy scipy
+      - name: Download all shard outputs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: p10-bf-full-shard-*
+          merge-multiple: true
+          path: .public-runner/p10/bf_full/shards
+      - name: Aggregate, verify full source reproduction, summarize
+        run: python tools/public_p10_full_bf_aggregate.py
+      - name: Show final result
+        run: cat .public-runner/p10/bf_full/aggregate/full_primary_bf_recomputation_result.json
+      - name: Upload final independent BF maps and summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-p10-full-primary-bf-recomputation
+          retention-days: 14
+          path: |
+            .public-runner/p10/bf_full/aggregate/full_primary_bf_recomputation_result.json
+            .public-runner/p10/bf_full/aggregate/full_primary_touch2vis_bf_maps.npz
