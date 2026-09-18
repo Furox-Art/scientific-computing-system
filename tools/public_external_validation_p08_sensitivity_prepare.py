@@ -108,10 +108,11 @@ def download_exact(session: requests.Session, url: str, dest: Path, expected_byt
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--participant", required=True, choices=sorted(PARTICIPANTS))
+    ap.add_argument("--root", default=str(ROOT), help="Output root; defaults to the original sensitivity location.")
     args = ap.parse_args()
 
     participant = args.participant
-    workroot = ROOT / participant
+    workroot = Path(args.root) / participant
     bids = workroot / "bids"
     source = workroot / "source_repo"
     result_path = workroot / "input_reconstruction.json"
