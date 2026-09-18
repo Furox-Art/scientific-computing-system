@@ -1,11 +1,6 @@
 name: Public external validation P08 fMRIPrep preflight
 
 on:
-  push:
-    branches:
-      - external-validation-public-runner-20260918
-    paths:
-      - '.github/workflows/public-external-validation-p08-fmriprep-preflight.yml'
   workflow_dispatch:
 
 permissions:
@@ -29,32 +24,31 @@ jobs:
           mkdir -p .public-runner/p08/fmriprep-preflight
           image='nipreps/fmriprep:22.0.0'
           docker pull "$image"
-          version_output=$(docker run --rm "$image" --version 2>&1 | tail -n 5 | tr '\n' ' ' | sed 's/"/\\\"/g')
-          image_digest=$(docker inspect "$image" --format='{{index .RepoDigests 0}}')
-          if [ -n "${FS_LICENSE_TEXT:-}" ]; then
-            fs_present=true
-            status='P08_FMRIPREP_22_IMAGE_AND_FREESURFER_LICENSE_PREREQUISITES_PRESENT'
-          else
-            fs_present=false
-            status='P08_FMRIPREP_22_IMAGE_PRESENT_FREESURFER_LICENSE_SECRET_MISSING'
-          fi
-          python3 - <<PY
-          import json
-          out={
-            "status":"$status",
-            "frozen_fmriprep_version":"22.0.0",
-            "container_image":"$image",
-            "container_digest":"$image_digest",
-            "version_command_output":"$version_output",
-            "freesurfer_license_secret_name":"FS_LICENSE",
-            "freesurfer_license_secret_present":$fs_present,
-            "data_download_started":False,
-            "preprocessing_started":False,
-            "neural_effect_computed":False,
-            "scientific_note":"This preflight does not alter the frozen preprocessing lock. If the FreeSurfer license secret is absent, do not substitute --fs-no-reconall because the frozen primary source-consistent route specifies FreeSurfer bbregister 6 DOF."
+          export FMRIPREP_IMAGE="$image"
+          export FMRIPREP_VERSION_OUTPUT="$(docker run --rm "$image" --version 2>&1 | tail -n 5 | tr '\n' ' ')"
+          export FMRIPREP_IMAGE_DIGEST="$(docker inspect "$image" --format='{{index .RepoDigests 0}}')"
+          python3 - <<'PY'
+          import json, os
+          present = bool(os.environ.get("FS_LICENSE_TEXT", ""))
+          out = {
+              "status": "P08_FMRIPREP_22_IMAGE_AND_FREESURFER_LICENSE_PREREQUISITES_PRESENT" if present else "P08_FMRIPREP_22_IMAGE_PRESENT_FREESURFER_LICENSE_SECRET_MISSING",
+              "frozen_fmriprep_version": "22.0.0",
+              "container_image": os.environ["FMRIPREP_IMAGE"],
+              "container_digest": os.environ["FMRIPREP_IMAGE_DIGEST"],
+              "version_command_output": os.environ["FMRIPREP_VERSION_OUTPUT"],
+              "freesurfer_license_secret_name": "FS_LICENSE",
+              "freesurfer_license_secret_present": present,
+              "secret_value_logged": False,
+              "data_download_started": False,
+              "preprocessing_started": False,
+              "neural_effect_computed": False,
+              "scientific_note": "This preflight does not alter the frozen preprocessing lock. Do not substitute --fs-no-reconall when the FreeSurfer license is absent because the frozen primary source-consistent route specifies FreeSurfer bbregister 6 DOF."
           }
-          open(".public-runner/p08/fmriprep-preflight/preflight.json","w").write(json.dumps(out,indent=2)+"\n")
-          print(json.dumps(out,indent=2))
+          path = ".public-runner/p08/fmriprep-preflight/preflight.json"
+          with open(path, "w", encoding="utf-8") as f:
+              json.dump(out, f, indent=2)
+              f.write("\n")
+          print(json.dumps(out, indent=2))
           PY
 
       - name: Upload compact preflight
