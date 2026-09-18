@@ -1,0 +1,170 @@
+name: Public external validation P08 Harvard-Oxford ROI preflight
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p08-roi-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  roi-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned Python resources
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'templateflow==25.1.2' 'nibabel==5.3.2' numpy
+
+      - name: Install pinned ANTs 2.6.5
+        id: ants
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://github.com/ANTsX/ANTs/releases/download/v2.6.5/ants-2.6.5-ubuntu-24.04-X64-gcc.zip'
+          expected='9f6a2c8881d6c94ea17171c0502e55cb898ad9afd50e4e23fde9a8c0997aa04b'
+          curl -L --retry 4 --retry-delay 3 -o /tmp/ants.zip "$url"
+          echo "$expected  /tmp/ants.zip" | sha256sum -c -
+          unzip -q /tmp/ants.zip -d /tmp/ants
+          bindir="$(find /tmp/ants -type f -name antsApplyTransforms -printf '%h\n' | head -n1)"
+          test -n "$bindir"
+          libdir="$(dirname "$bindir")/lib"
+          test -d "$libdir"
+          echo "bindir=$bindir" >> "$GITHUB_OUTPUT"
+          echo "LD_LIBRARY_PATH=$libdir:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+
+      - name: Fetch exact atlas, labels, template and official inter-template transform
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='.public-runner/p08/roi-preflight'
+          mkdir -p "$root"
+          python - "$root" <<'PY'
+          from pathlib import Path
+          import json, shutil, sys
+          from templateflow import api as tflow
+
+          root=Path(sys.argv[1])
+          atlas=tflow.get('MNI152NLin6Asym', resolution=1, atlas='HOCPA', desc='th25', suffix='dseg', extension='nii.gz')
+          labels=tflow.get('MNI152NLin6Asym', atlas='HOCPA', suffix='dseg', extension='tsv')
+          ref=tflow.get('MNI152NLin2009cAsym', resolution=1, desc=None, suffix='T1w', extension='nii.gz')
+          xfms=tflow.get('MNI152NLin2009cAsym', mode='image', suffix='xfm', extension='h5')
+          if not isinstance(xfms,(list,tuple)): xfms=[xfms]
+          xfm=[p for p in xfms if 'from-MNI152NLin6Asym' in str(p)]
+          if len(xfm)!=1: raise RuntimeError(f'Expected one MNI6->MNI2009c h5 transform, got {xfm}')
+          if isinstance(labels,(list,tuple)):
+              labels=[p for p in labels if 'atlas-HOCPA_dseg.tsv' in str(p)]
+              if len(labels)!=1: raise RuntimeError(f'Expected one HOCPA label table, got {labels}')
+              labels=labels[0]
+
+          copies={
+              'atlas':(Path(atlas), root/'tpl-MNI152NLin6Asym_res-01_atlas-HOCPA_desc-th25_dseg.nii.gz'),
+              'labels':(Path(labels), root/'tpl-MNI152NLin6Asym_atlas-HOCPA_dseg.tsv'),
+              'reference':(Path(ref), root/'tpl-MNI152NLin2009cAsym_res-01_T1w.nii.gz'),
+              'xfm':(Path(xfm[0]), root/'tpl-MNI152NLin2009cAsym_from-MNI152NLin6Asym_mode-image_xfm.h5'),
+          }
+          for k,(src,dst) in copies.items():
+              if not src.is_file() or src.stat().st_size==0: raise RuntimeError(f'Missing/empty TemplateFlow resource {k}: {src}')
+              shutil.copy2(src,dst)
+
+          rows=[]
+          for line in (root/'tpl-MNI152NLin6Asym_atlas-HOCPA_dseg.tsv').read_text().splitlines()[1:]:
+              if not line.strip(): continue
+              idx,name=line.split('\t',1)
+              rows.append((int(idx),name))
+          found={name:idx for idx,name in rows}
+          expected={'Frontal Medial Cortex':25,'Cingulate Gyrus, posterior division':30}
+          for name,idx in expected.items():
+              if found.get(name)!=idx: raise RuntimeError(f'Label mismatch {name}: {found.get(name)} != {idx}')
+          print(json.dumps({'labels_verified':expected},indent=2))
+          PY
+
+      - name: Transform Harvard-Oxford atlas into frozen MNI2009c space
+        shell: bash
+        env:
+          ANTS_BIN: ${{ steps.ants.outputs.bindir }}
+        run: |
+          set -euo pipefail
+          root='.public-runner/p08/roi-preflight'
+          "$ANTS_BIN/antsApplyTransforms"             -d 3             -i "$root/tpl-MNI152NLin6Asym_res-01_atlas-HOCPA_desc-th25_dseg.nii.gz"             -r "$root/tpl-MNI152NLin2009cAsym_res-01_T1w.nii.gz"             -o "$root/tpl-MNI152NLin2009cAsym_res-01_atlas-HOCPA_desc-th25_dseg.nii.gz"             -n GenericLabel             -t "$root/tpl-MNI152NLin2009cAsym_from-MNI152NLin6Asym_mode-image_xfm.h5"
+
+      - name: Materialize and hash frozen ROI masks
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='.public-runner/p08/roi-preflight'
+          python - "$root" <<'PY'
+          from pathlib import Path
+          import hashlib, json, sys
+          import nibabel as nib
+          import numpy as np
+
+          root=Path(sys.argv[1])
+          dseg=root/'tpl-MNI152NLin2009cAsym_res-01_atlas-HOCPA_desc-th25_dseg.nii.gz'
+          img=nib.load(dseg)
+          data=np.asanyarray(img.dataobj).astype(np.int16)
+          specs=[
+              (25,'Frontal Medial Cortex','roi-FrontalMedialCortex_mask.nii.gz'),
+              (30,'Cingulate Gyrus, posterior division','roi-CingulateGyrusPosterior_mask.nii.gz'),
+          ]
+          roi=[]
+          for idx,name,fn in specs:
+              mask=(data==idx).astype(np.uint8)
+              n=int(mask.sum())
+              if n<=0: raise RuntimeError(f'Zero voxels after transform for {name}')
+              out=root/fn
+              hdr=img.header.copy()
+              hdr.set_data_dtype(np.uint8)
+              nib.save(nib.Nifti1Image(mask,img.affine,hdr),out)
+              roi.append({'index':idx,'name':name,'file':fn,'voxel_count_res01':n})
+          def sha(p):
+              h=hashlib.sha256()
+              with open(p,'rb') as f:
+                  for b in iter(lambda:f.read(8*1024*1024),b''): h.update(b)
+              return h.hexdigest()
+          resources={}
+          for p in sorted(root.iterdir()):
+              if p.is_file(): resources[p.name]={'bytes':p.stat().st_size,'sha256':sha(p)}
+          out={
+              'status':'P08_HARVARD_OXFORD_ROI_PREFLIGHT_COMPLETE',
+              'atlas':'Harvard-Oxford cortical atlas / TemplateFlow HOCPA',
+              'atlas_variant':'res-01 max-probability threshold 25%',
+              'atlas_source_space':'MNI152NLin6Asym',
+              'analysis_space':'MNI152NLin2009cAsym',
+              'intertemplate_transform':'TemplateFlow official MNI152NLin6Asym -> MNI152NLin2009cAsym image transform',
+              'interpolation':'ANTs GenericLabel',
+              'labels':roi,
+              'resources':resources,
+              'self_other_glm_computed':False,
+              'roi_effect_computed':False,
+              'neural_effect_computed':False,
+          }
+          (root/'roi_preflight_result.json').write_text(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-harvard-oxford-roi-preflight
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            .public-runner/p08/roi-preflight/roi_preflight_result.json
+            .public-runner/p08/roi-preflight/roi-FrontalMedialCortex_mask.nii.gz
+            .public-runner/p08/roi-preflight/roi-CingulateGyrusPosterior_mask.nii.gz
+            .public-runner/p08/roi-preflight/tpl-MNI152NLin2009cAsym_res-01_atlas-HOCPA_desc-th25_dseg.nii.gz
+            .public-runner/p08/roi-preflight/tpl-MNI152NLin6Asym_atlas-HOCPA_dseg.tsv
