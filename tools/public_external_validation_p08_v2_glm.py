@@ -214,7 +214,11 @@ def participant_mode(args) -> int:
     outroot.mkdir(parents=True, exist_ok=True)
 
     roi_paths = load_and_verify_roi_masks(roi_root)
-    any_mni = find_single(preproc_root, f"{participant}_ses-*_task-SORPF_run-*_space-MNI152NLin2009cAsym_res-02_desc-optcom_bold.nii.gz")
+    pattern = f"{participant}_ses-*_task-SORPF_run-*_space-MNI152NLin2009cAsym_res-02_desc-optcom_bold.nii.gz"
+    mni_candidates = sorted(preproc_root.rglob(pattern))
+    if not mni_candidates:
+        raise RuntimeError(f"No V2 MNI optcom files found for {participant} under {preproc_root}")
+    any_mni = mni_candidates[0]
     artifact_root = artifact_root_for(any_mni, participant)
     prep = verify_preprocessing_root(artifact_root, prov_root, participant)
     recon = prep["reconstruction"]
