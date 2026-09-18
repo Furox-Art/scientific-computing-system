@@ -1,0 +1,270 @@
+name: Public external validation P08 open-source preprocessing smoke
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p08-opensource-smoke.yml'
+      - 'tools/public_external_validation_p08_sensitivity_prepare.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install host dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check requests 'templateflow==25.1.2'
+
+      - name: Reconstruct exact frozen PILOT02 BIDS subset
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/public_external_validation_p08_sensitivity_prepare.py --participant sub-PILOT02
+
+      - name: Fetch and hash MNI152NLin2009cAsym res-01 template
+        id: template
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='.public-runner/p08/opensource-smoke/sub-PILOT02'
+          mkdir -p "$root"
+          template="$(python - <<'PY'
+          from templateflow.api import get
+          p = get('MNI152NLin2009cAsym', resolution=1, suffix='T1w', desc=None, extension='nii.gz')
+          print(str(p))
+          PY
+          )"
+          test -s "$template"
+          sha="$(sha256sum "$template" | awk '{print $1}')"
+          cp "$template" "$root/MNI152NLin2009cAsym_res-01_T1w.nii.gz"
+          echo "path=$root/MNI152NLin2009cAsym_res-01_T1w.nii.gz" >> "$GITHUB_OUTPUT"
+          echo "sha256=$sha" >> "$GITHUB_OUTPUT"
+          echo "Template SHA256: $sha"
+
+      - name: Install pinned ANTs 2.6.5
+        id: ants
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://github.com/ANTsX/ANTs/releases/download/v2.6.5/ants-2.6.5-ubuntu-24.04-X64-gcc.zip'
+          expected='9f6a2c8881d6c94ea17171c0502e55cb898ad9afd50e4e23fde9a8c0997aa04b'
+          curl -L --retry 4 --retry-delay 3 -o /tmp/ants.zip "$url"
+          echo "$expected  /tmp/ants.zip" | sha256sum -c -
+          unzip -q /tmp/ants.zip -d /tmp/ants
+          bindir="$(find /tmp/ants -type f -name antsRegistration -printf '%h\n' | head -n1)"
+          test -n "$bindir"
+          echo "bindir=$bindir" >> "$GITHUB_OUTPUT"
+          "$bindir/antsRegistration" --version
+
+      - name: Generate locked slice timing input
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='.public-runner/p08/opensource-smoke/sub-PILOT02'
+          json='.public-runner/p08/sensitivity/sub-PILOT02/bids/sub-PILOT02/ses-01/func/sub-PILOT02_ses-01_task-SORPF_run-1_echo-2_part-mag_bold.json'
+          python - "$json" "$root/slice_timing_echo2.1D" <<'PY'
+          import json, sys
+          src, dst = sys.argv[1:3]
+          meta = json.load(open(src, encoding='utf-8'))
+          st = meta['SliceTiming']
+          open(dst,'w',encoding='utf-8').write(' '.join(f'{x:.7f}' for x in st)+'\n')
+          print('slice_count', len(st), 'min', min(st), 'max', max(st))
+          PY
+
+      - name: Run locked AFNI + tedana OC smoke preprocessing
+        id: afni
+        shell: bash
+        run: |
+          set +e
+          inroot="$PWD/.public-runner/p08/sensitivity/sub-PILOT02/bids"
+          root="$PWD/.public-runner/p08/opensource-smoke/sub-PILOT02"
+          mkdir -p "$root/afni"
+          image='afni/afni_make_build@sha256:c8365868751116f1ef2d0811e8a4dd2df58a689da457c74ea07fedb0e11dc0d6'
+
+          docker run --rm \
+            -v "$inroot:/data:ro" \
+            -v "$root:/work" \
+            "$image" bash -lc '
+              set -euo pipefail
+              python3 --version
+              python3 -m pip --version
+              python3 -m pip install --disable-pip-version-check "tedana==26.0.3"
+              tedana --version
+              afni -ver
+
+              cd /work/afni
+              e1=/data/sub-PILOT02/ses-01/func/sub-PILOT02_ses-01_task-SORPF_run-1_echo-1_part-mag_bold.nii.gz
+              e2=/data/sub-PILOT02/ses-01/func/sub-PILOT02_ses-01_task-SORPF_run-1_echo-2_part-mag_bold.nii.gz
+              e3=/data/sub-PILOT02/ses-01/func/sub-PILOT02_ses-01_task-SORPF_run-1_echo-3_part-mag_bold.nii.gz
+              e4=/data/sub-PILOT02/ses-01/func/sub-PILOT02_ses-01_task-SORPF_run-1_echo-4_part-mag_bold.nii.gz
+              ap=/data/sub-PILOT02/ses-01/fmap/sub-PILOT02_ses-01_acq-func_dir-AP_run-3_epi.nii.gz
+              pa=/data/sub-PILOT02/ses-01/fmap/sub-PILOT02_ses-01_acq-func_dir-PA_run-3_epi.nii.gz
+              anat=/data/sub-PILOT02/ses-01/anat/sub-PILOT02_ses-01_run-1_T1w.nii.gz
+
+              afni_proc.py \
+                -subj_id PILOT02_ses01 \
+                -script proc.PILOT02_ses01 \
+                -out_dir out.PILOT02_ses01 \
+                -blocks tshift align volreg mask combine \
+                -dsets_me_run "$e1" "$e2" "$e3" "$e4" \
+                -echo_times 11.8 28.04 44.28 60.52 \
+                -reg_echo 2 \
+                -copy_anat "$anat" \
+                -anat_has_skull yes \
+                -blip_forward_dset "$ap[0]" \
+                -blip_reverse_dset "$pa[0]" \
+                -tshift_interp -wsinc9 \
+                -tshift_opts_ts -tpattern @/work/slice_timing_echo2.1D \
+                -align_unifize_epi local \
+                -align_opts_aea -cost lpc+ZZ -rigid_body -giant_move -check_flip \
+                -volreg_align_to MIN_OUTLIER \
+                -volreg_align_e2a \
+                -volreg_warp_final_interp wsinc5 \
+                -volreg_compute_tsnr yes \
+                -mask_epi_anat yes \
+                -combine_method m_tedana_OC \
+                -combine_opts_tedana --convention orig --no-reports \
+                -html_review_style pythonic \
+                -execute
+
+              cd /work/afni/out.PILOT02_ses01
+              head="$(find . -maxdepth 1 -type f -name "pb*.combine+orig.HEAD" | sort | head -n1)"
+              test -n "$head"
+              3dAFNItoNIFTI -prefix /work/optcom_anat.nii.gz "$head"
+              3dSkullStrip -input "$anat" -prefix /work/T1w_skullstripped.nii.gz
+            ' 2>&1 | tee "$root/afni_tedana_smoke.log"
+          code=${PIPESTATUS[0]}
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Run ANTs nonlinear anatomical normalization smoke
+        id: norm
+        if: steps.afni.outputs.exit_code == '0'
+        shell: bash
+        env:
+          ANTS_BIN: ${{ steps.ants.outputs.bindir }}
+          TEMPLATE: ${{ steps.template.outputs.path }}
+        run: |
+          set +e
+          root='.public-runner/p08/opensource-smoke/sub-PILOT02'
+          "$ANTS_BIN/antsRegistrationSyNQuick.sh" \
+            -d 3 \
+            -f "$TEMPLATE" \
+            -m "$root/T1w_skullstripped.nii.gz" \
+            -o "$root/ants_T1_to_MNI_" \
+            -t s \
+            -n 2 \
+            2>&1 | tee "$root/ants_registration.log"
+          code=${PIPESTATUS[0]}
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = 0 ]; then
+            "$ANTS_BIN/antsApplyTransforms" \
+              -d 3 \
+              -i "$root/optcom_anat.nii.gz[0]" \
+              -r "$TEMPLATE" \
+              -o "$root/optcom_firstvol_MNI.nii.gz" \
+              -n LanczosWindowedSinc \
+              -t "$root/ants_T1_to_MNI_1Warp.nii.gz" \
+              -t "$root/ants_T1_to_MNI_0GenericAffine.mat"
+          fi
+          exit 0
+
+      - name: Record outcome-blind smoke result
+        if: always()
+        shell: bash
+        env:
+          AFNI_EXIT: ${{ steps.afni.outputs.exit_code }}
+          ANTS_EXIT: ${{ steps.norm.outputs.exit_code }}
+          TEMPLATE_SHA256: ${{ steps.template.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          root='.public-runner/p08/opensource-smoke/sub-PILOT02'
+          export P08_ROOT="$root"
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root=Path(os.environ["P08_ROOT"])
+          def cint(v):
+              try:return int(v)
+              except:return None
+          afni_exit=cint(os.environ.get("AFNI_EXIT",""))
+          ants_exit=cint(os.environ.get("ANTS_EXIT",""))
+          files=[]
+          for name in [
+              "optcom_anat.nii.gz",
+              "T1w_skullstripped.nii.gz",
+              "ants_T1_to_MNI_0GenericAffine.mat",
+              "ants_T1_to_MNI_1Warp.nii.gz",
+              "optcom_firstvol_MNI.nii.gz",
+          ]:
+              p=root/name
+              if p.is_file():
+                  h=hashlib.sha256()
+                  with p.open("rb") as f:
+                      for b in iter(lambda:f.read(8*1024*1024),b""): h.update(b)
+                  files.append({"path":name,"bytes":p.stat().st_size,"sha256":h.hexdigest()})
+          status=(
+              "P08_OPEN_SOURCE_PREPROCESSING_SMOKE_COMPLETE"
+              if afni_exit==0 and ants_exit==0 and any(x["path"]=="optcom_firstvol_MNI.nii.gz" for x in files)
+              else "P08_OPEN_SOURCE_PREPROCESSING_SMOKE_TECHNICAL_FAILURE"
+          )
+          out={
+              "status":status,
+              "participant":"sub-PILOT02",
+              "lane":"open_source_secondary_sensitivity_only",
+              "primary_lane_modified":False,
+              "frozen_source_commit":"ed03c47c368000e511401021c1d13c3fb916b470",
+              "afni_version":"AFNI_26.2.05",
+              "afni_container_digest":"sha256:c8365868751116f1ef2d0811e8a4dd2df58a689da457c74ea07fedb0e11dc0d6",
+              "tedana_version":"26.0.3",
+              "ants_version":"2.6.5-gfdce4d2",
+              "templateflow_version":"25.1.2",
+              "template":"MNI152NLin2009cAsym_res-01_T1w",
+              "template_sha256":os.environ.get("TEMPLATE_SHA256"),
+              "afni_tedana_exit_code":afni_exit,
+              "ants_exit_code":ants_exit,
+              "artifacts":files,
+              "full_4d_mni_warp_performed":False,
+              "self_other_glm_computed":False,
+              "roi_effect_computed":False,
+              "neural_effect_computed":False,
+              "note":"Technical smoke test only. First-volume MNI warp tests transform chain; no target contrast or ROI outcome is computed."
+          }
+          (root/"smoke_result.json").write_text(json.dumps(out,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps(out,indent=2))
+          PY
+
+      - name: Upload compact smoke provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-open-source-preprocessing-smoke
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            .public-runner/p08/opensource-smoke/sub-PILOT02/smoke_result.json
+            .public-runner/p08/opensource-smoke/sub-PILOT02/afni_tedana_smoke.log
+            .public-runner/p08/opensource-smoke/sub-PILOT02/ants_registration.log
+
+      - name: Fail if technical smoke failed
+        if: always()
+        shell: bash
+        run: |
+          test "${{ steps.afni.outputs.exit_code }}" = "0"
+          test "${{ steps.norm.outputs.exit_code }}" = "0"
