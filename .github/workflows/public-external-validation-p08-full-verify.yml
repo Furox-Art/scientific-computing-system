@@ -1,0 +1,101 @@
+name: Public external validation P08 full annex verification
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p08-full-verify.yml'
+      - 'tools/public_external_validation_p08_verify_full.py'
+      - 'tools/public_external_validation_p08_verify_full_aggregate.py'
+      - 'tools/public_external_validation_p08_manifest.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Rebuild corrected frozen manifest
+        run: python tools/public_external_validation_p08_manifest.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p08-corrected-manifest-for-verification
+          retention-days: 7
+          path: .public-runner/p08/raw_preprocessing_input_manifest_2026-09-18.csv
+
+  verify:
+    needs: manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        participant: [sub-Bubbles, sub-Buttercup, sub-PILOT02]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install requests
+        run: python -m pip install requests
+      - uses: actions/download-artifact@v4
+        with:
+          name: p08-corrected-manifest-for-verification
+          path: .public-runner/p08
+      - name: Stream and verify all frozen annex payloads for participant
+        run: python tools/public_external_validation_p08_verify_full.py --participant ${{ matrix.participant }}
+      - name: Upload compact participant verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: p08-annex-verification-${{ matrix.participant }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            .public-runner/p08/full-acquisition/${{ matrix.participant }}/acquisition_result.json
+            .public-runner/p08/full-acquisition/${{ matrix.participant }}/file_verification.csv
+
+  aggregate:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: p08-annex-verification-*
+          path: .public-runner/p08/full-acquisition
+          merge-multiple: false
+      - name: Normalize artifact directories
+        shell: bash
+        run: |
+          mkdir -p .public-runner/p08/full-acquisition/sub-Bubbles .public-runner/p08/full-acquisition/sub-Buttercup .public-runner/p08/full-acquisition/sub-PILOT02
+          cp .public-runner/p08/full-acquisition/p08-annex-verification-sub-Bubbles/* .public-runner/p08/full-acquisition/sub-Bubbles/
+          cp .public-runner/p08/full-acquisition/p08-annex-verification-sub-Buttercup/* .public-runner/p08/full-acquisition/sub-Buttercup/
+          cp .public-runner/p08/full-acquisition/p08-annex-verification-sub-PILOT02/* .public-runner/p08/full-acquisition/sub-PILOT02/
+      - name: Aggregate exact verification
+        run: python tools/public_external_validation_p08_verify_full_aggregate.py
+      - name: Show final summary
+        run: cat .public-runner/p08/full-acquisition/full_acquisition_summary.json
+      - name: Upload final verification summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-full-preprocessing-annex-verification
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            .public-runner/p08/full-acquisition/full_acquisition_summary.json
+            .public-runner/p08/full-acquisition/sub-*/file_verification.csv
