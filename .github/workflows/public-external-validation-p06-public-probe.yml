@@ -1,0 +1,33 @@
+name: Public external validation P06 public probe
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p06-public-probe.yml'
+      - 'tools/public_external_validation_p06_public_probe.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests
+      - run: python tools/public_external_validation_p06_public_probe.py
+      - run: cat .public-runner/p06/public_access_probe.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-p06-public-access-probe
+          retention-days: 14
+          path: .public-runner/p06/public_access_probe.json
