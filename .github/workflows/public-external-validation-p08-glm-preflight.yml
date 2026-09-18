@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: external-validation-public-runner-20260918
+          ref: 71c8b2befe63c03c410a49117a8845590e549565
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -53,6 +53,8 @@ jobs:
           open('p08_glm_preflight.json','w').write(json.dumps(out,indent=2)+'\n')
           print(json.dumps(out,indent=2))
           PY
+          python -m py_compile tools/public_external_validation_p08_v2_glm.py
+          python tools/public_external_validation_p08_v2_glm.py --help >/dev/null
       - uses: actions/upload-artifact@v4
         with:
           name: public-p08-glm-toolchain-preflight
