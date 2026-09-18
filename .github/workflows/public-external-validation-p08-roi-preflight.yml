@@ -1,4 +1,4 @@
-name: Public external validation P08 Harvard-Oxford ROI preflight
+name: Public external validation P08 Harvard-Oxford ROI preflight V2 res-02
 
 on:
   push:
@@ -58,9 +58,9 @@ jobs:
           from templateflow import api as tflow
 
           root=Path(sys.argv[1])
-          atlas=tflow.get('MNI152NLin6Asym', resolution=1, atlas='HOCPA', desc='th25', suffix='dseg', extension='nii.gz')
+          atlas=tflow.get('MNI152NLin6Asym', resolution=2, atlas='HOCPA', desc='th25', suffix='dseg', extension='nii.gz')
           labels=tflow.get('MNI152NLin6Asym', atlas='HOCPA', suffix='dseg', extension='tsv')
-          ref=tflow.get('MNI152NLin2009cAsym', resolution=1, desc=None, suffix='T1w', extension='nii.gz')
+          ref=tflow.get('MNI152NLin2009cAsym', resolution=2, desc=None, suffix='T1w', extension='nii.gz')
           xfms=tflow.get('MNI152NLin2009cAsym', mode='image', suffix='xfm', extension='h5')
           if not isinstance(xfms,(list,tuple)): xfms=[xfms]
           xfm=[p for p in xfms if 'from-MNI152NLin6Asym' in str(p)]
@@ -71,9 +71,9 @@ jobs:
               labels=labels[0]
 
           copies={
-              'atlas':(Path(atlas), root/'tpl-MNI152NLin6Asym_res-01_atlas-HOCPA_desc-th25_dseg.nii.gz'),
+              'atlas':(Path(atlas), root/'tpl-MNI152NLin6Asym_res-02_atlas-HOCPA_desc-th25_dseg.nii.gz'),
               'labels':(Path(labels), root/'tpl-MNI152NLin6Asym_atlas-HOCPA_dseg.tsv'),
-              'reference':(Path(ref), root/'tpl-MNI152NLin2009cAsym_res-01_T1w.nii.gz'),
+              'reference':(Path(ref), root/'tpl-MNI152NLin2009cAsym_res-02_T1w.nii.gz'),
               'xfm':(Path(xfm[0]), root/'tpl-MNI152NLin2009cAsym_from-MNI152NLin6Asym_mode-image_xfm.h5'),
           }
           for k,(src,dst) in copies.items():
@@ -99,7 +99,7 @@ jobs:
         run: |
           set -euo pipefail
           root='.public-runner/p08/roi-preflight'
-          "$ANTS_BIN/antsApplyTransforms"             -d 3             -i "$root/tpl-MNI152NLin6Asym_res-01_atlas-HOCPA_desc-th25_dseg.nii.gz"             -r "$root/tpl-MNI152NLin2009cAsym_res-01_T1w.nii.gz"             -o "$root/tpl-MNI152NLin2009cAsym_res-01_atlas-HOCPA_desc-th25_dseg.nii.gz"             -n GenericLabel             -t "$root/tpl-MNI152NLin2009cAsym_from-MNI152NLin6Asym_mode-image_xfm.h5"
+          "$ANTS_BIN/antsApplyTransforms"             -d 3             -i "$root/tpl-MNI152NLin6Asym_res-02_atlas-HOCPA_desc-th25_dseg.nii.gz"             -r "$root/tpl-MNI152NLin2009cAsym_res-02_T1w.nii.gz"             -o "$root/tpl-MNI152NLin2009cAsym_res-02_atlas-HOCPA_desc-th25_dseg.nii.gz"             -n GenericLabel             -t "$root/tpl-MNI152NLin2009cAsym_from-MNI152NLin6Asym_mode-image_xfm.h5"
 
       - name: Materialize and hash frozen ROI masks
         shell: bash
@@ -113,7 +113,7 @@ jobs:
           import numpy as np
 
           root=Path(sys.argv[1])
-          dseg=root/'tpl-MNI152NLin2009cAsym_res-01_atlas-HOCPA_desc-th25_dseg.nii.gz'
+          dseg=root/'tpl-MNI152NLin2009cAsym_res-02_atlas-HOCPA_desc-th25_dseg.nii.gz'
           img=nib.load(dseg)
           data=np.asanyarray(img.dataobj).astype(np.int16)
           specs=[
@@ -129,7 +129,7 @@ jobs:
               hdr=img.header.copy()
               hdr.set_data_dtype(np.uint8)
               nib.save(nib.Nifti1Image(mask,img.affine,hdr),out)
-              roi.append({'index':idx,'name':name,'file':fn,'voxel_count_res01':n})
+              roi.append({'index':idx,'name':name,'file':fn,'voxel_count_res02':n})
           def sha(p):
               h=hashlib.sha256()
               with open(p,'rb') as f:
@@ -141,7 +141,7 @@ jobs:
           out={
               'status':'P08_HARVARD_OXFORD_ROI_PREFLIGHT_COMPLETE',
               'atlas':'Harvard-Oxford cortical atlas / TemplateFlow HOCPA',
-              'atlas_variant':'res-01 max-probability threshold 25%',
+              'atlas_variant':'res-02 max-probability threshold 25%',
               'atlas_source_space':'MNI152NLin6Asym',
               'analysis_space':'MNI152NLin2009cAsym',
               'intertemplate_transform':'TemplateFlow official MNI152NLin6Asym -> MNI152NLin2009cAsym image transform',
@@ -158,7 +158,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: public-p08-harvard-oxford-roi-preflight
+          name: public-p08-harvard-oxford-roi-preflight-v2-res02
           retention-days: 30
           compression-level: 0
           if-no-files-found: error
@@ -166,5 +166,5 @@ jobs:
             .public-runner/p08/roi-preflight/roi_preflight_result.json
             .public-runner/p08/roi-preflight/roi-FrontalMedialCortex_mask.nii.gz
             .public-runner/p08/roi-preflight/roi-CingulateGyrusPosterior_mask.nii.gz
-            .public-runner/p08/roi-preflight/tpl-MNI152NLin2009cAsym_res-01_atlas-HOCPA_desc-th25_dseg.nii.gz
+            .public-runner/p08/roi-preflight/tpl-MNI152NLin2009cAsym_res-02_atlas-HOCPA_desc-th25_dseg.nii.gz
             .public-runner/p08/roi-preflight/tpl-MNI152NLin6Asym_atlas-HOCPA_dseg.tsv
