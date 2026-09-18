@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: external-validation-public-runner-20260918
+          ref: 71c8b2befe63c03c410a49117a8845590e549565
 
       - uses: actions/setup-python@v5
         with:
@@ -114,7 +114,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: external-validation-public-runner-20260918
+          ref: 71c8b2befe63c03c410a49117a8845590e549565
 
       - uses: actions/setup-python@v5
         with:
