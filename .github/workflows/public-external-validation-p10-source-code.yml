@@ -1,0 +1,64 @@
+name: Public external validation P10 source code
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p10-source-code.yml'
+      - 'tools/public_external_validation_p10_source_code.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install requests
+        run: python -m pip install requests
+
+      - name: Acquire exact P10 MATLAB source code
+        id: acquire
+        shell: bash
+        run: |
+          set +e
+          python tools/public_external_validation_p10_source_code.py
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Show result
+        if: always()
+        run: cat .public-runner/p10/source_code_result.json
+
+      - name: Commit verified source code and result
+        if: always()
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- .public-runner/p10/source_code .public-runner/p10/source_code_result.json
+          if git diff --cached --quiet; then
+            echo 'No source-code result change.'
+          else
+            git commit -m 'Record verified P10 MATLAB source code'
+            git push origin HEAD:external-validation-public-runner-20260918
+          fi
+
+      - name: Fail if verification failed
+        if: always()
+        run: test "${{ steps.acquire.outputs.exit_code }}" = "0"
