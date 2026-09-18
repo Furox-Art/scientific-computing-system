@@ -107,7 +107,7 @@ def main():
             for jp in use:
                 selected[rel(jp,WORK)]="func_fmap_sidecar"
                 np=Path(str(jp)[:-5]+".nii.gz")
-                if np.exists(): selected[rel(np,WORK)]="func_fmap_signal"
+                if np.exists() or np.is_symlink(): selected[rel(np,WORK)]="func_fmap_signal"
 
         rows=[]
         annex_total=0
