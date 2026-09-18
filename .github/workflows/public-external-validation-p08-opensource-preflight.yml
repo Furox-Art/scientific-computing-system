@@ -1,0 +1,120 @@
+name: Public external validation P08 open-source toolchain preflight
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p08-opensource-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Pin AFNI container
+        id: afni
+        shell: bash
+        run: |
+          set -euo pipefail
+          image='afni/afni_make_build:latest'
+          docker pull "$image"
+          repo_digest="$(docker inspect "$image" --format='{{index .RepoDigests 0}}')"
+          digest="${repo_digest##*@}"
+          version="$(docker run --rm "$image" afni -ver 2>&1 | head -n 6 | tr '\n' ' ')"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "AFNI digest: $digest"
+          echo "AFNI version: $version"
+
+      - name: Verify pinned ANTs release binary
+        id: ants
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://github.com/ANTsX/ANTs/releases/download/v2.6.5/ants-2.6.5-ubuntu-24.04-X64-gcc.zip'
+          expected='9f6a2c8881d6c94ea17171c0502e55cb898ad9afd50e4e23fde9a8c0997aa04b'
+          curl -L --retry 4 --retry-delay 3 -o /tmp/ants.zip "$url"
+          echo "$expected  /tmp/ants.zip" | sha256sum -c -
+          unzip -q /tmp/ants.zip -d /tmp/ants
+          bindir="$(find /tmp/ants -type f -name antsRegistration -printf '%h\n' | head -n1)"
+          test -n "$bindir"
+          export PATH="$bindir:$PATH"
+          version="$(antsRegistration --version 2>&1 | head -n 3 | tr '\n' ' ')"
+          echo "sha256=$expected" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "ANTs version: $version"
+
+      - name: Install and verify tedana
+        id: tedana
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'tedana==26.0.3'
+          version="$(python - <<'PY'
+          import tedana
+          print(tedana.__version__)
+          PY
+          )"
+          test "$version" = "26.0.3"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tedana version: $version"
+
+      - name: Record toolchain lock candidate
+        env:
+          AFNI_DIGEST: ${{ steps.afni.outputs.digest }}
+          AFNI_VERSION: ${{ steps.afni.outputs.version }}
+          ANTS_SHA256: ${{ steps.ants.outputs.sha256 }}
+          ANTS_VERSION: ${{ steps.ants.outputs.version }}
+          TEDANA_VERSION: ${{ steps.tedana.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .public-runner/p08/opensource-preflight
+          python3 - <<'PY'
+          import json, os, platform, subprocess
+          out = {
+            "status": "P08_OPEN_SOURCE_TOOLCHAIN_PREFLIGHT_COMPLETE",
+            "runner_os": platform.platform(),
+            "afni": {
+              "image": "afni/afni_make_build:latest",
+              "digest": os.environ["AFNI_DIGEST"],
+              "version_output": os.environ["AFNI_VERSION"],
+            },
+            "ants": {
+              "version": "2.6.5",
+              "release_asset": "ants-2.6.5-ubuntu-24.04-X64-gcc.zip",
+              "release_asset_sha256": os.environ["ANTS_SHA256"],
+              "version_output": os.environ["ANTS_VERSION"],
+            },
+            "tedana": {
+              "version": os.environ["TEDANA_VERSION"],
+              "install": "pip tedana==26.0.3",
+            },
+            "license_secret_required": False,
+            "freesurfer_used": False,
+            "neural_effect_computed": False,
+          }
+          p=".public-runner/p08/opensource-preflight/toolchain_preflight.json"
+          open(p,"w",encoding="utf-8").write(json.dumps(out,indent=2)+"\n")
+          print(json.dumps(out,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-open-source-toolchain-preflight
+          retention-days: 30
+          if-no-files-found: error
+          path: .public-runner/p08/opensource-preflight/toolchain_preflight.json
