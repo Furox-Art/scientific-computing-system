@@ -1,0 +1,68 @@
+name: tmp Gaesser Round 20 acquisition
+on:
+  push:
+    paths:
+      - '.github/workflows/tmp-gaesser-round20.yml'
+permissions:
+  contents: read
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --disable-pip-version-check requests
+      - name: Fetch OSF 66gf4 public files
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, pathlib, requests, re, hashlib
+          from urllib.parse import urlparse
+          base=pathlib.Path('raw'); base.mkdir(exist_ok=True)
+          s=requests.Session()
+          s.headers.update({'User-Agent':'Mozilla/5.0 reproducibility-data-acquisition/1.0'})
+          root='https://api.osf.io/v2/nodes/66gf4/files/osfstorage/'
+          manifest=[]
+          def safe(x):
+              return re.sub(r'[^A-Za-z0-9._ -]+','_',x).strip() or 'unnamed'
+          def walk(url, prefix=''):
+              while url:
+                  r=s.get(url,timeout=60); r.raise_for_status()
+                  j=r.json()
+                  for item in j.get('data',[]):
+                      a=item.get('attributes',{})
+                      name=a.get('name') or item.get('id')
+                      kind=a.get('kind')
+                      rel=item.get('relationships',{})
+                      links=item.get('links',{})
+                      p=(prefix+'/'+name).strip('/')
+                      rec={'id':item.get('id'),'kind':kind,'name':name,'path':p,'links':links}
+                      manifest.append(rec)
+                      if kind=='folder':
+                          child=(rel.get('files') or {}).get('links',{}).get('related',{}).get('href')
+                          if child: walk(child,prefix=p)
+                      else:
+                          dl=links.get('download')
+                          # Download data/code/material files but skip very large binaries if any.
+                          if dl:
+                              rr=s.get(dl,timeout=120,allow_redirects=True); rr.raise_for_status()
+                              out=base/pathlib.Path(*[safe(q) for q in p.split('/')])
+                              out.parent.mkdir(parents=True,exist_ok=True)
+                              out.write_bytes(rr.content)
+                              rec['bytes']=len(rr.content)
+                              rec['sha256']=hashlib.sha256(rr.content).hexdigest()
+                  nxt=(j.get('links') or {}).get('next')
+                  url=nxt
+          walk(root)
+          (base/'manifest.json').write_text(json.dumps(manifest,indent=2,ensure_ascii=False),encoding='utf-8')
+          print(json.dumps({'files':len(manifest),'paths':[x['path'] for x in manifest]},indent=2,ensure_ascii=False))
+          PY
+      - name: Upload Gaesser artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: gaesser-66gf4-round20
+          path: raw/
+          retention-days: 1
+          if-no-files-found: error
