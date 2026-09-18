@@ -13,9 +13,9 @@ import traceback
 from pathlib import Path
 
 AFNI_IMAGE = "afni/afni_make_build@sha256:c8365868751116f1ef2d0811e8a4dd2df58a689da457c74ea07fedb0e11dc0d6"
-OPEN_ROOT = Path(".public-runner/p08/opensource")
+OPEN_ROOT = Path(".public-runner/p08/opensource-v2")
 PARTICIPANTS = {"sub-Bubbles", "sub-Buttercup", "sub-PILOT02"}
-MNI_SPACE = "MNI152NLin2009cAsym"
+MNI_SPACE = "MNI152NLin2009cAsym"\nMNI_RESOLUTION = 2
 
 
 def sha256_file(path: Path) -> str:
@@ -296,6 +296,15 @@ def run_tedana(session: str, converted: dict, mask_nii: Path, echo_times_s: list
             "optcom": opt[0],
             "t2star_candidates": t2s,
         }
+        for p in files:
+            try:
+                p.unlink()
+            except FileNotFoundError:
+                pass
+    try:
+        mask_nii.unlink()
+    except FileNotFoundError:
+        pass
     return outputs
 
 
@@ -307,7 +316,7 @@ def normalize_anatomy(part_root: Path, t1: Path, log: Path):
     t1_n4 = anatdir / "T1w_N4.nii.gz"
     run(["N4BiasFieldCorrection", "-d", "3", "-i", str(t1), "-o", str(t1_n4)], log=log)
 
-    template = get(MNI_SPACE, resolution=1, desc=None, suffix="T1w")
+    template = get(MNI_SPACE, resolution=MNI_RESOLUTION, desc=None, suffix="T1w")
     if isinstance(template, (list, tuple)):
         if len(template) != 1:
             raise RuntimeError(f"TemplateFlow returned multiple T1w templates: {template}")
@@ -342,7 +351,7 @@ def warp_optcom(participant: str, session: str, ted_outputs: dict, part_root: Pa
     mniroot = part_root / "mni"
     mniroot.mkdir(parents=True, exist_ok=True)
     for run_num, rec in sorted(ted_outputs.items()):
-        dest = mniroot / f"{participant}_{session}_task-SORPF_run-{run_num}_space-{MNI_SPACE}_desc-optcom_bold.nii.gz"
+        dest = mniroot / f"{participant}_{session}_task-SORPF_run-{run_num}_space-{MNI_SPACE}_res-02_desc-optcom_bold.nii.gz"
         run([
             "antsApplyTransforms",
             "-d", "3", "-e", "3",
@@ -357,6 +366,45 @@ def warp_optcom(participant: str, session: str, ted_outputs: dict, part_root: Pa
             raise RuntimeError(f"Missing MNI optcom output {dest}")
         out[run_num] = dest
     return out
+
+
+def prune_raw_bold_after_tshift(bids: Path, participant: str):
+    removed = 0
+    freed = 0
+    for pattern in (
+        "*task-SORPF*_part-mag_bold.nii.gz",
+        "*task-SORPF*_part-mag_sbref.nii.gz",
+    ):
+        for p in (bids / participant).glob(f"ses-*/func/{pattern}"):
+            try:
+                freed += p.stat().st_size
+                p.unlink()
+                removed += 1
+            except FileNotFoundError:
+                pass
+    print(f"resource cleanup: removed {removed} consumed raw BOLD/SBRef files, freed {freed} bytes", flush=True)
+
+
+def cleanup_afni_heavy(results: Path):
+    removed = 0
+    freed = 0
+    for p in list(results.rglob("*")):
+        if not p.is_file():
+            continue
+        name = p.name
+        if (
+            ".BRIK" in name
+            or name.endswith(".HEAD")
+            or name.endswith(".nii")
+            or name.endswith(".nii.gz")
+        ):
+            try:
+                freed += p.stat().st_size
+                p.unlink()
+                removed += 1
+            except FileNotFoundError:
+                pass
+    print(f"resource cleanup: removed {removed} AFNI heavy image files, freed {freed} bytes", flush=True)
 
 
 def main() -> int:
@@ -381,6 +429,8 @@ def main() -> int:
             "ants_version": "2.6.5",
             "tedana_version": "26.0.3",
             "templateflow_version": "25.1.2",
+            "mni_output_resolution_mm": MNI_RESOLUTION,
+            "lock_version": "OPEN_SOURCE_SENSITIVITY_LOCK_V2_2026-09-19",
         },
         "self_other_glm_computed": False,
         "roi_effect_computed": False,
@@ -403,6 +453,7 @@ def main() -> int:
 
         t1_n4, template, affine, warp, warped_t1 = normalize_anatomy(part_root, t1, log)
         prepare_tshift(part_root, participant, sessions, log)
+        prune_raw_bold_after_tshift(bids, participant)
 
         session_results = {}
         all_mni = []
@@ -410,10 +461,17 @@ def main() -> int:
             afni_results, echo_times_s, original_runs = afni_session(
                 part_root, participant, ses, runs, t1_n4, task_pe, log
             )
+            shutil.rmtree(part_root / "tshift" / ses, ignore_errors=True)
             tedroot = part_root / "tedana" / ses
             converted, mask = convert_for_tedana(part_root, afni_results, tedroot, original_runs, log)
             ted = run_tedana(ses, converted, mask, echo_times_s, part_root, log)
+            cleanup_afni_heavy(afni_results)
             mni = warp_optcom(participant, ses, ted, part_root, template, affine, warp, log)
+            for rec in ted.values():
+                try:
+                    rec["optcom"].unlink()
+                except FileNotFoundError:
+                    pass
             all_mni.extend(mni.values())
             session_results[ses] = {
                 "input_runs": original_runs,
@@ -437,7 +495,7 @@ def main() -> int:
                 })
 
         result.update({
-            "status": "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_COMPLETE",
+            "status": "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_COMPLETE",
             "sessions": session_results,
             "mni_optcom_run_count": len(all_mni),
             "expected_run_count": expected_run_count,
@@ -459,7 +517,7 @@ def main() -> int:
         return 0
     except Exception as e:
         result.update({
-            "status": "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_TECHNICAL_FAILURE",
+            "status": "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_TECHNICAL_FAILURE",
             "preprocessing_complete": False,
             "error": {
                 "type": type(e).__name__,
