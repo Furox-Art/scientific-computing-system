@@ -1,0 +1,11 @@
+{
+  "status": "SOURCE_BF_DERIVATIVE_RECOVERY_FAILED",
+  "chunk_bytes": 262144,
+  "files": [],
+  "all_hash_verified": false,
+  "error": {
+    "type": "KeyError",
+    "message": "'name'",
+    "traceback": "Traceback (most recent call last):\n  File \"/home/runner/work/scientific-computing-system/scientific-computing-system/tools/public_external_validation_p10_source_bf.py\", line 108, in main\n    summaries[n]=num_summary(mat[n])\n                             ~~~^^^\nKeyError: 'name'\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/home/runner/work/scientific-computing-system/scientific-computing-system/tools/public_external_validation_p10_source_bf.py\", line 110, in main\n    summaries[n]={\"summary_error\":repr(e),\"shape\":list(np.asarray(mat[n]).shape),\"dtype\":str(np.asarray(mat[n]).dtype)}\n                                                                  ~~~^^^\nKeyError: 'name'\n"
+  }
+}
