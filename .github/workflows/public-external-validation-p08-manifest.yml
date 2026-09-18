@@ -1,0 +1,50 @@
+name: Public external validation P08 manifest
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p08-manifest.yml'
+      - 'tools/public_external_validation_p08_manifest.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build frozen preprocessing input manifest
+        id: build
+        shell: bash
+        run: |
+          set +e
+          python tools/public_external_validation_p08_manifest.py
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Show summary
+        if: always()
+        run: cat .public-runner/p08/raw_preprocessing_input_manifest_summary_2026-09-18.json
+      - name: Upload manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-preprocessing-input-manifest
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            .public-runner/p08/raw_preprocessing_input_manifest_2026-09-18.csv
+            .public-runner/p08/raw_preprocessing_input_manifest_summary_2026-09-18.json
+      - name: Fail if manifest build failed
+        if: always()
+        run: test "${{ steps.build.outputs.exit_code }}" = "0"
