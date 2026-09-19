@@ -21,7 +21,7 @@ SOURCE_REPO = "OpenNeuroDatasets/ds005237"
 SOURCE_COMMIT = "2e273d8466162208bbccd8591337e55b7a8b5721"
 VERSION = "1.1.3"
 PARTICIPANTS_BLOB = "3dd58d4514c467c1192f05df5a6ea89c3bb20a07"
-S3_BASE = "https://openneuro.org.s3.amazonaws.com/ds005237/"
+S3_BASE = "https://s3.amazonaws.com/openneuro.org/ds005237/"
 GROUPS = {"Patient", "GenPop"}
 
 
