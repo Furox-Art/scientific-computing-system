@@ -1,0 +1,88 @@
+name: Public external validation ds005237 behavioral double dissociation
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-ds005237-behavior-double-dissociation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fbdbcd3602f80ba6e899f1aab53a02bd89b305d8
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install frozen analysis tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check             'numpy==2.2.6'             'pandas==2.3.2'             'scipy==1.16.2'             'statsmodels==0.14.5'             'requests==2.32.5'
+          python - <<'PY'
+          import numpy,pandas,scipy,statsmodels,requests
+          print("numpy",numpy.__version__)
+          print("pandas",pandas.__version__)
+          print("scipy",scipy.__version__)
+          print("statsmodels",statsmodels.__version__)
+          print("requests",requests.__version__)
+          PY
+
+      - name: Run frozen healthy-clinical double-dissociation analysis
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/public_external_validation_ds005237_behavior_double_dissociation.py             --work-root .public-runner/ds005237/behavior
+
+      - name: Verify frozen result and source provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('.public-runner/ds005237/behavior')
+          src=json.load(open(root/'inputs/source_verification.json'))
+          res=json.load(open(root/'output/behavioral_double_dissociation_result.json'))
+          assert src['source_commit']=='2e273d8466162208bbccd8591337e55b7a8b5721'
+          assert src['participants_blob_sha1']=='3dd58d4514c467c1192f05df5a6ea89c3bb20a07'
+          assert src['all_event_git_blobs_exact'] is True
+          assert res['status']=='DS005237_HEALTHY_CLINICAL_BEHAVIORAL_DOUBLE_DISSOCIATION_COMPLETE'
+          assert res['dataset']['source_commit']=='2e273d8466162208bbccd8591337e55b7a8b5721'
+          assert res['primary_rt']['n_participants'] >= 20
+          assert res['secondary_accuracy']['n_participants'] >= 20
+          print(json.dumps({
+            'source_event_files_verified':src['event_files_verified'],
+            'events_by_task':src['event_files_by_task'],
+            'rt_n':res['primary_rt']['n_participants'],
+            'acc_n':res['secondary_accuracy']['n_participants'],
+            'rt_interaction_p':res['primary_rt']['interaction']['raw_p'],
+            'rt_interaction_holm':res['primary_rt']['interaction']['holm_adjusted_p_across_two_endpoints'],
+            'acc_interaction_p':res['secondary_accuracy']['interaction']['raw_p'],
+            'acc_interaction_holm':res['secondary_accuracy']['interaction']['holm_adjusted_p_across_two_endpoints'],
+          },indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-ds005237-behavior-double-dissociation
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            .public-runner/ds005237/behavior/inputs/source_verification.json
+            .public-runner/ds005237/behavior/output/behavioral_double_dissociation_result.json
+            .public-runner/ds005237/behavior/output/participant_domain_costs.tsv
+            .public-runner/ds005237/behavior/output/participant_condition_summary.tsv
+            .public-runner/ds005237/behavior/output/output_hashes.json
