@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 71c8b2befe63c03c410a49117a8845590e549565
+          ref: a42c99a7084c2276378e03136cff50245aa41816
 
       - uses: actions/setup-python@v5
         with:
@@ -117,7 +117,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 71c8b2befe63c03c410a49117a8845590e549565
+          ref: a42c99a7084c2276378e03136cff50245aa41816
 
       - uses: actions/setup-python@v5
         with:
