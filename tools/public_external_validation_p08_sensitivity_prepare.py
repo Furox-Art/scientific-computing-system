@@ -109,9 +109,13 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--participant", required=True, choices=sorted(PARTICIPANTS))
     ap.add_argument("--root", default=str(ROOT), help="Output root; defaults to the original sensitivity location.")
+    ap.add_argument("--session", default=None, help="Optional BIDS session (e.g. ses-01) for outcome-blind recovery sharding.")
     args = ap.parse_args()
 
     participant = args.participant
+    session_filter = args.session
+    if session_filter is not None and not session_filter.startswith("ses-"):
+        raise SystemExit("--session must be a BIDS session label such as ses-01")
     workroot = Path(args.root) / participant
     bids = workroot / "bids"
     source = workroot / "source_repo"
@@ -134,7 +138,25 @@ def main() -> int:
     try:
         with MANIFEST.open(newline="", encoding="utf-8") as f:
             rows = list(csv.DictReader(f))
-        selected = [r for r in rows if not r["path"].startswith("sub-") or r["path"].startswith(participant + "/")]
+        if session_filter is None:
+            selected = [r for r in rows if not r["path"].startswith("sub-") or r["path"].startswith(participant + "/")]
+        else:
+            session_prefix = f"{participant}/{session_filter}/"
+            selected = []
+            for r in rows:
+                p = r["path"]
+                if not p.startswith("sub-"):
+                    selected.append(r)
+                    continue
+                if p.startswith(session_prefix):
+                    selected.append(r)
+                    continue
+                # Keep the participant's single frozen T1w even when it lives in
+                # another session; the session shard still requires the same
+                # anatomical normalization as the full participant pipeline.
+                if p.startswith(participant + "/") and ("_T1w.nii.gz" in p or "_T1w.json" in p):
+                    selected.append(r)
+            result["session_filter"] = session_filter
         if not selected:
             raise RuntimeError("no selected manifest rows")
 
