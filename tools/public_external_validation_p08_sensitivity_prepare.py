@@ -110,6 +110,7 @@ def main() -> int:
     ap.add_argument("--participant", required=True, choices=sorted(PARTICIPANTS))
     ap.add_argument("--root", default=str(ROOT), help="Output root; defaults to the original sensitivity location.")
     ap.add_argument("--session", default=None, help="Optional BIDS session (e.g. ses-01) for outcome-blind recovery sharding.")
+    ap.add_argument("--anatomy-only", action="store_true", help="Reconstruct only root metadata plus the participant frozen T1w pair.")
     args = ap.parse_args()
 
     participant = args.participant
@@ -138,7 +139,17 @@ def main() -> int:
     try:
         with MANIFEST.open(newline="", encoding="utf-8") as f:
             rows = list(csv.DictReader(f))
-        if session_filter is None:
+        if args.anatomy_only:
+            selected = []
+            for r in rows:
+                p = r["path"]
+                if not p.startswith("sub-"):
+                    selected.append(r)
+                    continue
+                if p.startswith(participant + "/") and ("_T1w.nii.gz" in p or "_T1w.json" in p):
+                    selected.append(r)
+            result["anatomy_only"] = True
+        elif session_filter is None:
             selected = [r for r in rows if not r["path"].startswith("sub-") or r["path"].startswith(participant + "/")]
         else:
             session_prefix = f"{participant}/{session_filter}/"
