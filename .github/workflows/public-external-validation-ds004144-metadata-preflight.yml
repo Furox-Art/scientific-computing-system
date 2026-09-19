@@ -1,0 +1,50 @@
+name: Public external validation ds004144 healthy-clinical metadata preflight
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-ds004144-metadata-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: OpenNeuroDatasets/ds004144
+          ref: b6e525adf7b861d5dab7e539bff19f90ce482032
+          path: source
+          fetch-depth: 1
+
+      - uses: actions/checkout@v4
+        with:
+          ref: 3c1c9a870e99c2f178c2bb3cc0685db504159721
+          path: runner
+
+      - name: Download exact open Zenodo clinical table
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://zenodo.org/records/7032997/files/Clinical_fm_66_.xlsx?download=1'
+          curl -L --fail --retry 5 --retry-delay 2 -o Clinical_fm_66_.xlsx "$url"
+          echo '66eb1b6d6b6e2587dbafa449e63b471b  Clinical_fm_66_.xlsx' | md5sum -c -
+
+      - name: Extract group/task metadata without scientific outcome testing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python runner/tools/public_external_validation_ds004144_metadata_preflight.py             source Clinical_fm_66_.xlsx .public-runner/ds004144/metadata-preflight
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-ds004144-healthy-clinical-metadata-preflight
+          retention-days: 30
+          if-no-files-found: error
+          path: .public-runner/ds004144/metadata-preflight/
