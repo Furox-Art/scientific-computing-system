@@ -1,0 +1,296 @@
+name: Public ds005237 diagnosis recovery audit
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-ds005237-diagnosis-recovery.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download frozen neural eligible cohort
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: 35446855138
+          name: public-ds005237-neural-raw-manifest
+          path: inputs/neural-manifest
+
+      - name: Recover exact public demos.tsv and audit diagnoses
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .public-runner/ds005237/diagnosis-recovery
+          python - <<'PY'
+          from __future__ import annotations
+          import csv, hashlib, io, json, re, urllib.parse, urllib.request
+          from collections import Counter
+          from pathlib import Path
+
+          OUT=Path(".public-runner/ds005237/diagnosis-recovery")
+          SOURCE_COMMIT="2e273d8466162208bbccd8591337e55b7a8b5721"
+          ANNEX_BRANCH_COMMIT="50aabfd1fac5754914d025d6d625a430fa8d4829"
+          ANNEX_TREE="18dce68a2ccc3f50965499a169b8699382aa344d"
+          POINTER_BLOB="f94a8ea40ae92538ace43b633355a156ed264fe3"
+          ANNEX_KEY="SHA256E-s95577--b146ccf9a8326db7a4173533a12d796b77fb631b79672a2396d0174ab858ff52.tsv"
+          EXPECTED_BYTES=95577
+          EXPECTED_SHA256="b146ccf9a8326db7a4173533a12d796b77fb631b79672a2396d0174ab858ff52"
+          ANNEX_LOCATION_LOG_BLOB="2e168e5e170e6fcad3b3e5c7b0d53e55a89d8345"
+          ANNEX_RMET_BLOB="4b86879c6b6c0b9a1298b71bf9ebfb7963a5d041"
+          REMOTE_LOG_BLOB="475f38853ca6b083a2f10c977a32e10c3896482c"
+          S3_EXPORT_PATH="ds005237/phenotype/demos.tsv"
+          VERSION_ID="+w1UT7.laKVqqCGxNO8WGBVK.aLsb6eSZ"
+
+          def get(url:str)->bytes:
+              req=urllib.request.Request(url, headers={"User-Agent":"ds005237-diagnosis-audit/1.0"})
+              with urllib.request.urlopen(req, timeout=120) as r:
+                  return r.read()
+
+          q=urllib.parse.urlencode({"versionId":VERSION_ID})
+          s3_url="https://s3.amazonaws.com/openneuro.org/"+S3_EXPORT_PATH+"?"+q
+          raw=get(s3_url)
+          got_sha=hashlib.sha256(raw).hexdigest()
+          if len(raw)!=EXPECTED_BYTES:
+              raise RuntimeError(f"demos.tsv byte mismatch: {len(raw)} != {EXPECTED_BYTES}")
+          if got_sha!=EXPECTED_SHA256:
+              raise RuntimeError(f"demos.tsv SHA256 mismatch: {got_sha} != {EXPECTED_SHA256}")
+
+          text=raw.decode("utf-8-sig")
+          demos=list(csv.DictReader(io.StringIO(text), delimiter="\t"))
+          if not demos:
+              raise RuntimeError("demos.tsv parsed zero rows")
+          headers=list(demos[0].keys())
+          required={"subjectkey","Primary_Dx_clean"}
+          missing=sorted(required-set(headers))
+          if missing:
+              (OUT/"demos_headers.json").write_text(json.dumps(headers,indent=2)+"\n")
+              raise RuntimeError(f"missing required diagnosis fields: {missing}")
+
+          part_url=f"https://raw.githubusercontent.com/OpenNeuroDatasets/ds005237/{SOURCE_COMMIT}/participants.tsv"
+          participants_raw=get(part_url)
+          participants=list(csv.DictReader(io.StringIO(participants_raw.decode("utf-8-sig")), delimiter="\t"))
+          if len(participants)!=245:
+              raise RuntimeError(f"participants.tsv count mismatch: {len(participants)} != 245")
+
+          elig_path=Path("inputs/neural-manifest/eligible_participants.tsv")
+          elig_bytes=elig_path.read_bytes()
+          elig_sha=hashlib.sha256(elig_bytes).hexdigest()
+          expected_elig_sha="8ecd024e64934fb295258acec356e9954796ec7c855aca1a94cb670fe248fd13"
+          if elig_sha!=expected_elig_sha:
+              raise RuntimeError(f"eligible TSV hash mismatch: {elig_sha} != {expected_elig_sha}")
+          eligible=list(csv.DictReader(io.StringIO(elig_bytes.decode("utf-8-sig")), delimiter="\t"))
+          if len(eligible)!=212:
+              raise RuntimeError(f"eligible count mismatch: {len(eligible)} != 212")
+          elig_ids={r["participant_id"] for r in eligible}
+
+          def norm_subjectkey(x:str)->str:
+              s=(x or "").strip()
+              if s.startswith("sub-"):
+                  return s
+              if s.startswith("NDAR_INV"):
+                  return "sub-"+s.replace("NDAR_","NDAR",1)
+              if s.startswith("NDARINV"):
+                  return "sub-"+s
+              raise RuntimeError(f"unrecognized subjectkey format: {s!r}")
+
+          demo_by_id={}
+          duplicate_ids=[]
+          for r in demos:
+              pid=norm_subjectkey(r["subjectkey"])
+              if pid in demo_by_id:
+                  duplicate_ids.append(pid)
+              demo_by_id[pid]=r
+          if duplicate_ids:
+              raise RuntimeError(f"duplicate subjectkey mappings: {duplicate_ids[:10]}")
+
+          part_by_id={r["participant_id"]:r for r in participants}
+          matched_ids=sorted(set(part_by_id)&set(demo_by_id))
+          unmatched_participants=sorted(set(part_by_id)-set(demo_by_id))
+          unmatched_demos=sorted(set(demo_by_id)-set(part_by_id))
+
+          code_to_name={
+            "BP1":"Bipolar Disorder Type 1",
+            "SZA":"Schizoaffective Disorder",
+            "MDD":"Major Depressive Disorder",
+            "BP2":"Bipolar Disorder Type 2",
+            "SZ":"Schizophrenia",
+            "PTSD":"Post-Traumatic Stress Disorder",
+            "SAD":"Social Anxiety Disorder",
+            "DYS":"Dysthymia",
+            "OCD":"Obsessive-Compulsive Disorder",
+            "ADHD":"Attention-Deficit/Hyperactivity Disorder",
+            "GAD":"Generalized Anxiety Disorder",
+            "OMD":"Other Mood Disorder",
+            "SUD":"Substance Use Disorder",
+            "ED":"Eating Disorder",
+            "OAD":"Other Anxiety Disorder",
+          }
+
+          def dx_code(pid:str)->str:
+              v=(demo_by_id[pid].get("Primary_Dx_clean") or "").strip()
+              if v in {"","NA","NaN","nan","999","None"}:
+                  return "None"
+              return v
+
+          def counts(ids):
+              c=Counter(dx_code(pid) for pid in ids if pid in demo_by_id)
+              return dict(sorted(c.items()))
+
+          def group_counts(ids):
+              c=Counter(part_by_id[pid]["Group"] for pid in ids if pid in part_by_id)
+              return dict(sorted(c.items()))
+
+          strict_sets={
+            "depression_primary":["MDD","DYS"],
+            "anxiety_primary_dsm5_anxiety_only":["GAD","SAD","OAD"],
+            "bipolar_primary":["BP1","BP2"],
+            "psychosis_primary":["SZ","SZA"],
+            "ptsd_primary":["PTSD"],
+            "ocd_primary":["OCD"],
+            "other_primary":["ADHD","OMD","SUD","ED"],
+          }
+          def broad_counts(ids):
+              ids=[pid for pid in ids if pid in demo_by_id]
+              out={}
+              used=set()
+              for label,codes in strict_sets.items():
+                  n=sum(dx_code(pid) in codes for pid in ids)
+                  out[label]=n
+                  used.update(codes)
+              out["no_primary_diagnosis_or_missing"]=sum(dx_code(pid)=="None" for pid in ids)
+              out["unmapped_primary_code"]=sum(dx_code(pid) not in used and dx_code(pid)!="None" for pid in ids)
+              out["strict_internalizing_candidate_MDD_DYS_GAD_SAD_OAD"]=sum(
+                  dx_code(pid) in {"MDD","DYS","GAD","SAD","OAD"} for pid in ids
+              )
+              return out
+
+          patient_ids=[pid for pid,r in part_by_id.items() if r["Group"]=="Patient"]
+          genpop_ids=[pid for pid,r in part_by_id.items() if r["Group"]=="GenPop"]
+          elig_patient=[pid for pid in elig_ids if part_by_id[pid]["Group"]=="Patient"]
+          elig_genpop=[pid for pid in elig_ids if part_by_id[pid]["Group"]=="GenPop"]
+
+          diagnosis_like=[h for h in headers if re.search(r"(dx|diag|scid|disorder|comorbid)",h,re.I)]
+          secondary_like=[h for h in diagnosis_like if h!="Primary_Dx_clean"]
+
+          rows=[]
+          for pid in sorted(matched_ids):
+              rows.append({
+                "participant_id":pid,
+                "Group":part_by_id[pid]["Group"],
+                "Site":part_by_id[pid]["Site"],
+                "Primary_Dx_clean":dx_code(pid),
+                "Primary_Dx_name":code_to_name.get(dx_code(pid), "None" if dx_code(pid)=="None" else "UNMAPPED"),
+                "neural_file_presence_eligible":str(pid in elig_ids).lower(),
+              })
+          with (OUT/"diagnosis_join.tsv").open("w",newline="",encoding="utf-8") as f:
+              fn=list(rows[0].keys())
+              w=csv.DictWriter(f,fieldnames=fn,delimiter="\t")
+              w.writeheader(); w.writerows(rows)
+
+          summary={
+            "status":"DS005237_DIAGNOSIS_RECOVERY_COMPLETE_NO_OUTCOME_COMPUTED",
+            "source":{
+              "dataset":"OpenNeuro ds005237 v1.1.3",
+              "source_commit":SOURCE_COMMIT,
+              "participants_tsv_expected_rows":245,
+              "demos_annex_branch_commit":ANNEX_BRANCH_COMMIT,
+              "demos_annex_tree":ANNEX_TREE,
+              "demos_pointer_blob_sha":POINTER_BLOB,
+              "demos_annex_key":ANNEX_KEY,
+              "demos_expected_bytes":EXPECTED_BYTES,
+              "demos_expected_sha256":EXPECTED_SHA256,
+              "demos_verified_sha256":got_sha,
+              "annex_location_log_blob_sha":ANNEX_LOCATION_LOG_BLOB,
+              "annex_remote_metadata_blob_sha":ANNEX_RMET_BLOB,
+              "annex_remote_log_blob_sha":REMOTE_LOG_BLOB,
+              "s3_export_path":S3_EXPORT_PATH,
+              "s3_version_id":VERSION_ID,
+            },
+            "rows":{
+              "participants":len(participants),
+              "demos":len(demos),
+              "matched_participant_ids":len(matched_ids),
+              "unmatched_participants":unmatched_participants,
+              "unmatched_demos":unmatched_demos,
+            },
+            "group_counts":{
+              "all_participants":group_counts(part_by_id.keys()),
+              "neural_file_presence_eligible":group_counts(elig_ids),
+            },
+            "primary_dx_counts":{
+              "all_matched":counts(matched_ids),
+              "patient_all":counts(patient_ids),
+              "genpop_all":counts(genpop_ids),
+              "neural_eligible_all":counts(elig_ids),
+              "neural_eligible_patient":counts(elig_patient),
+              "neural_eligible_genpop":counts(elig_genpop),
+            },
+            "requested_category_counts":{
+              "patient_all":broad_counts(patient_ids),
+              "neural_eligible_patient":broad_counts(elig_patient),
+            },
+            "diagnosis_fields":{
+              "primary_field":"Primary_Dx_clean",
+              "diagnosis_like_columns":diagnosis_like,
+              "additional_diagnosis_like_columns":secondary_like,
+              "comorbidity_count":None,
+              "comorbidity_rule":"Not inferred from Primary_Dx_clean alone. Exact comorbidity requires a documented multi-diagnosis field/SCID coding rule.",
+            },
+            "integrity":{
+              "eligible_participants_tsv_sha256":elig_sha,
+              "diagnosis_join_tsv_sha256":hashlib.sha256((OUT/"diagnosis_join.tsv").read_bytes()).hexdigest(),
+              "neural_group_contrast_computed":False,
+              "neural_target_outcome_inspected":False,
+            },
+            "decision_guard":{
+              "existing_primary_grouping":"transdiagnostic Patient vs GenPop",
+              "change_primary_grouping":False,
+              "reason":"Existing behavioral and neural locks are immutable; this recovery is diagnosis availability/QC only.",
+              "strict_internalizing_candidate_definition":"MDD + DYS + GAD + SAD + OAD only; PTSD and OCD remain separate under DSM-5 organization.",
+              "internalizing_use":"May only be considered as a separately frozen secondary/sensitivity analysis before any neural group outcome; it does not replace the existing primary grouping.",
+            }
+          }
+          (OUT/"diagnosis_recovery_summary.json").write_text(json.dumps(summary,indent=2,sort_keys=True)+"\n",encoding="utf-8")
+          (OUT/"demos_diagnosis_columns.json").write_text(json.dumps({
+              "all_columns":headers,
+              "diagnosis_like_columns":diagnosis_like,
+          },indent=2)+"\n",encoding="utf-8")
+          print(json.dumps(summary,indent=2,sort_keys=True))
+          PY
+
+      - name: Verify no scientific outcome
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p='.public-runner/ds005237/diagnosis-recovery/diagnosis_recovery_summary.json'
+          d=json.load(open(p))
+          assert d['integrity']['neural_group_contrast_computed'] is False
+          assert d['integrity']['neural_target_outcome_inspected'] is False
+          assert d['decision_guard']['change_primary_grouping'] is False
+          print('diagnosis recovery is metadata/cohort-only')
+          PY
+
+      - name: Upload diagnosis recovery audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-ds005237-diagnosis-recovery
+          retention-days: 30
+          compression-level: 0
+          path: |
+            .public-runner/ds005237/diagnosis-recovery/diagnosis_recovery_summary.json
+            .public-runner/ds005237/diagnosis-recovery/diagnosis_join.tsv
+            .public-runner/ds005237/diagnosis-recovery/demos_diagnosis_columns.json
