@@ -1,0 +1,112 @@
+name: Public external validation P08 V2 run-recovery anatomy
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p08-v2-run-recovery-anatomy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  anatomy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        participant: [sub-Bubbles, sub-Buttercup]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 6b8724294df472d32c5dc5ba0c1eed20245ec88d
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned Python tools
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check requests 'templateflow==25.1.2'
+
+      - name: Install pinned ANTs 2.6.5
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://github.com/ANTsX/ANTs/releases/download/v2.6.5/ants-2.6.5-ubuntu-24.04-X64-gcc.zip'
+          expected='9f6a2c8881d6c94ea17171c0502e55cb898ad9afd50e4e23fde9a8c0997aa04b'
+          curl -L --retry 4 --retry-delay 3 -o /tmp/ants.zip "$url"
+          echo "$expected  /tmp/ants.zip" | sha256sum -c -
+          unzip -q /tmp/ants.zip -d /tmp/ants
+          rm -f /tmp/ants.zip
+          bindir="$(find /tmp/ants -type f -name antsRegistration -printf '%h\n' | head -n1)"
+          test -n "$bindir"
+          libdir="$(dirname "$bindir")/lib"
+          echo "$bindir" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=$libdir:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+          "$bindir/antsRegistration" --version | head -n 3
+
+      - name: Reconstruct exact frozen T1w only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/public_external_validation_p08_sensitivity_prepare.py             --participant "${{ matrix.participant }}"             --anatomy-only             --root .public-runner/p08/opensource-anatomy
+
+      - name: Run frozen participant anatomy normalization
+        id: anatomy
+        shell: bash
+        run: |
+          set +e
+          python tools/public_external_validation_p08_opensource_anatomy.py             --participant "${{ matrix.participant }}"
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Verify outcome-free anatomy result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          p="${{ matrix.participant }}"
+          result=".public-runner/p08/opensource-anatomy/$p/anatomy_result.json"
+          recon=".public-runner/p08/opensource-anatomy/$p/input_reconstruction.json"
+          test -s "$result"
+          test -s "$recon"
+          python - "$result" "$recon" "$p" <<'PY'
+          import json,sys
+          result,recon,p=sys.argv[1:]
+          r=json.load(open(result)); q=json.load(open(recon))
+          assert r["status"]=="P08_OPEN_SOURCE_V2_ANATOMY_NORMALIZATION_COMPLETE",r.get("status")
+          assert r["participant"]==p
+          assert r["anatomy_complete"] is True
+          assert q["participant"]==p and q["all_exact_verified"] is True
+          assert q.get("anatomy_only") is True
+          assert not r["self_other_glm_computed"]
+          assert not r["roi_effect_computed"]
+          assert not r["neural_effect_computed"]
+          print(json.dumps({"participant":p,"status":r["status"],"output_files":r["selected_output_files"]},indent=2))
+          PY
+
+      - name: Upload frozen anatomy transform artifact
+        if: steps.anatomy.outputs.exit_code == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-v2-run-recovery-anatomy-${{ matrix.participant }}
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            .public-runner/p08/opensource-anatomy/${{ matrix.participant }}/anatomy_result.json
+            .public-runner/p08/opensource-anatomy/${{ matrix.participant }}/input_reconstruction.json
+            .public-runner/p08/opensource-anatomy/${{ matrix.participant }}/ants/T1w_N4.nii.gz
+            .public-runner/p08/opensource-anatomy/${{ matrix.participant }}/ants/T1_to_MNI_0GenericAffine.mat
+            .public-runner/p08/opensource-anatomy/${{ matrix.participant }}/ants/T1_to_MNI_1Warp.nii.gz
+            .public-runner/p08/opensource-anatomy/${{ matrix.participant }}/ants/T1_to_MNI_Warped.nii.gz
+
+      - name: Fail if anatomy failed
+        if: always()
+        run: test "${{ steps.anatomy.outputs.exit_code }}" = "0"
