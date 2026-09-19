@@ -67,7 +67,7 @@ jobs:
           if got_sha!=EXPECTED_SHA256:
               raise RuntimeError(f"demos.tsv SHA256 mismatch: {got_sha} != {EXPECTED_SHA256}")
 
-          text=raw.decode("utf-8-sig")
+          text=raw.decode("latin1")
           demos=list(csv.DictReader(io.StringIO(text), delimiter="\t"))
           if not demos:
               raise RuntimeError("demos.tsv parsed zero rows")
