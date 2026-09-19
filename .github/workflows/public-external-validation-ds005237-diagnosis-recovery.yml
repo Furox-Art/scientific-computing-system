@@ -259,8 +259,8 @@ jobs:
               "neural_eligible_genpop":counts(elig_genpop),
             },
             "requested_category_counts":{
-              "patient_all":broad_counts(patient_ids),
-              "neural_eligible_patient":broad_counts(elig_patient),
+              "patient_all":category_counts(patient_ids),
+              "neural_eligible_patient":category_counts(elig_patient),
             },
             "diagnosis_fields":{
               "primary_field":"Primary_Dx",
