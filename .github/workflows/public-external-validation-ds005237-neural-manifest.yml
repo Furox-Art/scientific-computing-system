@@ -25,7 +25,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          ref: e48505b63da58c9cb5ea104404f5a94c80f6567d
+          ref: f2d4382cbedd4e12408bb727183856bd520545b6
           path: runner
 
       - name: Build exact outcome-free raw manifest
