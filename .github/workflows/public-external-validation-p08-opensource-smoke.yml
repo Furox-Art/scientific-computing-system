@@ -1,12 +1,6 @@
 name: Public external validation P08 open-source preprocessing smoke
 
 on:
-  push:
-    branches:
-      - external-validation-public-runner-20260918
-    paths:
-      - '.github/workflows/public-external-validation-p08-opensource-smoke.yml'
-      - 'tools/public_external_validation_p08_sensitivity_prepare.py'
   workflow_dispatch:
 
 permissions:
