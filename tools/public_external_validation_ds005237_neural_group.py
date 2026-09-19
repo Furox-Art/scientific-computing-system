@@ -64,12 +64,14 @@ def main():
     ap.add_argument("--participant-results-root",required=True)
     ap.add_argument("--eligible-tsv",required=True)
     ap.add_argument("--output-root",required=True)
+    ap.add_argument("--expected-source-n",type=int,default=EXPECTED_SOURCE_N)
+    ap.add_argument("--lane",choices=["primary","strict-internalizing-sensitivity"],default="primary")
     args=ap.parse_args()
 
     result_root=Path(args.participant_results_root)
     eligible=pd.read_csv(args.eligible_tsv,sep="\t",dtype={"Site":str,"Group":str,"sex":str})
-    if len(eligible)!=EXPECTED_SOURCE_N:
-        raise RuntimeError(f"Eligible TSV N={len(eligible)} != {EXPECTED_SOURCE_N}")
+    if len(eligible)!=args.expected_source_n:
+        raise RuntimeError(f"Eligible TSV N={len(eligible)} != {args.expected_source_n}")
     if eligible["participant_id"].duplicated().any():
         raise RuntimeError("Duplicate participant in eligible TSV")
     if set(eligible["Group"]) != {"Patient","GenPop"}:
@@ -204,10 +206,21 @@ def main():
     long.to_csv(out/"group_model_long.tsv",sep="\t",index=False)
     exc.to_csv(out/"qc_exclusions.tsv",sep="\t",index=False)
 
+    lane_lock=(
+        "NEURAL_DOUBLE_DISSOCIATION_LOCK_2026-09-19.json"
+        if args.lane=="primary"
+        else "INTERNALIZING_SENSITIVITY_LOCK_2026-09-19.json"
+    )
+    lane_status=(
+        "DS005237_NEURAL_DOUBLE_DISSOCIATION_GROUP_COMPLETE"
+        if args.lane=="primary"
+        else "DS005237_NEURAL_STRICT_INTERNALIZING_SENSITIVITY_GROUP_COMPLETE"
+    )
     result={
-        "status":"DS005237_NEURAL_DOUBLE_DISSOCIATION_GROUP_COMPLETE",
+        "status":lane_status,
+        "lane":args.lane,
         "source_commit":SOURCE_COMMIT,
-        "lock":"NEURAL_DOUBLE_DISSOCIATION_LOCK_2026-09-19.json",
+        "lock":lane_lock,
         "formula":formula,
         "covariance":"cluster-robust by participant",
         "age_center_mean":age_mean,
