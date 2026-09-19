@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 7f62793fa7ef5b31e574905138a053d68f432728
+          ref: 5996fe073aec6d6b5097e9b8452e1b853a75f453
           path: runner
 
       - uses: actions/checkout@v4
