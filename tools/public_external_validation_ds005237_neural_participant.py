@@ -296,7 +296,11 @@ def compute_qc(volreg: Path, mask: Path, motion: Path, task: str, outdir: Path):
         out_file=str((outdir / "fd_power_2012.txt").resolve()),
     )
     fd_res = fd_iface.run()
-    fd_raw = np.atleast_1d(np.loadtxt(fd_res.outputs.out_file, dtype=float))
+    fd_path = Path(fd_res.outputs.out_file)
+    with fd_path.open("r", encoding="utf-8") as f:
+        first_line = f.readline().strip()
+    fd_skiprows = 1 if first_line == "FramewiseDisplacement" else 0
+    fd_raw = np.atleast_1d(np.loadtxt(fd_path, dtype=float, skiprows=fd_skiprows))
     # FD is defined on temporal differences, so prepend 0 for the first volume.
     fd = np.concatenate([[0.0], fd_raw])
 
