@@ -1,0 +1,180 @@
+name: Public external validation ds005237 neural preflight
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-ds005237-neural-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: external-validation-public-runner-20260918
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install frozen Python toolchain
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check             'templateflow==25.1.2'             'nibabel==5.3.2'             'nilearn==0.13.1'             'nipype==1.11.0'             'nitime==0.12.1'             'scipy>=1.11,<2'             numpy pandas
+          python - <<'PY'
+          import json,templateflow,nibabel,nilearn,nipype,nitime,scipy
+          print(json.dumps({
+            'templateflow':templateflow.__version__,
+            'nibabel':nibabel.__version__,
+            'nilearn':nilearn.__version__,
+            'nipype':nipype.__version__,
+            'nitime':nitime.__version__,
+            'scipy':scipy.__version__,
+          },indent=2))
+          PY
+
+      - name: Install pinned ANTs 2.6.5
+        id: ants
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://github.com/ANTsX/ANTs/releases/download/v2.6.5/ants-2.6.5-ubuntu-24.04-X64-gcc.zip'
+          expected='9f6a2c8881d6c94ea17171c0502e55cb898ad9afd50e4e23fde9a8c0997aa04b'
+          curl -L --retry 4 --retry-delay 3 -o /tmp/ants.zip "$url"
+          echo "$expected  /tmp/ants.zip" | sha256sum -c -
+          unzip -q /tmp/ants.zip -d /tmp/ants
+          bindir="$(find /tmp/ants -type f -name antsRegistration -printf '%h\n' | head -n1)"
+          test -n "$bindir"
+          libdir="$(dirname "$bindir")/lib"
+          test -d "$libdir"
+          echo "$bindir" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=$libdir:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+          "$bindir/antsRegistration" --version | head -n 4
+          echo "bindir=$bindir" >> "$GITHUB_OUTPUT"
+
+      - name: Pull exact AFNI image
+        id: afni
+        shell: bash
+        run: |
+          set -euo pipefail
+          image='afni/afni_make_build@sha256:c8365868751116f1ef2d0811e8a4dd2df58a689da457c74ea07fedb0e11dc0d6'
+          docker pull "$image"
+          docker image inspect "$image" --format '{{json .RepoDigests}}'
+          docker run --rm "$image" afni -ver | tee /tmp/afni-version.txt
+
+      - name: Fetch and materialize frozen Harvard-Oxford networks
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='.public-runner/ds005237/neural-preflight'
+          mkdir -p "$root"
+          python - "$root" <<'PY'
+          from pathlib import Path
+          import hashlib,json,shutil,sys
+          import nibabel as nib
+          import numpy as np
+          from templateflow import api as tflow
+
+          root=Path(sys.argv[1])
+          resources={}
+          def one(x,label):
+              if isinstance(x,(list,tuple)):
+                  if len(x)!=1: raise RuntimeError(f'{label}: expected one resource, got {x}')
+                  x=x[0]
+              p=Path(x)
+              if not p.is_file() or p.stat().st_size==0: raise RuntimeError(f'{label}: missing {p}')
+              return p
+
+          hc=one(tflow.get('MNI152NLin6Asym',resolution=2,atlas='HOCPA',desc='th25',suffix='dseg',extension='nii.gz'),'HOCPA')
+          hs=one(tflow.get('MNI152NLin6Asym',resolution=2,atlas='HOSPA',desc='th25',suffix='dseg',extension='nii.gz'),'HOSPA')
+          hct=one(tflow.get('MNI152NLin6Asym',atlas='HOCPA',suffix='dseg',extension='tsv'),'HOCPA labels')
+          hst=one(tflow.get('MNI152NLin6Asym',atlas='HOSPA',suffix='dseg',extension='tsv'),'HOSPA labels')
+          ref=one(tflow.get('MNI152NLin6Asym',resolution=2,desc=None,suffix='T1w',extension='nii.gz'),'MNI ref')
+
+          copies={
+            'hocpa':(hc,root/'tpl-MNI152NLin6Asym_res-02_atlas-HOCPA_desc-th25_dseg.nii.gz'),
+            'hospa':(hs,root/'tpl-MNI152NLin6Asym_res-02_atlas-HOSPA_desc-th25_dseg.nii.gz'),
+            'hocpa_labels':(hct,root/'tpl-MNI152NLin6Asym_atlas-HOCPA_dseg.tsv'),
+            'hospa_labels':(hst,root/'tpl-MNI152NLin6Asym_atlas-HOSPA_dseg.tsv'),
+            'reference':(ref,root/'tpl-MNI152NLin6Asym_res-02_T1w.nii.gz'),
+          }
+          for _,(src,dst) in copies.items(): shutil.copy2(src,dst)
+
+          def label_map(p):
+              rows={}
+              for i,line in enumerate(p.read_text().splitlines()):
+                  if i==0 or not line.strip(): continue
+                  parts=line.split('\t')
+                  rows[int(parts[0])]=parts[1].strip()
+              return rows
+          cm=label_map(copies['hocpa_labels'][1])
+          sm=label_map(copies['hospa_labels'][1])
+          expected_c={4:'Middle Frontal Gyrus',29:'Cingulate Gyrus, anterior division'}
+          expected_s={10:'Left Amygdala',20:'Right Amygdala'}
+          for k,v in expected_c.items():
+              if cm.get(k)!=v: raise RuntimeError(f'HOCPA label {k}: {cm.get(k)} != {v}')
+          for k,v in expected_s.items():
+              if sm.get(k)!=v: raise RuntimeError(f'HOSPA label {k}: {sm.get(k)} != {v}')
+
+          ci=nib.load(copies['hocpa'][1]); si=nib.load(copies['hospa'][1])
+          if ci.shape!=si.shape or not np.allclose(ci.affine,si.affine):
+              raise RuntimeError('HOCPA/HOSPA grid mismatch')
+          cd=np.asanyarray(ci.dataobj).astype(np.int16)
+          sd=np.asanyarray(si.dataobj).astype(np.int16)
+          control=np.isin(cd,[4,29]).astype(np.uint8)
+          affective=np.isin(sd,[10,20]).astype(np.uint8)
+          if control.sum()==0 or affective.sum()==0: raise RuntimeError('zero-voxel network')
+          overlap=int(np.logical_and(control,affective).sum())
+          if overlap!=0: raise RuntimeError(f'network overlap={overlap}')
+
+          hdr=ci.header.copy(); hdr.set_data_dtype(np.uint8)
+          cp=root/'network-control_HOCPA-MFG-ACC_mask.nii.gz'
+          ap=root/'network-affective_HOSPA-bilateralAmygdala_mask.nii.gz'
+          nib.save(nib.Nifti1Image(control,ci.affine,hdr),cp)
+          nib.save(nib.Nifti1Image(affective,ci.affine,hdr),ap)
+
+          def sha(p):
+              h=hashlib.sha256()
+              with open(p,'rb') as f:
+                  for b in iter(lambda:f.read(8*1024*1024),b''): h.update(b)
+              return h.hexdigest()
+          files={}
+          for p in sorted(root.iterdir()):
+              if p.is_file():
+                  files[p.name]={'bytes':p.stat().st_size,'sha256':sha(p)}
+          out={
+            'status':'DS005237_NEURAL_PREFLIGHT_COMPLETE',
+            'dataset_outcome_inspected':False,
+            'afni_image':'afni/afni_make_build@sha256:c8365868751116f1ef2d0811e8a4dd2df58a689da457c74ea07fedb0e11dc0d6',
+            'ants_version':'2.6.5',
+            'ants_zip_sha256':'9f6a2c8881d6c94ea17171c0502e55cb898ad9afd50e4e23fde9a8c0997aa04b',
+            'templateflow_version':'25.1.2',
+            'space':'MNI152NLin6Asym',
+            'resolution_mm':2,
+            'atlas_threshold_percent':25,
+            'affective_labels':expected_s,
+            'control_labels':expected_c,
+            'affective_voxels':int(affective.sum()),
+            'control_voxels':int(control.sum()),
+            'network_overlap_voxels':overlap,
+            'resources':files,
+            'neural_group_contrast_computed':False,
+          }
+          (root/'preflight_result.json').write_text(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-ds005237-neural-preflight
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+          path: .public-runner/ds005237/neural-preflight/
