@@ -1,0 +1,95 @@
+name: Public external validation ds005237 neural group synthetic smoke
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-ds005237-neural-group-synthetic-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: aa9d728bfd3aa9cc846fba42438f70e403ca71bd
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install frozen stats tools
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'numpy==2.3.3' 'pandas==2.3.2' 'scipy==1.16.1' 'statsmodels==0.14.5'
+      - name: Generate deterministic synthetic 212-participant result set
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import numpy as np, pandas as pd
+          rng=np.random.default_rng(20260919)
+          n_patient=126; n_control=86
+          rows=[]
+          root=Path('synthetic/results')
+          for i in range(n_patient+n_control):
+              patient=i<n_patient
+              pid=f'sub-SYN{i:03d}'
+              group='Patient' if patient else 'GenPop'
+              site='1' if i%3 else '2'
+              sex=['F','M','O'][i%3]
+              age=18+(i%50)+0.1*(i%7)
+              rows.append({'participant_id':pid,'Group':group,'Site':site,'age':age,'sex':sex})
+              # Deterministic nonzero variance, no intended scientific meaning.
+              hammer_aff=float(rng.normal(0.2+0.05*patient,0.4))
+              hammer_ctl=float(rng.normal(0.1,0.4))
+              stroop_aff=float(rng.normal(0.05,0.4))
+              stroop_ctl=float(rng.normal(0.25-0.03*patient,0.4))
+              d={
+                'status':'DS005237_NEURAL_PARTICIPANT_ENDPOINT_COMPLETE',
+                'participant':pid,
+                'participant_endpoint_eligible':True,
+                'endpoints':{
+                  'hammer_affective':hammer_aff,
+                  'hammer_control':hammer_ctl,
+                  'stroop_affective':stroop_aff,
+                  'stroop_control':stroop_ctl,
+                  'hammer_selectivity':hammer_aff-hammer_ctl,
+                  'stroop_selectivity':stroop_ctl-stroop_aff,
+                },
+                'neural_group_contrast_computed':False,
+              }
+              p=root/pid
+              p.mkdir(parents=True,exist_ok=True)
+              (p/'participant_neural_result.json').write_text(json.dumps(d,indent=2)+'\n')
+          Path('synthetic').mkdir(exist_ok=True)
+          pd.DataFrame(rows).to_csv('synthetic/eligible_participants.tsv',sep='\t',index=False)
+          PY
+      - name: Run locked group aggregation code on synthetic inputs
+        run: |
+          set -euo pipefail
+          python tools/public_external_validation_ds005237_neural_group.py             --participant-results-root synthetic/results             --eligible-tsv synthetic/eligible_participants.tsv             --output-root synthetic/group-output
+          test -s synthetic/group-output/neural_double_dissociation_result.json
+      - name: Verify synthetic smoke
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          d=json.load(open('synthetic/group-output/neural_double_dissociation_result.json'))
+          assert d['status']=='DS005237_NEURAL_DOUBLE_DISSOCIATION_GROUP_COMPLETE'
+          assert d['qc']['source_eligible_n']==212
+          assert d['qc']['final_endpoint_n']==212
+          assert d['outcome_dependent_tuning'] is False
+          print('DS005237 NEURAL GROUP SYNTHETIC SMOKE COMPLETE; NO REAL NEURAL DATA USED')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-ds005237-neural-group-synthetic-smoke
+          retention-days: 7
+          if-no-files-found: error
+          path: synthetic/group-output/neural_double_dissociation_result.json
