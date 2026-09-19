@@ -15,9 +15,10 @@ def sha256_file(p:Path)->str:
 def parse_annex_key(link:str):
     parts=Path(link).parts
     keys=[x for x in parts if re.match(r'^(MD5E|SHA256E|SHA1E|MD5|SHA256|SHA1)-',x)]
-    if len(keys)!=1:
-        raise RuntimeError(f"Could not identify annex key in symlink target: {link}")
-    key=keys[0]
+    unique=sorted(set(keys))
+    if len(unique)!=1:
+        raise RuntimeError(f"Could not identify one unique annex key in symlink target: {link}; keys={keys}")
+    key=unique[0]
     m=re.match(r'^(MD5E|SHA256E|SHA1E|MD5|SHA256|SHA1)-s(\d+)--(.+)$',key)
     if not m:
         raise RuntimeError(f"Unsupported annex key format: {key}")
