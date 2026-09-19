@@ -108,9 +108,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install ".[test,dev,docs,pandas,plot]" pip-audit
       - name: Audit the actually installed environment
-        run: pip-audit --local --strict
+        run: |
+          python -m pip freeze --exclude scientific-computing-system > resolved-ci-environment.txt
+          pip-audit -r resolved-ci-environment.txt --strict
       - name: Record resolved environment for diagnostics
-        run: python -m pip freeze --all | sort > resolved-ci-environment.txt
+        run: sort resolved-ci-environment.txt -o resolved-ci-environment.txt
 
   property-tests:
     name: property tests on Linux with Python 3.12
@@ -187,10 +189,48 @@ jobs:
             -m pytest tests/
           coverage report --fail-under=100 --show-missing
 
+  optional_audit:
+    name: scientific/io extras audit and real backend smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Install scientific and I/O extras with audit tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit ".[test,scientific,io]"
+          pip check
+      - name: Audit resolved scientific and I/O environment
+        run: |
+          python -m pip freeze --exclude scientific-computing-system > /tmp/scientific-io-resolved.txt
+          pip-audit -r /tmp/scientific-io-resolved.txt --strict
+      - name: Exercise real HDF5 and NetCDF pipelines
+        run: pytest tests/test_data_io_optional_backends.py -v
+
+  version_discipline:
+    name: synchronized monotonic package version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Reject source/version/citation drift
+        run: python scripts/check_version_discipline.py --base-ref HEAD^1
+
   CI:
     name: CI
     if: always()
-    needs: [test, audit, resolved-audit, property-tests, pre-commit, minimal-deps, ml-reference]
+    needs: [test, audit, resolved-audit, optional_audit, version_discipline, property-tests, pre-commit, minimal-deps, ml-reference]
     runs-on: ubuntu-latest
     steps:
       - name: Report overall result
@@ -200,6 +240,8 @@ jobs:
           echo "test=${{ needs.test.result }}"
           echo "lock-audit=${{ needs.audit.result }}"
           echo "resolved-audit=${{ needs.resolved-audit.result }}"
+          echo "optional_audit=${{ needs.optional_audit.result }}"
+          echo "version_discipline=${{ needs.version_discipline.result }}"
           echo "property-tests=${{ needs.property-tests.result }}"
           echo "pre-commit=${{ needs.pre-commit.result }}"
           echo "minimal-deps=${{ needs.minimal-deps.result }}"
@@ -208,6 +250,8 @@ jobs:
             "${{ needs.test.result }}" \
             "${{ needs.audit.result }}" \
             "${{ needs.resolved-audit.result }}" \
+            "${{ needs.optional_audit.result }}" \
+            "${{ needs.version_discipline.result }}" \
             "${{ needs.property-tests.result }}" \
             "${{ needs.pre-commit.result }}" \
             "${{ needs.minimal-deps.result }}" \

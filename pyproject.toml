@@ -2,7 +2,7 @@
 # Distribution name. Formerly published as "cognitive-discovery-system";
 # the import name stays `cds`. Keep the old PyPI project alive as an alias.
 name = "scientific-computing-system"
-version = "2.0.0"
+version = "2.1.0"
 description = "A pure-Python computational science platform for numerical methods, modeling, validation, uncertainty, scientific workflows, dimensional analysis, and optional research-data backends. Zero runtime dependencies."
 readme = "README.md"
 license = "MIT"
@@ -148,7 +148,7 @@ Issues = "https://github.com/Furox-Art/scientific-computing-system/issues"
 Changelog = "https://github.com/Furox-Art/scientific-computing-system/releases"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.31.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
@@ -185,19 +185,20 @@ only-include = [
   "pyproject.toml",
   "requirements.lock",
   "requirements-dev.lock",
+  "requirements-build.lock",
   "mkdocs.yml",
 ]
 
-# Static versioning: `version` above and `src/cds/_version.py` are the package
-# version sources and must stay in lockstep. The release workflow additionally
-# rejects any `vX.Y.Z` tag whose X.Y.Z does not exactly match the built wheel
-# metadata, preventing GitHub and PyPI releases from drifting apart.
+# Static versioning: `version` above, `src/cds/_version.py`, and both version
+# fields in `CITATION.cff` are release metadata sources and must stay in
+# lockstep. scripts/check_version_discipline.py additionally requires a
+# monotonic version bump whenever package-affecting source changes occur.
 #
 # Release checklist:
-#   1. Bump `version` above AND `__version__` in `src/cds/_version.py`
+#   1. Bump all three version metadata sources together
 #   2. Commit, push, and wait for CI + Installed CLI Smoke to be green
 #   3. Merge the verified version bump to `main`; release.yml builds the wheel
-#      and creates the matching `vX.Y.Z` tag automatically
+#      from a hash-locked, non-isolated build toolchain
 #   4. Trusted Publishing uploads the verified build to PyPI; the GitHub Release
 #      contains release metadata only, never wheel/sdist distribution assets
 
