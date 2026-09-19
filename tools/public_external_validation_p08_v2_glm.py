@@ -17,6 +17,7 @@ from nipype.algorithms.confounds import compute_dvars
 from scipy.stats import binomtest
 
 TR = 1.5
+GLM_LOCK_FILE = "OPEN_SOURCE_V2_GLM_LOCK_V3_2026-09-19.json"
 HIGH_PASS = 1.0 / 128.0
 FD_THRESHOLD = 0.5
 STDDVARS_THRESHOLD = 1.5
@@ -379,7 +380,7 @@ def participant_mode(args) -> int:
         "status":"P08_OPEN_SOURCE_V2_PARTICIPANT_SELF_OTHER_GLM_COMPLETE",
         "participant":participant,
         "lane":"open_source_secondary_sensitivity_only",
-        "glm_lock":"OPEN_SOURCE_V2_GLM_LOCK_2026-09-19.json",
+        "glm_lock":GLM_LOCK_FILE,
         "n_runs":len(run_results),
         "run_results":run_results,
         "motion_provenance":motion_provenance,
