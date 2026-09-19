@@ -1,0 +1,50 @@
+name: Public external validation P08 V2 recovery merge preflight
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p08-v2-recovery-merge-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 098958ec0d2047f4fb637a0e18f5fbec1de05b8c
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile merge validator
+        run: |
+          set -euo pipefail
+          python -m py_compile tools/public_external_validation_p08_v2_recovery_merge.py
+          python tools/public_external_validation_p08_v2_recovery_merge.py --help >/dev/null
+          python - <<'PY'
+          import ast, json
+          p='tools/public_external_validation_p08_v2_recovery_merge.py'
+          tree=ast.parse(open(p,encoding='utf-8').read())
+          names={n.name for n in tree.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
+          required={'verify_shard','merge_reconstruction','main'}
+          assert required <= names, (required,names)
+          out={
+            'status':'P08_V2_RECOVERY_MERGE_CODE_PREFLIGHT_COMPLETE',
+            'script_commit':'098958ec0d2047f4fb637a0e18f5fbec1de05b8c',
+            'target_neural_outcome_computed':False,
+          }
+          open('p08_recovery_merge_preflight.json','w').write(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-v2-recovery-merge-preflight
+          retention-days: 30
+          if-no-files-found: error
+          path: p08_recovery_merge_preflight.json
