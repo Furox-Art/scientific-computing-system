@@ -1,0 +1,153 @@
+name: Public external validation P08 V2 run-recovery merge synthetic smoke
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p08-v2-run-recovery-merge-synthetic-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 52a6867d2b78dc4379418d4f9809754c4b63defe
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install smoke dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'nibabel==5.3.2' numpy
+
+      - name: Generate deterministic eight-run synthetic artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          import nibabel as nib
+          import numpy as np
+
+          specs={
+            'sub-Bubbles':[('ses-01',1),('ses-01',2),('ses-04',1),('ses-04',2)],
+            'sub-Buttercup':[('ses-04',1),('ses-04',2),('ses-05',1),('ses-05',2)],
+          }
+
+          def sha(p):
+              h=hashlib.sha256()
+              with open(p,'rb') as f:
+                  for b in iter(lambda:f.read(1024*1024),b''): h.update(b)
+              return h.hexdigest()
+
+          for p,items in specs.items():
+              # participant-level immutable synthetic anatomy identity
+              anat_payloads={
+                'T1w_N4.nii.gz':(f'N4-{p}\n').encode()*20,
+                'T1_to_MNI_0GenericAffine.mat':(f'AFFINE-{p}\n').encode()*5,
+                'T1_to_MNI_1Warp.nii.gz':(f'WARP-{p}\n').encode()*20,
+              }
+              # compute anatomy result from canonical payload files
+              canon=Path('canon')/p/'ants'; canon.mkdir(parents=True,exist_ok=True)
+              selected=[]
+              relmap={
+                'T1w_N4.nii.gz':'ants/T1w_N4.nii.gz',
+                'T1_to_MNI_0GenericAffine.mat':'ants/T1_to_MNI_0GenericAffine.mat',
+                'T1_to_MNI_1Warp.nii.gz':'ants/T1_to_MNI_1Warp.nii.gz',
+              }
+              for name,payload in anat_payloads.items():
+                  q=canon/name; q.write_bytes(payload)
+                  selected.append({'path':relmap[name],'bytes':q.stat().st_size,'sha256':sha(q)})
+              anatomy_result={
+                'status':'P08_OPEN_SOURCE_V2_ANATOMY_NORMALIZATION_COMPLETE',
+                'participant':p,'anatomy_complete':True,
+                'selected_output_files':selected,
+                'self_other_glm_computed':False,'roi_effect_computed':False,'neural_effect_computed':False,
+              }
+
+              for s,r in items:
+                  pre=Path('synthetic')/f'public-p08-v2-run-recovery-preprocessed-{p}-{s}-run-{r}'
+                  prov=Path('synthetic')/f'public-p08-v2-run-recovery-provenance-{p}-{s}-run-{r}'
+                  mni=pre/'mni'; func=pre/'bids'/p/s/'func'; motion=pre/'afni'/s/'results'; ants=prov/'ants'
+                  for d in (mni,func,motion,ants): d.mkdir(parents=True,exist_ok=True)
+
+                  data=np.full((2,2,2,3),1000.0+r,dtype=np.float32)
+                  bold=mni/f'{p}_{s}_task-SORPF_run-{r}_space-MNI152NLin2009cAsym_res-02_desc-optcom_bold.nii.gz'
+                  nib.save(nib.Nifti1Image(data,np.eye(4)),bold)
+
+                  ev=func/f'{p}_{s}_task-SORPF_run-{r}_events.tsv'
+                  ev.write_text('onset\tduration\ttrial_type\n0\t1.5\tSelf\n3\t1.5\tOther\n')
+                  mot=motion/'dfile_rall.1D'
+                  mot.write_text(('0 0 0 0 0 0\n')*3)
+
+                  for name,payload in anat_payloads.items():
+                      (ants/name).write_bytes(payload)
+                  (prov/'anatomy_result.json').write_text(json.dumps(anatomy_result,sort_keys=True,indent=2)+'\n')
+
+                  prep={
+                    'status':'P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_RUN_SHARD_COMPLETE',
+                    'participant':p,'session_filter':s,'run_filter':r,
+                    'precomputed_anatomy_reused':True,
+                    'expected_run_count':1,'mni_optcom_run_count':1,
+                    'sessions_expected':{s:[r]},
+                    'preprocessing_complete':True,
+                    'selected_output_files':[{'path':'mni/'+bold.name,'bytes':bold.stat().st_size,'sha256':sha(bold)}],
+                    'self_other_glm_computed':False,'roi_effect_computed':False,'neural_effect_computed':False,
+                  }
+                  (pre/'opensource_preprocessing_result.json').write_text(json.dumps(prep,indent=2)+'\n')
+                  recon={
+                    'participant':p,'session_filter':s,'all_exact_verified':True,
+                    'files':[{
+                      'path':f'{p}/{s}/func/{ev.name}','role':'sorpf_events','storage':'git_blob',
+                      'bytes':ev.stat().st_size,'hash_algorithm':'sha256','hash':sha(ev)
+                    }]
+                  }
+                  (prov/'input_reconstruction.json').write_text(json.dumps(recon,indent=2)+'\n')
+          PY
+
+      - name: Merge synthetic run shards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/public_external_validation_p08_v2_run_recovery_merge.py             --participant sub-Bubbles             --input-root synthetic             --output-preproc merged/sub-Bubbles/pre             --output-prov merged/sub-Bubbles/prov
+          python tools/public_external_validation_p08_v2_run_recovery_merge.py             --participant sub-Buttercup             --input-root synthetic             --output-preproc merged/sub-Buttercup/pre             --output-prov merged/sub-Buttercup/prov
+
+      - name: Verify synthetic merged participant structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, numpy as np
+          for p,sessions in {'sub-Bubbles':['ses-01','ses-04'],'sub-Buttercup':['ses-04','ses-05']}.items():
+              prep=json.load(open(f'merged/{p}/pre/opensource_preprocessing_result.json'))
+              summ=json.load(open(f'merged/{p}/prov/run_recovery_merge_result.json'))
+              assert prep['status']=='P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_COMPLETE'
+              assert prep['expected_run_count']==4 and prep['mni_optcom_run_count']==4
+              assert prep['anatomy_identity']['identical_across_four_run_shards'] is True
+              assert summ['status']=='P08_V2_RUN_RECOVERY_PARTICIPANT_MERGE_COMPLETE'
+              for s in sessions:
+                  mot=np.loadtxt(f'merged/{p}/pre/afni/{s}/results/dfile_rall.1D',ndmin=2)
+                  assert mot.shape==(6,6),mot.shape
+              assert not prep['neural_effect_computed']
+              assert not summ['neural_effect_computed']
+          print('P08 RUN-RECOVERY MERGE SYNTHETIC SMOKE COMPLETE; NO SCIENTIFIC OUTCOME')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-v2-run-recovery-merge-synthetic-smoke
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            merged/sub-Bubbles/prov/run_recovery_merge_result.json
+            merged/sub-Buttercup/prov/run_recovery_merge_result.json
