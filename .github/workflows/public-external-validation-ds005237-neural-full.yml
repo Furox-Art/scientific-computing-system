@@ -1,0 +1,367 @@
+name: Public ds005237 full locked neural analysis
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      participants: ${{ steps.matrix.outputs.participants }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: 35446855138
+          name: public-ds005237-neural-raw-manifest
+          path: inputs/manifest
+
+      - name: Verify frozen manifest and emit participant matrix
+        id: matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'c89d2a8fe679a7d67efb98a774548c904d50b8dedd0b5a52fb16782d7482f7ac  inputs/manifest/raw_input_manifest.csv' | sha256sum -c -
+          echo '8ecd024e64934fb295258acec356e9954796ec7c855aca1a94cb670fe248fd13  inputs/manifest/eligible_participants.tsv' | sha256sum -c -
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, pandas as pd
+          d=pd.read_csv('inputs/manifest/eligible_participants.tsv',sep='\t')
+          assert len(d)==212
+          assert d['participant_id'].nunique()==212
+          assert d['Group'].value_counts().to_dict()=={'Patient':126,'GenPop':86}
+          print('participants='+json.dumps(d['participant_id'].tolist(),separators=(',',':')))
+          PY
+
+  participant:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        participant: ${{ fromJSON(needs.prepare.outputs.participants) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 79da5f0af82a37567ad39b9793b4afc9e92c3b43
+          path: runner
+
+      - uses: actions/checkout@v4
+        with:
+          repository: OpenNeuroDatasets/ds005237
+          ref: 2e273d8466162208bbccd8591337e55b7a8b5721
+          fetch-depth: 1
+          path: source
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install frozen Python GLM/QC toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            'nibabel==5.3.2' \
+            'nilearn==0.13.1' \
+            'nipype==1.11.0' \
+            'nitime==0.12.1' \
+            'scipy>=1.11,<2' \
+            numpy pandas
+          python - <<'PY'
+          import nibabel,nilearn,nipype,nitime,scipy
+          assert nibabel.__version__=='5.3.2'
+          assert nilearn.__version__=='0.13.1'
+          assert nipype.__version__=='1.11.0'
+          assert nitime.__version__=='0.12.1'
+          print(nibabel.__version__,nilearn.__version__,nipype.__version__,nitime.__version__,scipy.__version__)
+          PY
+
+      - name: Install pinned ANTs 2.6.5
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://github.com/ANTsX/ANTs/releases/download/v2.6.5/ants-2.6.5-ubuntu-24.04-X64-gcc.zip'
+          expected='9f6a2c8881d6c94ea17171c0502e55cb898ad9afd50e4e23fde9a8c0997aa04b'
+          curl -L --retry 4 --retry-delay 3 -o /tmp/ants.zip "$url"
+          echo "$expected  /tmp/ants.zip" | sha256sum -c -
+          unzip -q /tmp/ants.zip -d /tmp/ants
+          rm -f /tmp/ants.zip
+          bindir="$(find /tmp/ants -type f -name antsRegistration -printf '%h\n' | head -n1)"
+          test -n "$bindir"
+          libdir="$(dirname "$bindir")/lib"
+          test -d "$libdir"
+          echo "$bindir" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=$libdir:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+          "$bindir/antsRegistration" --version | head -n 4
+
+      - name: Pull exact AFNI image and verify public S3 client
+        shell: bash
+        run: |
+          set -euo pipefail
+          image='afni/afni_make_build@sha256:c8365868751116f1ef2d0811e8a4dd2df58a689da457c74ea07fedb0e11dc0d6'
+          docker pull "$image"
+          docker run --rm "$image" afni -ver | head -n 6
+          aws --version
+
+      - name: Download frozen neural manifest
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: 35446855138
+          name: public-ds005237-neural-raw-manifest
+          path: inputs/manifest
+
+      - name: Download frozen network resources
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: 35446584389
+          name: public-ds005237-neural-preflight
+          path: inputs/networks
+
+      - name: Verify frozen inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = '2e273d8466162208bbccd8591337e55b7a8b5721'
+          echo 'c89d2a8fe679a7d67efb98a774548c904d50b8dedd0b5a52fb16782d7482f7ac  inputs/manifest/raw_input_manifest.csv' | sha256sum -c -
+          echo '8ecd024e64934fb295258acec356e9954796ec7c855aca1a94cb670fe248fd13  inputs/manifest/eligible_participants.tsv' | sha256sum -c -
+          python -m py_compile runner/tools/public_external_validation_ds005237_neural_participant.py
+          python runner/tools/public_external_validation_ds005237_neural_participant.py --help >/dev/null
+
+      - name: Run frozen participant endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .public-runner/ds005237/full
+          python runner/tools/public_external_validation_ds005237_neural_participant.py \
+            --participant '${{ matrix.participant }}' \
+            --source-root source \
+            --manifest inputs/manifest/raw_input_manifest.csv \
+            --network-root inputs/networks \
+            --output-root .public-runner/ds005237/full
+
+      - name: Verify participant output is non-group
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          p=".public-runner/ds005237/full/${{ matrix.participant }}/participant_neural_result.json"
+          test -s "$p"
+          python - "$p" '${{ matrix.participant }}' <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          assert d['participant']==sys.argv[2]
+          assert d['neural_group_contrast_computed'] is False
+          assert d['status'] in {
+            'DS005237_NEURAL_PARTICIPANT_ENDPOINT_COMPLETE',
+            'DS005237_NEURAL_PARTICIPANT_QC_INELIGIBLE',
+            'DS005237_NEURAL_PARTICIPANT_TECHNICAL_FAILURE',
+          }
+          print(json.dumps({
+            'participant':d['participant'],
+            'status':d['status'],
+            'endpoint_eligible':d.get('participant_endpoint_eligible'),
+            'tasks':{k:{'eligible':v.get('eligible'),'qc':v.get('qc')} for k,v in d.get('tasks',{}).items()},
+            'neural_group_contrast_computed':d['neural_group_contrast_computed'],
+          },indent=2))
+          PY
+
+      - name: Upload frozen participant result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ds005237-neural-participant-${{ matrix.participant }}
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            .public-runner/ds005237/full/${{ matrix.participant }}/participant_neural_result.json
+            .public-runner/ds005237/full/${{ matrix.participant }}/input_reconstruction.json
+            .public-runner/ds005237/full/${{ matrix.participant }}/participant_neural.log
+            .public-runner/ds005237/full/${{ matrix.participant }}/task_results/*/motion_qc.tsv
+            .public-runner/ds005237/full/${{ matrix.participant }}/task_results/*/events_model.tsv
+            .public-runner/ds005237/full/${{ matrix.participant }}/task_results/*/design_matrix.tsv
+            .public-runner/ds005237/full/${{ matrix.participant }}/mni/*.nii.gz
+
+  group:
+    needs: participant
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 79da5f0af82a37567ad39b9793b4afc9e92c3b43
+          path: runner
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install frozen group statistics toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            'numpy==2.3.3' 'pandas==2.3.2' 'scipy==1.16.1' 'statsmodels==0.14.5'
+
+      - name: Download all participant artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ds005237-neural-participant-*
+          path: participant-artifacts
+
+      - name: Download frozen manifest
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: 35446855138
+          name: public-ds005237-neural-raw-manifest
+          path: inputs/manifest
+
+      - name: Download frozen diagnosis recovery
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: 35451645594
+          name: public-ds005237-diagnosis-recovery
+          path: inputs/diagnosis
+
+      - name: Verify aggregate inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '8ecd024e64934fb295258acec356e9954796ec7c855aca1a94cb670fe248fd13  inputs/manifest/eligible_participants.tsv' | sha256sum -c -
+          echo 'ce3dee1fe82760d557a7dd789e0554edcb1a77e4dd866d0d74489d114f381fe7  inputs/diagnosis/diagnosis_join.tsv' | sha256sum -c -
+          python -m py_compile runner/tools/public_external_validation_ds005237_neural_group.py
+
+      - name: Run frozen primary Patient-vs-GenPop group model
+        shell: bash
+        run: |
+          set -euo pipefail
+          python runner/tools/public_external_validation_ds005237_neural_group.py \
+            --participant-results-root participant-artifacts \
+            --eligible-tsv inputs/manifest/eligible_participants.tsv \
+            --output-root group-output/primary \
+            --expected-source-n 212 \
+            --lane primary
+
+      - name: Freeze strict current internalizing sensitivity cohort
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, shutil
+          from pathlib import Path
+          import pandas as pd
+          eligible=pd.read_csv('inputs/manifest/eligible_participants.tsv',sep='\t',dtype=str)
+          dx=pd.read_csv('inputs/diagnosis/diagnosis_join.tsv',sep='\t',dtype=str)
+          labels={
+            'MDD','MDD (w/ mild anxious distress, melancholic features)',
+            'Dysthymia','dysthymia','depression NOS','PMDD',
+            'GAD','Social anxiety','social anxiety','anxiety NOS','panic disorder','specific phobia',
+          }
+          keep_dx=dx[
+            ((dx['Group']=='Patient') & dx['Primary_Dx'].isin(labels)) |
+            (dx['Group']=='GenPop')
+          ][['participant_id']].drop_duplicates()
+          sens=eligible.merge(keep_dx,on='participant_id',how='inner')
+          counts=sens['Group'].value_counts().to_dict()
+          assert len(sens)==133, len(sens)
+          assert counts=={'GenPop':86,'Patient':47}, counts
+          sens.to_csv('inputs/internalizing_eligible_participants.tsv',sep='\t',index=False)
+
+          by_id={}
+          for p in Path('participant-artifacts').rglob('participant_neural_result.json'):
+            d=json.loads(p.read_text())
+            pid=d['participant']
+            if pid in by_id:
+              raise RuntimeError(f'duplicate result {pid}')
+            by_id[pid]=p
+          expected=set(sens['participant_id'])
+          missing=sorted(expected-set(by_id))
+          if missing:
+            raise RuntimeError(f'missing sensitivity results: {missing[:20]}')
+          root=Path('sensitivity-participant-results')
+          for pid in sorted(expected):
+            dest=root/pid/'participant_neural_result.json'
+            dest.parent.mkdir(parents=True,exist_ok=True)
+            shutil.copy2(by_id[pid],dest)
+          print({'n':len(sens),'groups':counts})
+          PY
+          test "$(sha256sum inputs/internalizing_eligible_participants.tsv | awk '{print $1}')" != ""
+
+      - name: Run frozen internalizing sensitivity model
+        shell: bash
+        run: |
+          set -euo pipefail
+          python runner/tools/public_external_validation_ds005237_neural_group.py \
+            --participant-results-root sensitivity-participant-results \
+            --eligible-tsv inputs/internalizing_eligible_participants.tsv \
+            --output-root group-output/internalizing \
+            --expected-source-n 133 \
+            --lane strict-internalizing-sensitivity
+
+      - name: Verify locked group outputs and record provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          def sha(p):
+            return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+          pri=json.load(open('group-output/primary/neural_double_dissociation_result.json'))
+          sen=json.load(open('group-output/internalizing/neural_double_dissociation_result.json'))
+          assert pri['status']=='DS005237_NEURAL_DOUBLE_DISSOCIATION_GROUP_COMPLETE'
+          assert pri['lane']=='primary'
+          assert pri['qc']['source_eligible_n']==212
+          assert sen['status']=='DS005237_NEURAL_STRICT_INTERNALIZING_SENSITIVITY_GROUP_COMPLETE'
+          assert sen['lane']=='strict-internalizing-sensitivity'
+          assert sen['qc']['source_eligible_n']==133
+          prov={
+            'status':'DS005237_FULL_LOCKED_NEURAL_ANALYSIS_COMPLETE',
+            'workflow_run_id':'${{ github.run_id }}',
+            'workflow_head_sha':'${{ github.sha }}',
+            'participant_runner_ref':'79da5f0af82a37567ad39b9793b4afc9e92c3b43',
+            'source_commit':'2e273d8466162208bbccd8591337e55b7a8b5721',
+            'eligible_participants_tsv_sha256':'8ecd024e64934fb295258acec356e9954796ec7c855aca1a94cb670fe248fd13',
+            'diagnosis_join_tsv_sha256':'ce3dee1fe82760d557a7dd789e0554edcb1a77e4dd866d0d74489d114f381fe7',
+            'internalizing_eligible_tsv_sha256':sha('inputs/internalizing_eligible_participants.tsv'),
+            'primary_result_sha256':sha('group-output/primary/neural_double_dissociation_result.json'),
+            'internalizing_result_sha256':sha('group-output/internalizing/neural_double_dissociation_result.json'),
+            'outcome_dependent_tuning':False,
+          }
+          Path('group-output/full_analysis_provenance.json').write_text(json.dumps(prov,indent=2)+'\n')
+          print(json.dumps({
+            'primary_interaction':pri['primary_patient_by_domain_interaction'],
+            'primary_simple_effects':pri['simple_group_effects'],
+            'primary_strict':pri['strict_double_dissociation_criterion_met'],
+            'sensitivity_interaction':sen['primary_patient_by_domain_interaction'],
+            'sensitivity_simple_effects':sen['simple_group_effects'],
+            'sensitivity_strict':sen['strict_double_dissociation_criterion_met'],
+            'provenance':prov,
+          },indent=2))
+          PY
+
+      - name: Upload locked neural group results
+        uses: actions/upload-artifact@v4
+        with:
+          name: ds005237-full-locked-neural-results
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            group-output/
+            inputs/internalizing_eligible_participants.tsv
