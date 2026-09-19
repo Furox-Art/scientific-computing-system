@@ -1,0 +1,143 @@
+name: Public external validation P08 V2 recovery merge synthetic smoke
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p08-v2-recovery-merge-synthetic-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 098958ec0d2047f4fb637a0e18f5fbec1de05b8c
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate deterministic synthetic recovery shard artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+
+          specs={
+            'sub-Bubbles':['ses-01','ses-04'],
+            'sub-Buttercup':['ses-04','ses-05'],
+          }
+
+          def sha(p):
+              h=hashlib.sha256()
+              with open(p,'rb') as f:
+                  for b in iter(lambda:f.read(1024*1024),b''): h.update(b)
+              return h.hexdigest()
+
+          for participant,sessions in specs.items():
+              for session in sessions:
+                  pre=Path('synthetic')/f'pre-{participant}-{session}'
+                  prov=Path('synthetic')/f'prov-{participant}-{session}'
+                  mni=pre/'mni'; func=pre/'bids'/participant/session/'func'; motion=pre/'afni'/session/'results'
+                  ants=prov/'ants'
+                  for d in (mni,func,motion,ants): d.mkdir(parents=True,exist_ok=True)
+
+                  selected=[]
+                  files=[]
+                  for run in (1,2):
+                      bold=mni/f'{participant}_{session}_task-SORPF_run-{run}_space-MNI152NLin2009cAsym_res-02_desc-optcom_bold.nii.gz'
+                      bold.write_bytes((f'SYNTHETIC-BOLD-{participant}-{session}-{run}\n').encode()*100)
+                      selected.append({'path':'mni/'+bold.name,'bytes':bold.stat().st_size,'sha256':sha(bold)})
+
+                      ev=func/f'{participant}_{session}_task-SORPF_run-{run}_events.tsv'
+                      ev.write_text('onset\tduration\ttrial_type\n0\t1.5\tSelf\n3\t1.5\tOther\n')
+                      files.append({
+                        'path':f'{participant}/{session}/func/{ev.name}',
+                        'role':'sorpf_events','storage':'git_blob',
+                        'bytes':ev.stat().st_size,'hash_algorithm':'sha256','hash':sha(ev)
+                      })
+
+                  mot=motion/'dfile_rall.1D'
+                  mot.write_text('0 0 0 0 0 0\n0 0 0 0 0 0\n')
+
+                  # Identical participant-level transforms across the two shards.
+                  affine=ants/'T1_to_MNI_0GenericAffine.mat'
+                  warp=ants/'T1_to_MNI_1Warp.nii.gz'
+                  affine.write_bytes((f'AFFINE-{participant}\n').encode())
+                  warp.write_bytes((f'WARP-{participant}\n').encode()*10)
+
+                  prep={
+                    'status':'P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_SESSION_SHARD_COMPLETE',
+                    'participant':participant,'session_filter':session,
+                    'expected_run_count':2,'mni_optcom_run_count':2,
+                    'sessions_expected':{session:[1,2]},
+                    'preprocessing_complete':True,
+                    'selected_output_files':selected,
+                    'self_other_glm_computed':False,'roi_effect_computed':False,'neural_effect_computed':False,
+                  }
+                  (pre/'opensource_preprocessing_result.json').write_text(json.dumps(prep,indent=2)+'\n')
+                  recon={
+                    'participant':participant,'session_filter':session,'all_exact_verified':True,
+                    'files':files,
+                  }
+                  (prov/'input_reconstruction.json').write_text(json.dumps(recon,indent=2)+'\n')
+          PY
+
+      - name: Run synthetic merge for both participants
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/public_external_validation_p08_v2_recovery_merge.py \
+            --participant sub-Bubbles \
+            --session1-preproc synthetic/pre-sub-Bubbles-ses-01 \
+            --session1-prov synthetic/prov-sub-Bubbles-ses-01 \
+            --session2-preproc synthetic/pre-sub-Bubbles-ses-04 \
+            --session2-prov synthetic/prov-sub-Bubbles-ses-04 \
+            --output-preproc merged/sub-Bubbles/pre \
+            --output-prov merged/sub-Bubbles/prov
+
+          python tools/public_external_validation_p08_v2_recovery_merge.py \
+            --participant sub-Buttercup \
+            --session1-preproc synthetic/pre-sub-Buttercup-ses-04 \
+            --session1-prov synthetic/prov-sub-Buttercup-ses-04 \
+            --session2-preproc synthetic/pre-sub-Buttercup-ses-05 \
+            --session2-prov synthetic/prov-sub-Buttercup-ses-05 \
+            --output-preproc merged/sub-Buttercup/pre \
+            --output-prov merged/sub-Buttercup/prov
+
+      - name: Verify synthetic merged outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          for p in ('sub-Bubbles','sub-Buttercup'):
+              prep=json.load(open(f'merged/{p}/pre/opensource_preprocessing_result.json'))
+              merge=json.load(open(f'merged/{p}/prov/recovery_merge_result.json'))
+              assert prep['status']=='P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_COMPLETE'
+              assert prep['expected_run_count']==4
+              assert prep['mni_optcom_run_count']==4
+              assert prep['ants_transform_identity_across_shards']['identical'] is True
+              assert merge['status']=='P08_V2_SESSION_RECOVERY_PARTICIPANT_MERGE_COMPLETE'
+              assert not prep['neural_effect_computed']
+              assert not merge['neural_effect_computed']
+          print('P08 SYNTHETIC RECOVERY MERGE SMOKE COMPLETE; NO SCIENTIFIC OUTCOME')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-v2-recovery-merge-synthetic-smoke
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            merged/sub-Bubbles/prov/recovery_merge_result.json
+            merged/sub-Buttercup/prov/recovery_merge_result.json
