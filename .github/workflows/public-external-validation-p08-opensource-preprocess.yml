@@ -1,13 +1,6 @@
 name: Public external validation P08 AFNI ANTs tedana sensitivity V2 resource-safe
 
 on:
-  push:
-    branches:
-      - external-validation-public-runner-20260918
-    paths:
-      - '.github/workflows/public-external-validation-p08-opensource-preprocess.yml'
-      - 'tools/public_external_validation_p08_opensource_preprocess.py'
-      - 'tools/public_external_validation_p08_sensitivity_prepare.py'
   workflow_dispatch:
 
 permissions:
