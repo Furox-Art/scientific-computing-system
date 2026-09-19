@@ -1,0 +1,78 @@
+name: Public external validation ds005237 parcellated HDF5 preflight
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-ds005237-parcellated-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install HDF5 inspection tools
+        run: python -m pip install --disable-pip-version-check 'h5py==3.14.0' 'numpy==2.2.6'
+      - name: Download and exact-hash verify one frozen task derivative
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://s3.amazonaws.com/openneuro.org/ds005237/fMRI_timeseries_clean_denoised_GSR_parcellated/NDAR_INVAG023WG3/task-hammerAP_run-01_bold_Atlas_hp2000_clean_GSR_parcellated.h5'
+          expected='aea6c154056498cfd0f159ae11e851e45cc7a1d3f7c9c8135bf107fc1bfe4f36'
+          expected_bytes=1713744
+          curl -L --retry 5 --retry-delay 2 -o sample.h5 "$url"
+          test "$(stat -c %s sample.h5)" = "$expected_bytes"
+          echo "$expected  sample.h5" | sha256sum -c -
+      - name: Inspect HDF5 schema without computing task outcomes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import h5py,json,hashlib
+          p='sample.h5'
+          out={
+            'status':'DS005237_PARCELLATED_HDF5_PREFLIGHT_COMPLETE',
+            'source_path':'fMRI_timeseries_clean_denoised_GSR_parcellated/NDAR_INVAG023WG3/task-hammerAP_run-01_bold_Atlas_hp2000_clean_GSR_parcellated.h5',
+            'bytes':1713744,
+            'sha256':'aea6c154056498cfd0f159ae11e851e45cc7a1d3f7c9c8135bf107fc1bfe4f36',
+            'root_attrs':{},
+            'objects':[],
+            'target_contrast_computed':False,
+            'group_difference_computed':False,
+          }
+          def conv(v):
+              try:
+                  if hasattr(v,'tolist'): v=v.tolist()
+                  if isinstance(v,bytes): return v.decode('utf-8','replace')
+                  if isinstance(v,(str,int,float,bool)) or v is None:return v
+                  if isinstance(v,list):return [conv(x) for x in v[:50]]
+                  return repr(v)
+              except Exception:return repr(v)
+          with h5py.File(p,'r') as f:
+              out['root_attrs']={str(k):conv(v) for k,v in f.attrs.items()}
+              def visit(name,obj):
+                  rec={'name':name,'kind':'dataset' if isinstance(obj,h5py.Dataset) else 'group','attrs':{str(k):conv(v) for k,v in obj.attrs.items()}}
+                  if isinstance(obj,h5py.Dataset):
+                      rec.update({'shape':list(obj.shape),'dtype':str(obj.dtype),'chunks':list(obj.chunks) if obj.chunks else None})
+                      if obj.size and obj.size <= 1000 and obj.dtype.kind in 'SUO':
+                          try: rec['preview']=conv(obj[...])
+                          except Exception as e: rec['preview_error']=str(e)
+                  out['objects'].append(rec)
+              f.visititems(visit)
+          open('hdf5_preflight.json','w').write(json.dumps(out,indent=2)+'\n')
+          print(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-ds005237-parcellated-hdf5-preflight
+          retention-days: 30
+          if-no-files-found: error
+          path: hdf5_preflight.json
