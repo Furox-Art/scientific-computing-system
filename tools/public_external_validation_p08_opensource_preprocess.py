@@ -344,6 +344,59 @@ def normalize_anatomy(part_root: Path, t1: Path, log: Path):
             raise RuntimeError(f"Missing ANTs registration output {p}")
     return t1_n4, template, affine, warp, warped
 
+def reuse_anatomy(part_root: Path, participant: str, anatomy_root: Path, log: Path):
+    from templateflow.api import get
+
+    result_files = sorted(anatomy_root.rglob("anatomy_result.json"))
+    if len(result_files) != 1:
+        raise RuntimeError(f"Expected one anatomy_result.json under {anatomy_root}, got {result_files}")
+    result_path = result_files[0]
+    rec = load_json(result_path)
+    if rec.get("status") != "P08_OPEN_SOURCE_V2_ANATOMY_NORMALIZATION_COMPLETE":
+        raise RuntimeError(f"Ineligible anatomy status: {rec.get('status')}")
+    if rec.get("participant") != participant or rec.get("anatomy_complete") is not True:
+        raise RuntimeError(f"Anatomy artifact identity/completion mismatch for {participant}")
+    if rec.get("self_other_glm_computed") or rec.get("roi_effect_computed") or rec.get("neural_effect_computed"):
+        raise RuntimeError("Anatomy artifact unexpectedly contains target neural outcome")
+
+    source_part = result_path.parent
+    recorded = {x["path"]: x for x in rec.get("selected_output_files", [])}
+    required = [
+        "ants/T1w_N4.nii.gz",
+        "ants/T1_to_MNI_0GenericAffine.mat",
+        "ants/T1_to_MNI_1Warp.nii.gz",
+        "ants/T1_to_MNI_Warped.nii.gz",
+    ]
+    anatdir = part_root / "ants"
+    anatdir.mkdir(parents=True, exist_ok=True)
+    copied = {}
+    for rel in required:
+        src = source_part / rel
+        info = recorded.get(rel)
+        if info is None or not src.is_file():
+            raise RuntimeError(f"Missing recorded anatomy output {rel}")
+        if src.stat().st_size != int(info["bytes"]) or sha256_file(src) != info["sha256"]:
+            raise RuntimeError(f"Anatomy artifact hash/size mismatch for {rel}")
+        dst = anatdir / Path(rel).name
+        shutil.copy2(src, dst)
+        copied[rel] = dst
+
+    template = get(MNI_SPACE, resolution=MNI_RESOLUTION, desc=None, suffix="T1w")
+    if isinstance(template, (list, tuple)):
+        if len(template) != 1:
+            raise RuntimeError(f"TemplateFlow returned multiple T1w templates: {template}")
+        template = template[0]
+    template = Path(template)
+    print(f"reusing verified anatomy artifact for {participant}: {result_path}", flush=True)
+    return (
+        copied["ants/T1w_N4.nii.gz"],
+        template,
+        copied["ants/T1_to_MNI_0GenericAffine.mat"],
+        copied["ants/T1_to_MNI_1Warp.nii.gz"],
+        copied["ants/T1_to_MNI_Warped.nii.gz"],
+    )
+
+
 
 def warp_optcom(participant: str, session: str, ted_outputs: dict, part_root: Path, template: Path, affine: Path, warp: Path, log: Path):
     out = {}
@@ -412,12 +465,20 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--participant", required=True, choices=sorted(PARTICIPANTS))
     ap.add_argument("--session", default=None, help="Optional BIDS session for outcome-blind recovery sharding.")
+    ap.add_argument("--run", type=int, default=None, help="Optional SORPF run number; requires --session.")
+    ap.add_argument("--anatomy-root", default=None, help="Optional verified precomputed anatomy artifact root.")
     args = ap.parse_args()
 
     participant = args.participant
     session_filter = args.session
+    run_filter = args.run
+    anatomy_root = Path(args.anatomy_root) if args.anatomy_root else None
     if session_filter is not None and not session_filter.startswith("ses-"):
         raise SystemExit("--session must be a BIDS session label such as ses-01")
+    if run_filter is not None and session_filter is None:
+        raise SystemExit("--run requires --session")
+    if run_filter is not None and run_filter < 1:
+        raise SystemExit("--run must be >= 1")
     part_root = OPEN_ROOT / participant
     bids = part_root / "bids"
     outjson = part_root / "opensource_preprocessing_result.json"
@@ -426,6 +487,8 @@ def main() -> int:
         "status": "STARTED",
         "participant": participant,
         "session_filter": session_filter,
+        "run_filter": run_filter,
+        "precomputed_anatomy_requested": anatomy_root is not None,
         "lane": "open_source_secondary_sensitivity_only",
         "primary_lane_modified": False,
         "frozen_source_commit": "ed03c47c368000e511401021c1d13c3fb916b470",
@@ -459,9 +522,19 @@ def main() -> int:
             if session_filter not in sessions:
                 raise RuntimeError(f"Requested session {session_filter} has no frozen SORPF runs for {participant}; found {sorted(sessions)}")
             sessions = {session_filter: sessions[session_filter]}
+        if run_filter is not None:
+            runs_for_session = sessions[session_filter]
+            if run_filter not in runs_for_session:
+                raise RuntimeError(f"Requested run {run_filter} missing in {participant} {session_filter}; found {sorted(runs_for_session)}")
+            sessions = {session_filter: {run_filter: runs_for_session[run_filter]}}
         result["sessions_expected"] = {ses: sorted(runs) for ses, runs in sessions.items()}
 
-        t1_n4, template, affine, warp, warped_t1 = normalize_anatomy(part_root, t1, log)
+        if anatomy_root is not None:
+            t1_n4, template, affine, warp, warped_t1 = reuse_anatomy(part_root, participant, anatomy_root, log)
+            result["precomputed_anatomy_reused"] = True
+        else:
+            t1_n4, template, affine, warp, warped_t1 = normalize_anatomy(part_root, t1, log)
+            result["precomputed_anatomy_reused"] = False
         prepare_tshift(part_root, participant, sessions, log)
         prune_raw_bold_after_tshift(bids, participant)
 
@@ -506,9 +579,13 @@ def main() -> int:
 
         result.update({
             "status": (
-                "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_SESSION_SHARD_COMPLETE"
-                if session_filter is not None
-                else "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_COMPLETE"
+                "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_RUN_SHARD_COMPLETE"
+                if run_filter is not None
+                else (
+                    "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_SESSION_SHARD_COMPLETE"
+                    if session_filter is not None
+                    else "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_COMPLETE"
+                )
             ),
             "sessions": session_results,
             "mni_optcom_run_count": len(all_mni),
@@ -532,9 +609,13 @@ def main() -> int:
     except Exception as e:
         result.update({
             "status": (
-                "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_SESSION_SHARD_TECHNICAL_FAILURE"
-                if session_filter is not None
-                else "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_TECHNICAL_FAILURE"
+                "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_RUN_SHARD_TECHNICAL_FAILURE"
+                if run_filter is not None
+                else (
+                    "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_SESSION_SHARD_TECHNICAL_FAILURE"
+                    if session_filter is not None
+                    else "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_TECHNICAL_FAILURE"
+                )
             ),
             "preprocessing_complete": False,
             "error": {
