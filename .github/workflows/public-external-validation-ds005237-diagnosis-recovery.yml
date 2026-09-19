@@ -79,7 +79,7 @@ jobs:
               raise RuntimeError("demos.tsv parsed zero rows")
           headers=list(demos[0].keys())
           print(json.dumps({"nda_structure_line":structure_line,"demos_delimiter":"TAB" if delimiter=="\t" else "COMMA","demos_headers":headers},indent=2))
-          required={"subjectkey","Primary_Dx_clean"}
+          required={"subjectkey","Primary_Dx","Non-Primary_Dx","Group","Site"}
           missing=sorted(required-set(headers))
           if missing:
               (OUT/"demos_headers.json").write_text(json.dumps(headers,indent=2)+"\n")
@@ -146,7 +146,7 @@ jobs:
           }
 
           def dx_code(pid:str)->str:
-              v=(demo_by_id[pid].get("Primary_Dx_clean") or "").strip()
+              v=(demo_by_id[pid].get("Primary_Dx") or "").strip()
               if v in {"","NA","NaN","nan","999","None"}:
                   return "None"
               return v
@@ -189,7 +189,7 @@ jobs:
           elig_genpop=[pid for pid in elig_ids if part_by_id[pid]["Group"]=="GenPop"]
 
           diagnosis_like=[h for h in headers if re.search(r"(dx|diag|scid|disorder|comorbid)",h,re.I)]
-          secondary_like=[h for h in diagnosis_like if h!="Primary_Dx_clean"]
+          secondary_like=[h for h in diagnosis_like if h!="Primary_Dx"]
 
           rows=[]
           for pid in sorted(matched_ids):
@@ -197,7 +197,7 @@ jobs:
                 "participant_id":pid,
                 "Group":part_by_id[pid]["Group"],
                 "Site":part_by_id[pid]["Site"],
-                "Primary_Dx_clean":dx_code(pid),
+                "Primary_Dx":dx_code(pid),
                 "Primary_Dx_name":code_to_name.get(dx_code(pid), "None" if dx_code(pid)=="None" else "UNMAPPED"),
                 "neural_file_presence_eligible":str(pid in elig_ids).lower(),
               })
@@ -236,7 +236,7 @@ jobs:
               "all_participants":group_counts(part_by_id.keys()),
               "neural_file_presence_eligible":group_counts(elig_ids),
             },
-            "primary_dx_counts":{
+            "raw_primary_dx_counts":{
               "all_matched":counts(matched_ids),
               "patient_all":counts(patient_ids),
               "genpop_all":counts(genpop_ids),
@@ -249,11 +249,11 @@ jobs:
               "neural_eligible_patient":broad_counts(elig_patient),
             },
             "diagnosis_fields":{
-              "primary_field":"Primary_Dx_clean",
+              "primary_field":"Primary_Dx",
               "diagnosis_like_columns":diagnosis_like,
               "additional_diagnosis_like_columns":secondary_like,
-              "comorbidity_count":None,
-              "comorbidity_rule":"Not inferred from Primary_Dx_clean alone. Exact comorbidity requires a documented multi-diagnosis field/SCID coding rule.",
+              "comorbidity_count":sum((demo_by_id[pid].get("Non-Primary_Dx") or "").strip() not in {"","999","NA","NaN","nan","None"} for pid in matched_ids),
+              "comorbidity_rule":"Counted only when raw Non-Primary_Dx is present and not coded missing (blank/999/NA/NaN/None).",
             },
             "integrity":{
               "eligible_participants_tsv_sha256":elig_sha,
