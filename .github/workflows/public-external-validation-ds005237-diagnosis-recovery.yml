@@ -159,29 +159,43 @@ jobs:
               c=Counter(part_by_id[pid]["Group"] for pid in ids if pid in part_by_id)
               return dict(sorted(c.items()))
 
-          strict_sets={
-            "depression_primary":["MDD","DYS"],
-            "anxiety_primary_dsm5_anxiety_only":["GAD","SAD","OAD"],
-            "bipolar_primary":["BP1","BP2"],
-            "psychosis_primary":["SZ","SZA"],
-            "ptsd_primary":["PTSD"],
-            "ocd_primary":["OCD"],
-            "other_primary":["ADHD","OMD","SUD","ED"],
+          category_sets={
+            "current_depression":{
+              "MDD","MDD (w/ mild anxious distress, melancholic features)","Dysthymia","dysthymia","depression NOS","PMDD"
+            },
+            "current_anxiety":{
+              "GAD","Social anxiety","social anxiety","anxiety NOS","panic disorder","specific phobia"
+            },
+            "bipolar": {"BP1","BP2","BPI","BPII","cyclothymia"},
+            "psychosis": {"SZ","SZ (ruleout SZA)","SZ or SZA","SZA"},
+            "ptsd": {"PTSD"},
+            "ocd": {"OCD"},
+            "adhd": {"ADHD","mild ADHD"},
+            "current_substance": {"mild CUD","moderate AUD","moderate CUD","present polysub use (ER)","severe AUD"},
+            "eating_disorder": {"binge eating disorder"},
+            "past_or_remitted": {
+              "Past AUD","Past MDD","Past OCD","Past agoraphobia with panic disorder","Past dysthymia",
+              "past GAD","past MDD","past MDD (due to SUD)","past PTSD","past dysthymia",
+              "past mild AUD","past moderate AUD","past severe CUD","past unspec ED"
+            },
+            "unknown_or_missing": {"None"},
           }
-          def broad_counts(ids):
+          def category_counts(ids):
               ids=[pid for pid in ids if pid in demo_by_id]
-              out={}
-              used=set()
-              for label,codes in strict_sets.items():
-                  n=sum(dx_code(pid) in codes for pid in ids)
-                  out[label]=n
-                  used.update(codes)
-              out["no_primary_diagnosis_or_missing"]=sum(dx_code(pid)=="None" for pid in ids)
-              out["unmapped_primary_code"]=sum(dx_code(pid) not in used and dx_code(pid)!="None" for pid in ids)
-              out["strict_internalizing_candidate_MDD_DYS_GAD_SAD_OAD"]=sum(
-                  dx_code(pid) in {"MDD","DYS","GAD","SAD","OAD"} for pid in ids
-              )
+              out={k:sum(dx_code(pid) in vals for pid in ids) for k,vals in category_sets.items()}
+              known=set().union(*category_sets.values())
+              out["unmapped"]=sum(dx_code(pid) not in known for pid in ids)
+              out["strict_current_internalizing_depression_plus_anxiety"]=out["current_depression"]+out["current_anxiety"]
+              out["extended_internalizing_plus_ptsd_ocd"]=out["strict_current_internalizing_depression_plus_anxiety"]+out["ptsd"]+out["ocd"]
+              out["category_partition_total_excluding_derived"]=sum(out[k] for k in category_sets)+out["unmapped"]
               return out
+
+          def has_nonprimary(pid):
+              v=(demo_by_id[pid].get("Non-Primary_Dx") or "").strip()
+              return v not in {"","999","NA","NaN","nan","None"}
+
+          def comorbidity_count(ids):
+              return sum(has_nonprimary(pid) for pid in ids if pid in demo_by_id)
 
           patient_ids=[pid for pid,r in part_by_id.items() if r["Group"]=="Patient"]
           genpop_ids=[pid for pid,r in part_by_id.items() if r["Group"]=="GenPop"]
@@ -252,7 +266,7 @@ jobs:
               "primary_field":"Primary_Dx",
               "diagnosis_like_columns":diagnosis_like,
               "additional_diagnosis_like_columns":secondary_like,
-              "comorbidity_count":sum((demo_by_id[pid].get("Non-Primary_Dx") or "").strip() not in {"","999","NA","NaN","nan","None"} for pid in matched_ids),
+              "comorbidity_count_all_matched":comorbidity_count(matched_ids),
               "comorbidity_rule":"Counted only when raw Non-Primary_Dx is present and not coded missing (blank/999/NA/NaN/None).",
             },
             "integrity":{
@@ -265,8 +279,8 @@ jobs:
               "existing_primary_grouping":"transdiagnostic Patient vs GenPop",
               "change_primary_grouping":False,
               "reason":"Existing behavioral and neural locks are immutable; this recovery is diagnosis availability/QC only.",
-              "strict_internalizing_candidate_definition":"MDD + DYS + GAD + SAD + OAD only; PTSD and OCD remain separate under DSM-5 organization.",
-              "internalizing_use":"May only be considered as a separately frozen secondary/sensitivity analysis before any neural group outcome; it does not replace the existing primary grouping.",
+              "strict_internalizing_candidate_definition":"Current depression + current DSM-5 anxiety labels observed in raw Primary_Dx; past/remitted, PTSD and OCD excluded from strict set.",
+              "internalizing_use":"Strict current internalizing may only be a separately frozen secondary/sensitivity analysis because existing behavioral/neural locks preserve transdiagnostic Patient vs GenPop as primary; no neural group outcome has been inspected.",
             }
           }
           (OUT/"diagnosis_recovery_summary.json").write_text(json.dumps(summary,indent=2,sort_keys=True)+"\n",encoding="utf-8")
