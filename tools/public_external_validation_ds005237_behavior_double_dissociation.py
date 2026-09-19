@@ -9,6 +9,7 @@ import os
 import pathlib
 import urllib.parse
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import pandas as pd
@@ -88,27 +89,35 @@ def download_exact_inputs(root: pathlib.Path) -> dict:
     if not wanted:
         raise RuntimeError("No Hammer/Stroop event files found in frozen tree")
 
-    manifest = []
-    failures = []
-    for idx, (path, expected_blob) in enumerate(wanted, 1):
+    def fetch_one(item):
+        path, expected_blob = item
         url = S3_BASE + urllib.parse.quote(path, safe="/")
         data = request_bytes(url)
         got_blob = git_blob_sha(data)
         if got_blob != expected_blob:
-            failures.append({"path": path, "expected_git_blob": expected_blob, "got_git_blob": got_blob})
-            continue
+            return {"failure":{"path":path,"expected_git_blob":expected_blob,"got_git_blob":got_blob}}
         dest = root / path
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(data)
-        manifest.append({
-            "path": path,
-            "bytes": len(data),
-            "git_blob_sha1": got_blob,
-            "sha256": sha256_bytes(data),
-        })
-        if idx % 100 == 0:
-            print(f"verified {idx}/{len(wanted)} event files", flush=True)
+        return {"record":{
+            "path":path,
+            "bytes":len(data),
+            "git_blob_sha1":got_blob,
+            "sha256":sha256_bytes(data),
+        }}
 
+    manifest = []
+    failures = []
+    with ThreadPoolExecutor(max_workers=24) as ex:
+        for idx, result in enumerate(ex.map(fetch_one, wanted), 1):
+            if "failure" in result:
+                failures.append(result["failure"])
+            else:
+                manifest.append(result["record"])
+            if idx % 100 == 0:
+                print(f"verified {idx}/{len(wanted)} event files", flush=True)
+
+    manifest.sort(key=lambda x: x["path"])
     if failures:
         raise RuntimeError("Frozen event verification failed: " + json.dumps(failures[:10]))
 
