@@ -262,6 +262,14 @@ jobs:
               "patient_all":category_counts(patient_ids),
               "neural_eligible_patient":category_counts(elig_patient),
             },
+            "comorbidity_counts":{
+              "all_matched":comorbidity_count(matched_ids),
+              "patient_all":comorbidity_count(patient_ids),
+              "genpop_all":comorbidity_count(genpop_ids),
+              "neural_eligible_all":comorbidity_count(elig_ids),
+              "neural_eligible_patient":comorbidity_count(elig_patient),
+              "neural_eligible_genpop":comorbidity_count(elig_genpop),
+            },
             "diagnosis_fields":{
               "primary_field":"Primary_Dx",
               "diagnosis_like_columns":diagnosis_like,
