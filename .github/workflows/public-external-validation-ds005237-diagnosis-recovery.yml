@@ -68,15 +68,17 @@ jobs:
               raise RuntimeError(f"demos.tsv SHA256 mismatch: {got_sha} != {EXPECTED_SHA256}")
 
           text=raw.decode("latin1")
-          first_line=text.splitlines()[0]
+          structure_line=text.splitlines()[0]
+          data_text="\n".join(text.splitlines()[1:])
+          first_line=data_text.splitlines()[0]
           delimiter="\t" if "\t" in first_line else "," if "," in first_line else None
           if delimiter is None:
-              raise RuntimeError(f"could not identify delimiter from header: {first_line!r}")
-          demos=list(csv.DictReader(io.StringIO(text), delimiter=delimiter))
+              raise RuntimeError(f"could not identify delimiter from data header: {first_line!r}")
+          demos=list(csv.DictReader(io.StringIO(data_text), delimiter=delimiter))
           if not demos:
               raise RuntimeError("demos.tsv parsed zero rows")
           headers=list(demos[0].keys())
-          print(json.dumps({"demos_delimiter":"TAB" if delimiter=="\t" else "COMMA","demos_headers":headers},indent=2))
+          print(json.dumps({"nda_structure_line":structure_line,"demos_delimiter":"TAB" if delimiter=="\t" else "COMMA","demos_headers":headers},indent=2))
           required={"subjectkey","Primary_Dx_clean"}
           missing=sorted(required-set(headers))
           if missing:
