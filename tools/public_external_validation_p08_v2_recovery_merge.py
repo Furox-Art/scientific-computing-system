@@ -198,7 +198,7 @@ def main() -> int:
     # Verify every merged event against the exact reconstruction records.
     recon_by_path = {x["path"]: x for x in merged_recon["files"]}
     for p in sorted(out_pre.rglob("*_events.tsv")):
-        rel_suffix = f"{participant}/" + p.as_posix().split(f"{participant}/", 1)[1]
+        rel_suffix = p.relative_to(out_pre / "bids").as_posix()
         rec = recon_by_path.get(rel_suffix)
         if rec is None:
             raise RuntimeError(f"Merged event missing exact provenance: {rel_suffix}")
