@@ -1,0 +1,78 @@
+name: Public external validation P08 V4 recovery GLM gate
+
+on:
+  workflow_run:
+    workflows:
+      - Public external validation P08 V2 recovery participant merge
+    types:
+      - completed
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  gate-and-dispatch:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Verify successful merge artifacts and frozen PILOT02 source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: Furox-Art/scientific-computing-system
+          MERGE_RUN_ID: ${{ github.event.workflow_run.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/actions/runs/$MERGE_RUN_ID" > /tmp/run.json
+          gh api "repos/$GH_REPO/actions/runs/$MERGE_RUN_ID/artifacts?per_page=100" > /tmp/artifacts.json
+          gh api "repos/$GH_REPO/actions/runs/35404439901/artifacts?per_page=100" > /tmp/pilot.json
+
+          python - <<'PY'
+          import json, os
+          run=json.load(open('/tmp/run.json'))
+          if run.get('name')!='Public external validation P08 V2 recovery participant merge':
+              raise SystemExit(f"wrong workflow {run.get('name')}")
+          if run.get('conclusion')!='success':
+              raise SystemExit(f"merge run conclusion {run.get('conclusion')}")
+          if run.get('event')!='workflow_dispatch':
+              raise SystemExit(f"merge run must be workflow_dispatch, got {run.get('event')}")
+
+          names={a['name'] for a in json.load(open('/tmp/artifacts.json'))['artifacts'] if not a.get('expired')}
+          expected={
+            'public-p08-v2-recovery-merged-preprocessed-sub-Bubbles',
+            'public-p08-v2-recovery-merged-provenance-sub-Bubbles',
+            'public-p08-v2-recovery-merged-preprocessed-sub-Buttercup',
+            'public-p08-v2-recovery-merged-provenance-sub-Buttercup',
+          }
+          missing=sorted(expected-names)
+          if missing:
+              raise SystemExit(f"missing merge artifacts: {missing}")
+
+          pilot={a['name'] for a in json.load(open('/tmp/pilot.json'))['artifacts'] if not a.get('expired')}
+          required_pilot={
+            'public-p08-opensource-v2-preprocessed-sub-PILOT02',
+            'public-p08-opensource-v2-preprocessing-provenance-sub-PILOT02',
+          }
+          miss_pilot=sorted(required_pilot-pilot)
+          if miss_pilot:
+              raise SystemExit(f"missing PILOT02 artifacts: {miss_pilot}")
+
+          print(json.dumps({
+            'merge_run_id':int(os.environ['MERGE_RUN_ID']),
+            'merge_artifacts':sorted(expected),
+            'pilot02_source_run':35404439901,
+          },indent=2))
+          PY
+
+      - name: Dispatch frozen V4 recovery Self-Other GLM
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: Furox-Art/scientific-computing-system
+          MERGE_RUN_ID: ${{ github.event.workflow_run.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api             --method POST             "repos/$GH_REPO/actions/workflows/public-external-validation-p08-v4-recovery-glm.yml/dispatches"             -f ref='external-validation-public-runner-20260918'             -f "inputs[merge_run_id]=$MERGE_RUN_ID"
+          echo "V4 recovery target GLM dispatch accepted for merge run $MERGE_RUN_ID."
