@@ -424,17 +424,38 @@ def warp_contrast(native: Path, task: str, part_root: Path, template: Path, affi
         raise RuntimeError(f"{task}: missing MNI contrast")
     return out
 
-def network_mean(image: Path, mask: Path):
+def warp_coverage_mask(native_mask: Path, task: str, part_root: Path, template: Path, affine: Path, warp: Path, log: Path):
+    out = part_root / "mni" / f"{task}_space-{MNI_SPACE}_res-02_coverage-mask.nii.gz"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    env = os.environ.copy()
+    env["ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS"] = "2"
+    run([
+        "antsApplyTransforms", "-d", "3",
+        "-i", str(native_mask), "-r", str(template), "-o", str(out),
+        "-n", "NearestNeighbor", "-t", str(warp), "-t", str(affine),
+    ], env=env, log=log)
+    if not out.is_file():
+        raise RuntimeError(f"{task}: missing MNI coverage mask")
+    return out
+
+def network_mean(image: Path, mask: Path, coverage_mask: Path):
     img = nib.load(image)
     m = nib.load(mask)
-    if img.shape[:3] != m.shape[:3] or not np.allclose(img.affine, m.affine, atol=1e-5):
-        raise RuntimeError(f"Grid mismatch {image} vs {mask}")
+    c = nib.load(coverage_mask)
+    for other in (m, c):
+        if img.shape[:3] != other.shape[:3] or not np.allclose(img.affine, other.affine, atol=1e-5):
+            raise RuntimeError(f"Grid mismatch {image} vs {other.get_filename()}")
     x = np.asanyarray(img.dataobj, dtype=np.float64)
     mm = np.asanyarray(m.dataobj) > 0
-    vals = x[mm & np.isfinite(x)]
+    covered = np.asanyarray(c.dataobj) > 0.5
+    use = mm & covered & np.isfinite(x)
+    vals = x[use]
+    total = int(mm.sum())
+    n_covered = int(use.sum())
+    fraction = float(n_covered / total) if total else 0.0
     if vals.size == 0:
-        return math.nan, 0, int(mm.sum())
-    return float(vals.mean()), int(vals.size), int(mm.sum())
+        return math.nan, n_covered, total, fraction
+    return float(vals.mean()), n_covered, total, fraction
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -503,8 +524,9 @@ def main() -> int:
 
             native, contrast, design_cols = fit_task_glm(volreg, mask, events_file, task, confounds, task_out)
             mni = warp_contrast(native, task, root, template, affine, warp, log)
-            aff_mean, aff_valid, aff_total = network_mean(mni, affective_mask)
-            ctl_mean, ctl_valid, ctl_total = network_mean(mni, control_mask)
+            coverage_mni = warp_coverage_mask(mask, task, root, template, affine, warp, log)
+            aff_mean, aff_valid, aff_total, aff_fraction = network_mean(mni, affective_mask, coverage_mni)
+            ctl_mean, ctl_valid, ctl_total, ctl_fraction = network_mean(mni, control_mask, coverage_mni)
             eligible = (
                 aff_valid > 0 and ctl_valid > 0 and
                 math.isfinite(aff_mean) and math.isfinite(ctl_mean)
@@ -516,12 +538,16 @@ def main() -> int:
                 "design_columns": design_cols,
                 "mni_contrast": mni.relative_to(root).as_posix(),
                 "mni_contrast_sha256": sha256_file(mni),
+                "mni_coverage_mask": coverage_mni.relative_to(root).as_posix(),
+                "mni_coverage_mask_sha256": sha256_file(coverage_mni),
                 "affective_mean_psc": aff_mean,
                 "affective_valid_voxels": aff_valid,
                 "affective_total_voxels": aff_total,
+                "affective_coverage_fraction": aff_fraction,
                 "control_mean_psc": ctl_mean,
                 "control_valid_voxels": ctl_valid,
                 "control_total_voxels": ctl_total,
+                "control_coverage_fraction": ctl_fraction,
             }
 
             # Drop the multi-GB reconstructed raw BOLD and heavy AFNI 4D datasets after
