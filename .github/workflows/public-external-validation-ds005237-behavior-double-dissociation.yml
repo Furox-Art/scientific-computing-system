@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 28c0b3d61dfba2b065f33b5b6cb9f788adb248ed
+          ref: ff76cd843a12494f488c063a91b6552758ea815f
 
       - uses: actions/setup-python@v5
         with:
