@@ -1,0 +1,26 @@
+name: Trigger ds005237 full locked neural analysis
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/trigger-ds005237-full-locked-neural.yml'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch frozen full workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api \
+            --method POST \
+            repos/Furox-Art/scientific-computing-system/actions/workflows/public-external-validation-ds005237-neural-full.yml/dispatches \
+            -f ref=external-validation-public-runner-20260918
