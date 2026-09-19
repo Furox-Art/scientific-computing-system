@@ -2,6 +2,11 @@ name: Public external validation P08 V2 Self-Other GLM
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.public-runner/p08/TRIGGER_V3_GLM_20260919'
 
 permissions:
   actions: read
