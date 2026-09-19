@@ -1,11 +1,6 @@
 name: Public ds005237 full locked neural analysis
 
 on:
-  push:
-    branches:
-      - external-validation-public-runner-20260918
-    paths:
-      - '.github/workflows/public-external-validation-ds005237-neural-full.yml'
   workflow_dispatch:
 
 permissions:
@@ -34,12 +29,17 @@ jobs:
           echo 'c89d2a8fe679a7d67efb98a774548c904d50b8dedd0b5a52fb16782d7482f7ac  inputs/manifest/raw_input_manifest.csv' | sha256sum -c -
           echo '8ecd024e64934fb295258acec356e9954796ec7c855aca1a94cb670fe248fd13  inputs/manifest/eligible_participants.tsv' | sha256sum -c -
           python - <<'PY' >> "$GITHUB_OUTPUT"
-          import json, pandas as pd
-          d=pd.read_csv('inputs/manifest/eligible_participants.tsv',sep='\t')
-          assert len(d)==212
-          assert d['participant_id'].nunique()==212
-          assert d['Group'].value_counts().to_dict()=={'Patient':126,'GenPop':86}
-          print('participants='+json.dumps(d['participant_id'].tolist(),separators=(',',':')))
+          import csv,json
+          with open('inputs/manifest/eligible_participants.tsv',newline='',encoding='utf-8') as f:
+              rows=list(csv.DictReader(f,delimiter='\t'))
+          assert len(rows)==212
+          ids=[r['participant_id'] for r in rows]
+          assert len(set(ids))==212
+          counts={}
+          for r in rows:
+              counts[r['Group']]=counts.get(r['Group'],0)+1
+          assert counts=={'Patient':126,'GenPop':86}, counts
+          print('participants='+json.dumps(ids,separators=(',',':')))
           PY
 
   participant:
@@ -54,7 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 79da5f0af82a37567ad39b9793b4afc9e92c3b43
+          ref: d4c85ba2109a6200c205fe5eefd7bfab87209ff5
           path: runner
 
       - uses: actions/checkout@v4
@@ -137,6 +137,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$(git -C runner rev-parse HEAD)" = 'd4c85ba2109a6200c205fe5eefd7bfab87209ff5'
+          test "$(git -C runner hash-object tools/public_external_validation_ds005237_neural_participant.py)" = '9888af3bd3da5c863719e4b861e5edf8efed8740'
           test "$(git -C source rev-parse HEAD)" = '2e273d8466162208bbccd8591337e55b7a8b5721'
           echo 'c89d2a8fe679a7d67efb98a774548c904d50b8dedd0b5a52fb16782d7482f7ac  inputs/manifest/raw_input_manifest.csv' | sha256sum -c -
           echo '8ecd024e64934fb295258acec356e9954796ec7c855aca1a94cb670fe248fd13  inputs/manifest/eligible_participants.tsv' | sha256sum -c -
@@ -205,7 +207,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 79da5f0af82a37567ad39b9793b4afc9e92c3b43
+          ref: d4c85ba2109a6200c205fe5eefd7bfab87209ff5
           path: runner
 
       - uses: actions/setup-python@v5
@@ -247,6 +249,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$(git -C runner rev-parse HEAD)" = 'd4c85ba2109a6200c205fe5eefd7bfab87209ff5'
+          test "$(git -C runner hash-object tools/public_external_validation_ds005237_neural_group.py)" = '612ef2310bfb41eaea157ff9d8645463b9e63541'
           echo '8ecd024e64934fb295258acec356e9954796ec7c855aca1a94cb670fe248fd13  inputs/manifest/eligible_participants.tsv' | sha256sum -c -
           echo 'ce3dee1fe82760d557a7dd789e0554edcb1a77e4dd866d0d74489d114f381fe7  inputs/diagnosis/diagnosis_join.tsv' | sha256sum -c -
           python -m py_compile runner/tools/public_external_validation_ds005237_neural_group.py
@@ -339,7 +343,10 @@ jobs:
             'status':'DS005237_FULL_LOCKED_NEURAL_ANALYSIS_COMPLETE',
             'workflow_run_id':'${{ github.run_id }}',
             'workflow_head_sha':'${{ github.sha }}',
-            'participant_runner_ref':'79da5f0af82a37567ad39b9793b4afc9e92c3b43',
+            'participant_runner_ref':'d4c85ba2109a6200c205fe5eefd7bfab87209ff5',
+            'participant_runner_blob':'9888af3bd3da5c863719e4b861e5edf8efed8740',
+            'group_runner_ref':'d4c85ba2109a6200c205fe5eefd7bfab87209ff5',
+            'group_runner_blob':'612ef2310bfb41eaea157ff9d8645463b9e63541',
             'source_commit':'2e273d8466162208bbccd8591337e55b7a8b5721',
             'eligible_participants_tsv_sha256':'8ecd024e64934fb295258acec356e9954796ec7c855aca1a94cb670fe248fd13',
             'diagnosis_join_tsv_sha256':'ce3dee1fe82760d557a7dd789e0554edcb1a77e4dd866d0d74489d114f381fe7',
