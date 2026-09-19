@@ -1,0 +1,7 @@
+P08 canonical V3 Self-Other GLM trigger
+required_preprocessing_run=35404439901
+required_preprocessing_head=c6980f840c13e8e2423f3752953041e8040e8b39
+all_three_preprocessing_jobs=success
+six_required_artifacts=present
+v3_lock_blob_sha=aa1d3b48beee5098ade2d9886c130a193817ef7e
+target_outcome_seen_before_trigger=false
