@@ -1,0 +1,248 @@
+name: Public external validation P08 V4 recovery Self-Other GLM
+
+on:
+  workflow_dispatch:
+    inputs:
+      merge_run_id:
+        description: Exact successful P08 V2 recovery participant-merge run ID
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  eligibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Verify exact recovery merge run and required artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: Furox-Art/scientific-computing-system
+          MERGE_RUN_ID: ${{ inputs.merge_run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$MERGE_RUN_ID" in
+            ''|*[!0-9]*) echo "merge_run_id must be numeric" >&2; exit 2 ;;
+          esac
+          gh api "repos/$GH_REPO/actions/runs/$MERGE_RUN_ID" > /tmp/run.json
+          gh api "repos/$GH_REPO/actions/runs/$MERGE_RUN_ID/artifacts?per_page=100" > /tmp/artifacts.json
+          gh api "repos/$GH_REPO/actions/runs/35404439901/artifacts?per_page=100" > /tmp/pilot_artifacts.json
+          python - <<'PY'
+          import json
+          run=json.load(open('/tmp/run.json'))
+          if run.get('name')!='Public external validation P08 V2 recovery participant merge':
+              raise SystemExit(f"wrong merge workflow: {run.get('name')}")
+          if run.get('conclusion')!='success':
+              raise SystemExit(f"merge run not successful: {run.get('conclusion')}")
+          names={a['name'] for a in json.load(open('/tmp/artifacts.json'))['artifacts'] if not a.get('expired')}
+          expected={
+            'public-p08-v2-recovery-merged-preprocessed-sub-Bubbles',
+            'public-p08-v2-recovery-merged-provenance-sub-Bubbles',
+            'public-p08-v2-recovery-merged-preprocessed-sub-Buttercup',
+            'public-p08-v2-recovery-merged-provenance-sub-Buttercup',
+          }
+          missing=sorted(expected-names)
+          if missing:
+              raise SystemExit(f"missing merged recovery artifacts: {missing}")
+          pilot={a['name'] for a in json.load(open('/tmp/pilot_artifacts.json'))['artifacts'] if not a.get('expired')}
+          for name in (
+            'public-p08-opensource-v2-preprocessed-sub-PILOT02',
+            'public-p08-opensource-v2-preprocessing-provenance-sub-PILOT02',
+          ):
+              if name not in pilot:
+                  raise SystemExit(f"missing frozen PILOT02 artifact: {name}")
+          print(json.dumps({
+            'merge_run_id':run['id'],
+            'merge_workflow':run['name'],
+            'merge_conclusion':run['conclusion'],
+            'required_recovery_artifacts':sorted(expected),
+            'pilot02_source_run':35404439901,
+          },indent=2))
+          PY
+
+  participant-glm:
+    needs: eligibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - participant: sub-Bubbles
+            source: recovery
+          - participant: sub-Buttercup
+            source: recovery
+          - participant: sub-PILOT02
+            source: original
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 82466802a67d23e94b8a9ca05512a6f2c7506ec1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install frozen GLM tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            'nilearn==0.13.1' \
+            'nipype==1.11.0' \
+            'nitime==0.12.1' \
+            'scipy>=1.11,<2'
+          python - <<'PY'
+          import nilearn,nipype,nitime
+          assert nilearn.__version__=='0.13.1'
+          assert nipype.__version__=='1.11.0'
+          assert nitime.__version__=='0.12.1'
+          print(nilearn.__version__,nipype.__version__,nitime.__version__)
+          PY
+
+      - name: Download merged recovery participant preprocessing
+        if: matrix.source == 'recovery'
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: ${{ inputs.merge_run_id }}
+          name: public-p08-v2-recovery-merged-preprocessed-${{ matrix.participant }}
+          path: inputs/preprocessed-${{ matrix.participant }}
+
+      - name: Download merged recovery participant provenance
+        if: matrix.source == 'recovery'
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: ${{ inputs.merge_run_id }}
+          name: public-p08-v2-recovery-merged-provenance-${{ matrix.participant }}
+          path: inputs/provenance-${{ matrix.participant }}
+
+      - name: Download frozen PILOT02 preprocessing
+        if: matrix.source == 'original'
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: 35404439901
+          name: public-p08-opensource-v2-preprocessed-sub-PILOT02
+          path: inputs/preprocessed-sub-PILOT02
+
+      - name: Download frozen PILOT02 provenance
+        if: matrix.source == 'original'
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: 35404439901
+          name: public-p08-opensource-v2-preprocessing-provenance-sub-PILOT02
+          path: inputs/provenance-sub-PILOT02
+
+      - name: Download frozen res-02 Harvard-Oxford ROI artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: 35403999383
+          name: public-p08-harvard-oxford-roi-preflight-v2-res02
+          path: inputs/roi
+
+      - name: Verify participant inputs before target model
+        shell: bash
+        run: |
+          set -euo pipefail
+          p="${{ matrix.participant }}"
+          test -n "$(find "inputs/preprocessed-$p" -type f -name '*res-02_desc-optcom_bold.nii.gz' -print -quit)"
+          test -n "$(find "inputs/provenance-$p" -type f -name 'input_reconstruction.json' -print -quit)"
+          test -n "$(find inputs/roi -type f -name 'roi-FrontalMedialCortex_mask.nii.gz' -print -quit)"
+          test -n "$(find inputs/roi -type f -name 'roi-CingulateGyrusPosterior_mask.nii.gz' -print -quit)"
+
+      - name: Run frozen V4 recovery participant Self-Other GLM
+        shell: bash
+        run: |
+          set -euo pipefail
+          p="${{ matrix.participant }}"
+          python tools/public_external_validation_p08_v4_recovery_glm.py participant \
+            --participant "$p" \
+            --preproc-root "inputs/preprocessed-$p" \
+            --prov-root "inputs/provenance-$p" \
+            --roi-root inputs/roi \
+            --output-root glm-output
+          python - "glm-output/$p/participant_glm_result.json" "${{ inputs.merge_run_id }}" "${{ matrix.source }}" <<'PY'
+          import json,sys
+          path,merge_run,source=sys.argv[1:]
+          d=json.load(open(path))
+          d['recovery_merge_run_id']=int(merge_run)
+          d['preprocessing_source']=source
+          d['target_workflow']='P08 V4 recovery Self-Other GLM'
+          open(path,'w').write(json.dumps(d,indent=2)+'\n')
+          PY
+
+      - name: Upload V4 participant GLM provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-v4-recovery-glm-${{ matrix.participant }}
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            glm-output/${{ matrix.participant }}/participant_glm_result.json
+            glm-output/${{ matrix.participant }}/${{ matrix.participant }}_contrast-SelfMinusOther_desc-equalRunMean_effect_size.nii.gz
+            glm-output/${{ matrix.participant }}/${{ matrix.participant }}_ses-*_run-*/contrast-SelfMinusOther_effect_size.nii.gz
+            glm-output/${{ matrix.participant }}/${{ matrix.participant }}_ses-*_run-*/design_matrix.tsv
+            glm-output/${{ matrix.participant }}/${{ matrix.participant }}_ses-*_run-*/confounds.tsv
+            glm-output/${{ matrix.participant }}/${{ matrix.participant }}_ses-*_run-*/motion_qc.tsv
+            glm-output/${{ matrix.participant }}/${{ matrix.participant }}_ses-*_run-*/events_model.tsv
+            glm-output/${{ matrix.participant }}/${{ matrix.participant }}_ses-*_run-*/analysis_mask.nii.gz
+
+  aggregate:
+    needs: participant-glm
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 82466802a67d23e94b8a9ca05512a6f2c7506ec1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install frozen aggregation tools
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            'nilearn==0.13.1' 'nipype==1.11.0' 'nitime==0.12.1' 'scipy>=1.11,<2'
+      - name: Download V4 participant artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: public-p08-v4-recovery-glm-*
+          path: participant-artifacts
+      - name: Aggregate frozen participant-level ROI effects
+        run: |
+          set -euo pipefail
+          python tools/public_external_validation_p08_v4_recovery_glm.py aggregate \
+            --participant-results-root participant-artifacts \
+            --output-root group-output
+          python - "group-output/group_glm_roi_result.json" "${{ inputs.merge_run_id }}" <<'PY'
+          import json,sys
+          path,merge_run=sys.argv[1:]
+          d=json.load(open(path))
+          d['recovery_merge_run_id']=int(merge_run)
+          d['glm_lock']='OPEN_SOURCE_V2_GLM_LOCK_V4_RECOVERY_2026-09-19.json'
+          open(path,'w').write(json.dumps(d,indent=2)+'\n')
+          PY
+      - name: Upload final V4 secondary sensitivity result
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-v4-recovery-self-other-final
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            group-output/group_glm_roi_result.json
+            group-output/participant_roi_effects.tsv
