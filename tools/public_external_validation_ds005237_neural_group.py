@@ -114,6 +114,9 @@ def main():
             exclusions.append({**base,"reason":";".join(reason)})
             continue
         ep=d["endpoints"]
+        tasks=d.get("tasks",{})
+        def coverage(task, network):
+            return float(tasks.get(task,{}).get(f"{network}_coverage_fraction", math.nan))
         records.append({
             **base,
             "hammer_affective":float(ep["hammer_affective"]),
@@ -122,6 +125,12 @@ def main():
             "stroop_control":float(ep["stroop_control"]),
             "hammer_selectivity":float(ep["hammer_selectivity"]),
             "stroop_selectivity":float(ep["stroop_selectivity"]),
+            "hammer_affective_coverage_fraction":coverage("hammerAP","affective"),
+            "hammer_control_coverage_fraction":coverage("hammerAP","control"),
+            "stroopAP_affective_coverage_fraction":coverage("stroopAP","affective"),
+            "stroopAP_control_coverage_fraction":coverage("stroopAP","control"),
+            "stroopPA_affective_coverage_fraction":coverage("stroopPA","affective"),
+            "stroopPA_control_coverage_fraction":coverage("stroopPA","control"),
         })
 
     df=pd.DataFrame(records)
@@ -195,9 +204,29 @@ def main():
         "excluded_n":int(len(exc)),
         "excluded_group_counts":exc["Group"].value_counts().to_dict() if len(exc) else {},
         "excluded_reasons":exc["reason"].value_counts().to_dict() if len(exc) else {},
+        "excluded_group_site_reason_counts":(
+            exc.groupby(["Group","Site","reason"]).size().rename("n").reset_index().to_dict("records")
+            if len(exc) else []
+        ),
         "final_site_group_counts":(
             df.groupby(["Group","Site"]).size().rename("n").reset_index().to_dict("records")
         ),
+    }
+
+    coverage_cols=[
+        "hammer_affective_coverage_fraction",
+        "hammer_control_coverage_fraction",
+        "stroopAP_affective_coverage_fraction",
+        "stroopAP_control_coverage_fraction",
+        "stroopPA_affective_coverage_fraction",
+        "stroopPA_control_coverage_fraction",
+    ]
+    coverage_summary={
+        "overall":{col:stats(df[col]) for col in coverage_cols},
+        "by_group":{
+            group:{col:stats(df.loc[df["Group"]==group,col]) for col in coverage_cols}
+            for group in ["GenPop","Patient"]
+        },
     }
 
     out=Path(args.output_root)
@@ -232,6 +261,7 @@ def main():
         },
         "strict_double_dissociation_criterion_met":bool(strict),
         "raw_group_summaries":raw_cells,
+        "network_coverage_distributions":coverage_summary,
         "interpretation_class":(
             "STRICT_NEURAL_DOUBLE_DISSOCIATION_CRITERION_MET"
             if strict else
