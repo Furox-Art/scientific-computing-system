@@ -1,0 +1,89 @@
+name: Public external validation P08 V2 run-recovery participant merge
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_shard_run_id:
+        description: Exact successful P08 V2 run-sharded recovery run ID
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  merge-participant:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        participant: [sub-Bubbles, sub-Buttercup]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 52a6867d2b78dc4379418d4f9809754c4b63defe
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install merge validation tools
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'nibabel==5.3.2' numpy
+          python -m py_compile tools/public_external_validation_p08_v2_run_recovery_merge.py
+
+      - name: Download exact run-shard artifacts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: ${{ inputs.run_shard_run_id }}
+          pattern: public-p08-v2-run-recovery-*
+          path: inputs
+
+      - name: Merge four frozen runs by participant
+        shell: bash
+        run: |
+          set -euo pipefail
+          p="${{ matrix.participant }}"
+          python tools/public_external_validation_p08_v2_run_recovery_merge.py             --participant "$p"             --input-root inputs             --output-preproc "merged-preprocessed/$p"             --output-prov "merged-provenance/$p"
+
+      - name: Verify merged participant remains outcome-free
+        shell: bash
+        run: |
+          set -euo pipefail
+          p="${{ matrix.participant }}"
+          python - "merged-preprocessed/$p/opensource_preprocessing_result.json" "merged-provenance/$p/run_recovery_merge_result.json" <<'PY'
+          import json,sys
+          prep=json.load(open(sys.argv[1])); merge=json.load(open(sys.argv[2]))
+          assert prep["status"]=="P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_COMPLETE"
+          assert prep["expected_run_count"]==4 and prep["mni_optcom_run_count"]==4
+          assert prep["anatomy_identity"]["identical_across_four_run_shards"] is True
+          assert merge["status"]=="P08_V2_RUN_RECOVERY_PARTICIPANT_MERGE_COMPLETE"
+          assert not prep["self_other_glm_computed"]
+          assert not prep["roi_effect_computed"]
+          assert not prep["neural_effect_computed"]
+          assert not merge["neural_effect_computed"]
+          print(json.dumps({"participant":prep["participant"],"status":merge["status"]},indent=2))
+          PY
+
+      - name: Upload merged run-recovery GLM input
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-v2-run-recovery-merged-preprocessed-${{ matrix.participant }}
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+          path: merged-preprocessed/${{ matrix.participant }}/
+
+      - name: Upload merged run-recovery provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-v2-run-recovery-merged-provenance-${{ matrix.participant }}
+          retention-days: 30
+          if-no-files-found: error
+          path: merged-provenance/${{ matrix.participant }}/

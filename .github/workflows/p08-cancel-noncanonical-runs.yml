@@ -1,0 +1,41 @@
+name: P08 cancel noncanonical legacy runs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/p08-cancel-noncanonical-runs.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Cancel only audited noncanonical P08 runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: Furox-Art/scientific-computing-system
+        shell: bash
+        run: |
+          set -euo pipefail
+          ids=(
+            35400607690
+            35402753480
+            35404380410
+            35412741173
+            35412751948
+          )
+          for id in "${ids[@]}"; do
+            status="$(gh api "repos/$GH_REPO/actions/runs/$id" --jq .status 2>/dev/null || true)"
+            conclusion="$(gh api "repos/$GH_REPO/actions/runs/$id" --jq '.conclusion // ""' 2>/dev/null || true)"
+            echo "$id status=$status conclusion=$conclusion"
+            if [ "$status" = "in_progress" ] || [ "$status" = "queued" ] || [ "$status" = "pending" ]; then
+              gh api --method POST "repos/$GH_REPO/actions/runs/$id/cancel" || true
+            fi
+          done

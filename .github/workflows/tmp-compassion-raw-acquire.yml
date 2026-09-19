@@ -12,8 +12,8 @@ jobs:
   acquire:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - run: python -m pip install --disable-pip-version-check requests beautifulsoup4
@@ -55,7 +55,7 @@ jobs:
           print(json.dumps(status,indent=2,ensure_ascii=False))
           PY
       - name: Upload FSD3588 artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: FSD3588-open-distribution
           path: raw/

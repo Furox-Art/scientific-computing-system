@@ -1,0 +1,113 @@
+name: Public external validation P08 V2 recovery participant merge
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  merge-participant:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - participant: sub-Bubbles
+            session1: ses-01
+            session2: ses-04
+          - participant: sub-Buttercup
+            session1: ses-04
+            session2: ses-05
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 9897dc01d3d3a9e6275ba7f9fd10d49db99d38fe
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify merge script syntax
+        run: |
+          set -euo pipefail
+          python -m py_compile tools/public_external_validation_p08_v2_recovery_merge.py
+          python tools/public_external_validation_p08_v2_recovery_merge.py --help >/dev/null
+
+      - name: Download exact recovery session artifacts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: 35412820309
+          pattern: public-p08-v2-recovery-*
+          path: inputs
+
+      - name: Verify expected shard artifact directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          p="${{ matrix.participant }}"
+          s1="${{ matrix.session1 }}"
+          s2="${{ matrix.session2 }}"
+          for s in "$s1" "$s2"; do
+            test -d "inputs/public-p08-v2-recovery-preprocessed-$p-$s"
+            test -d "inputs/public-p08-v2-recovery-provenance-$p-$s"
+          done
+
+      - name: Merge exact session shards into participant input
+        shell: bash
+        run: |
+          set -euo pipefail
+          p="${{ matrix.participant }}"
+          s1="${{ matrix.session1 }}"
+          s2="${{ matrix.session2 }}"
+          python tools/public_external_validation_p08_v2_recovery_merge.py \
+            --participant "$p" \
+            --session1-preproc "inputs/public-p08-v2-recovery-preprocessed-$p-$s1" \
+            --session1-prov "inputs/public-p08-v2-recovery-provenance-$p-$s1" \
+            --session2-preproc "inputs/public-p08-v2-recovery-preprocessed-$p-$s2" \
+            --session2-prov "inputs/public-p08-v2-recovery-provenance-$p-$s2" \
+            --output-preproc "merged-preprocessed/$p" \
+            --output-prov "merged-provenance/$p"
+
+      - name: Verify merged participant is still outcome-free
+        shell: bash
+        run: |
+          set -euo pipefail
+          p="${{ matrix.participant }}"
+          python - "merged-preprocessed/$p/opensource_preprocessing_result.json" "merged-provenance/$p/recovery_merge_result.json" <<'PY'
+          import json,sys
+          prep=json.load(open(sys.argv[1]))
+          merge=json.load(open(sys.argv[2]))
+          assert prep["status"]=="P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_COMPLETE"
+          assert prep["expected_run_count"]==4
+          assert prep["mni_optcom_run_count"]==4
+          assert prep["ants_transform_identity_across_shards"]["identical"] is True
+          assert not prep.get("self_other_glm_computed",False)
+          assert not prep.get("roi_effect_computed",False)
+          assert not prep.get("neural_effect_computed",False)
+          assert merge["status"]=="P08_V2_SESSION_RECOVERY_PARTICIPANT_MERGE_COMPLETE"
+          assert not merge.get("neural_effect_computed",False)
+          print(json.dumps({"prep":prep["status"],"merge":merge["status"],"participant":prep["participant"]},indent=2))
+          PY
+
+      - name: Upload merged GLM-ready participant input
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-v2-recovery-merged-preprocessed-${{ matrix.participant }}
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+          path: merged-preprocessed/${{ matrix.participant }}/
+
+      - name: Upload merged exact provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-v2-recovery-merged-provenance-${{ matrix.participant }}
+          retention-days: 30
+          if-no-files-found: error
+          path: merged-provenance/${{ matrix.participant }}/
