@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 21b699c4d0bda0ca2c6dff6717c228316e00a0a0
+          ref: 33f7c0a423ac2922c1eed777c2cbb55acae3b82b
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -54,6 +54,26 @@ jobs:
                 'status':'DS005237_NEURAL_PARTICIPANT_ENDPOINT_COMPLETE',
                 'participant':pid,
                 'participant_endpoint_eligible':True,
+                'tasks':{
+                  'hammerAP':{
+                    'eligible':True,
+                    'qc':{'passed_retained_fraction':True},
+                    'affective_coverage_fraction':0.90+0.0001*(i%50),
+                    'control_coverage_fraction':0.91+0.0001*(i%50),
+                  },
+                  'stroopAP':{
+                    'eligible':True,
+                    'qc':{'passed_retained_fraction':True},
+                    'affective_coverage_fraction':0.92+0.0001*(i%50),
+                    'control_coverage_fraction':0.93+0.0001*(i%50),
+                  },
+                  'stroopPA':{
+                    'eligible':True,
+                    'qc':{'passed_retained_fraction':True},
+                    'affective_coverage_fraction':0.94+0.0001*(i%50),
+                    'control_coverage_fraction':0.95+0.0001*(i%50),
+                  },
+                },
                 'endpoints':{
                   'hammer_affective':hammer_aff,
                   'hammer_control':hammer_ctl,
@@ -84,6 +104,9 @@ jobs:
           assert d['status']=='DS005237_NEURAL_DOUBLE_DISSOCIATION_GROUP_COMPLETE'
           assert d['qc']['source_eligible_n']==212
           assert d['qc']['final_endpoint_n']==212
+          assert d['qc']['excluded_group_site_reason_counts']==[]
+          assert d['network_coverage_distributions']['overall']['hammer_affective_coverage_fraction']['n']==212
+          assert d['network_coverage_distributions']['overall']['stroopPA_control_coverage_fraction']['n']==212
           assert d['outcome_dependent_tuning'] is False
           print('DS005237 NEURAL GROUP SYNTHETIC SMOKE COMPLETE; NO REAL NEURAL DATA USED')
           PY
