@@ -377,7 +377,7 @@ def participant_mode(args) -> int:
         }
 
     result = {
-        "status":"P08_OPEN_SOURCE_V2_PARTICIPANT_SELF_OTHER_GLM_COMPLETE",
+        "status":"P08_OPEN_SOURCE_V4_RECOVERY_PARTICIPANT_SELF_OTHER_GLM_COMPLETE",
         "participant":participant,
         "lane":"open_source_secondary_sensitivity_only",
         "glm_lock":GLM_LOCK_FILE,
@@ -433,7 +433,7 @@ def aggregate_mode(args) -> int:
         group[roi_name]["holm_adjusted_p_two_rois"] = p_adj
 
     result = {
-        "status":"P08_OPEN_SOURCE_V2_SELF_OTHER_GLM_ROI_COMPLETE",
+        "status":"P08_OPEN_SOURCE_V4_RECOVERY_SELF_OTHER_GLM_ROI_COMPLETE",
         "lane":"open_source_secondary_sensitivity_only",
         "independent_unit":"participant",
         "n_participants":3,
