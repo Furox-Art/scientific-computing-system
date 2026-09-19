@@ -1,0 +1,44 @@
+name: Public external validation ds005237 neural raw manifest
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-ds005237-neural-manifest.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: OpenNeuroDatasets/ds005237
+          ref: 2e273d8466162208bbccd8591337e55b7a8b5721
+          path: source
+          fetch-depth: 1
+
+      - uses: actions/checkout@v4
+        with:
+          ref: e48505b63da58c9cb5ea104404f5a94c80f6567d
+          path: runner
+
+      - name: Build exact outcome-free raw manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp runner/tools/public_external_validation_ds005237_neural_manifest.py source/
+          cd source
+          python public_external_validation_ds005237_neural_manifest.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-ds005237-neural-raw-manifest
+          retention-days: 30
+          if-no-files-found: error
+          path: source/.public-runner/ds005237/neural-manifest/
