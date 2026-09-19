@@ -1,0 +1,171 @@
+name: Public external validation ds005237 neural participant smoke
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-ds005237-neural-participant-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 9e4d184fec891228f08ec76a9767ac7b3b42ae15
+          path: runner
+
+      - uses: actions/checkout@v4
+        with:
+          repository: OpenNeuroDatasets/ds005237
+          ref: 2e273d8466162208bbccd8591337e55b7a8b5721
+          fetch-depth: 1
+          path: source
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install frozen Python GLM/QC toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            'nibabel==5.3.2' \
+            'nilearn==0.13.1' \
+            'nipype==1.11.0' \
+            'nitime==0.12.1' \
+            'scipy>=1.11,<2' \
+            numpy pandas
+          python - <<'PY'
+          import nibabel,nilearn,nipype,nitime,scipy
+          print(nibabel.__version__,nilearn.__version__,nipype.__version__,nitime.__version__,scipy.__version__)
+          assert nibabel.__version__=='5.3.2'
+          assert nilearn.__version__=='0.13.1'
+          assert nipype.__version__=='1.11.0'
+          assert nitime.__version__=='0.12.1'
+          PY
+
+      - name: Install pinned ANTs 2.6.5
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://github.com/ANTsX/ANTs/releases/download/v2.6.5/ants-2.6.5-ubuntu-24.04-X64-gcc.zip'
+          expected='9f6a2c8881d6c94ea17171c0502e55cb898ad9afd50e4e23fde9a8c0997aa04b'
+          curl -L --retry 4 --retry-delay 3 -o /tmp/ants.zip "$url"
+          echo "$expected  /tmp/ants.zip" | sha256sum -c -
+          unzip -q /tmp/ants.zip -d /tmp/ants
+          rm -f /tmp/ants.zip
+          bindir="$(find /tmp/ants -type f -name antsRegistration -printf '%h\n' | head -n1)"
+          test -n "$bindir"
+          libdir="$(dirname "$bindir")/lib"
+          test -d "$libdir"
+          echo "$bindir" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=$libdir:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+          "$bindir/antsRegistration" --version | head -n 4
+
+      - name: Pull exact AFNI image and verify public S3 client
+        shell: bash
+        run: |
+          set -euo pipefail
+          image='afni/afni_make_build@sha256:c8365868751116f1ef2d0811e8a4dd2df58a689da457c74ea07fedb0e11dc0d6'
+          docker pull "$image"
+          docker run --rm "$image" afni -ver | head -n 6
+          aws --version
+
+      - name: Download frozen neural manifest and network resources
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: 35446855138
+          name: public-ds005237-neural-raw-manifest
+          path: inputs/manifest
+
+      - name: Download frozen network preflight
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: 35446584389
+          name: public-ds005237-neural-preflight
+          path: inputs/networks
+
+      - name: Verify frozen inputs and runner syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = '2e273d8466162208bbccd8591337e55b7a8b5721'
+          echo 'c89d2a8fe679a7d67efb98a774548c904d50b8dedd0b5a52fb16782d7482f7ac  inputs/manifest/raw_input_manifest.csv' | sha256sum -c -
+          echo '8ecd024e64934fb295258acec356e9954796ec7c855aca1a94cb670fe248fd13  inputs/manifest/eligible_participants.tsv' | sha256sum -c -
+          python -m py_compile runner/tools/public_external_validation_ds005237_neural_participant.py
+          python runner/tools/public_external_validation_ds005237_neural_participant.py --help >/dev/null
+          df -h
+
+      - name: Run one-participant technical smoke
+        id: smoke
+        shell: bash
+        run: |
+          set +e
+          mkdir -p .public-runner/ds005237/smoke
+          python runner/tools/public_external_validation_ds005237_neural_participant.py \
+            --participant sub-NDARINVAG023WG3 \
+            --source-root source \
+            --manifest inputs/manifest/raw_input_manifest.csv \
+            --network-root inputs/networks \
+            --output-root .public-runner/ds005237/smoke
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Verify smoke remains non-group
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          p='.public-runner/ds005237/smoke/sub-NDARINVAG023WG3/participant_neural_result.json'
+          test -s "$p"
+          python - "$p" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1]))
+          assert d['neural_group_contrast_computed'] is False
+          print(json.dumps({
+            'status':d['status'],
+            'participant':d['participant'],
+            'exact_input':d.get('exact_input'),
+            'participant_endpoint_eligible':d.get('participant_endpoint_eligible'),
+            'tasks':{k:{'qc':v.get('qc'),'eligible':v.get('eligible')} for k,v in d.get('tasks',{}).items()},
+            'scientific_group_inference':False,
+          },indent=2))
+          PY
+
+      - name: Upload compact smoke provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-ds005237-neural-participant-smoke
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: warn
+          path: |
+            .public-runner/ds005237/smoke/sub-NDARINVAG023WG3/participant_neural_result.json
+            .public-runner/ds005237/smoke/sub-NDARINVAG023WG3/input_reconstruction.json
+            .public-runner/ds005237/smoke/sub-NDARINVAG023WG3/participant_neural.log
+            .public-runner/ds005237/smoke/sub-NDARINVAG023WG3/task_results/*/motion_qc.tsv
+            .public-runner/ds005237/smoke/sub-NDARINVAG023WG3/task_results/*/confounds.tsv
+            .public-runner/ds005237/smoke/sub-NDARINVAG023WG3/task_results/*/events_model.tsv
+            .public-runner/ds005237/smoke/sub-NDARINVAG023WG3/task_results/*/design_matrix.tsv
+            .public-runner/ds005237/smoke/sub-NDARINVAG023WG3/mni/*.nii.gz
+
+      - name: Fail if technical smoke failed
+        if: always()
+        shell: bash
+        run: |
+          test "${{ steps.smoke.outputs.exit_code }}" = "0"
