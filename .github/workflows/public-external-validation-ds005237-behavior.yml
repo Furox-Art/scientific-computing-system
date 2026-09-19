@@ -1,0 +1,99 @@
+name: Public external validation ds005237 clinical-healthy behavior
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-ds005237-behavior.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  behavior:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 10d5320c9a85798617cc79e8977fac1b61559052
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned analysis tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check             'numpy==2.3.3'             'pandas==2.3.2'             'scipy==1.16.1'             'statsmodels==0.14.5'
+          python - <<'PY'
+          import numpy,pandas,scipy,statsmodels
+          print(numpy.__version__, pandas.__version__, scipy.__version__, statsmodels.__version__)
+          assert numpy.__version__=='2.3.3'
+          assert pandas.__version__=='2.3.2'
+          assert scipy.__version__=='1.16.1'
+          assert statsmodels.__version__=='0.14.5'
+          PY
+
+      - name: Fetch exact pinned OpenNeuro source commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .public-runner/ds005237/source
+          cd .public-runner/ds005237/source
+          git init
+          git remote add origin https://github.com/OpenNeuroDatasets/ds005237.git
+          git fetch --depth 1 origin 2e273d8466162208bbccd8591337e55b7a8b5721
+          git checkout --detach FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "2e273d8466162208bbccd8591337e55b7a8b5721"
+          sha256sum participants.tsv
+          test -s README
+
+      - name: Verify analysis script is frozen and syntax-valid
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile tools/public_external_validation_ds005237_behavior.py
+          python tools/public_external_validation_ds005237_behavior.py --help >/dev/null
+
+      - name: Run locked clinical-vs-healthy double-dissociation behavior analysis
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/public_external_validation_ds005237_behavior.py             --source-root .public-runner/ds005237/source             --output-root .public-runner/ds005237/behavior
+
+      - name: Verify final result and expected cohort
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p='.public-runner/ds005237/behavior/behavior_result.json'
+          d=json.load(open(p))
+          assert d['status']=='DS005237_CLINICAL_HEALTHY_DOUBLE_DISSOCIATION_BEHAVIOR_COMPLETE'
+          assert d['source_commit']=='2e273d8466162208bbccd8591337e55b7a8b5721'
+          assert d['cohort_counts']['complete_total']==212
+          assert d['cohort_counts']['complete_patient']==126
+          assert d['cohort_counts']['complete_genpop']==86
+          assert d['neural_outcome_computed'] is False
+          print(json.dumps({
+            'status':d['status'],
+            'cohort_counts':d['cohort_counts'],
+            'primary_model':d['models']['double_difference_rt'],
+            'strict_criterion':d['strict_opposite_direction_double_dissociation_rt_criterion_met'],
+          },indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-ds005237-clinical-healthy-behavior
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            .public-runner/ds005237/behavior/behavior_result.json
+            .public-runner/ds005237/behavior/participant_task_costs.tsv
+            .public-runner/ds005237/behavior/locked_complete_case_cohort.tsv
