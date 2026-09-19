@@ -411,9 +411,13 @@ def cleanup_afni_heavy(results: Path):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--participant", required=True, choices=sorted(PARTICIPANTS))
+    ap.add_argument("--session", default=None, help="Optional BIDS session for outcome-blind recovery sharding.")
     args = ap.parse_args()
 
     participant = args.participant
+    session_filter = args.session
+    if session_filter is not None and not session_filter.startswith("ses-"):
+        raise SystemExit("--session must be a BIDS session label such as ses-01")
     part_root = OPEN_ROOT / participant
     bids = part_root / "bids"
     outjson = part_root / "opensource_preprocessing_result.json"
@@ -421,6 +425,7 @@ def main() -> int:
     result = {
         "status": "STARTED",
         "participant": participant,
+        "session_filter": session_filter,
         "lane": "open_source_secondary_sensitivity_only",
         "primary_lane_modified": False,
         "frozen_source_commit": "ed03c47c368000e511401021c1d13c3fb916b470",
@@ -450,6 +455,10 @@ def main() -> int:
         t1 = t1s[0]
 
         sessions = find_task_runs(bids, participant)
+        if session_filter is not None:
+            if session_filter not in sessions:
+                raise RuntimeError(f"Requested session {session_filter} has no frozen SORPF runs for {participant}; found {sorted(sessions)}")
+            sessions = {session_filter: sessions[session_filter]}
         result["sessions_expected"] = {ses: sorted(runs) for ses, runs in sessions.items()}
 
         t1_n4, template, affine, warp, warped_t1 = normalize_anatomy(part_root, t1, log)
@@ -496,7 +505,11 @@ def main() -> int:
                 })
 
         result.update({
-            "status": "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_COMPLETE",
+            "status": (
+                "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_SESSION_SHARD_COMPLETE"
+                if session_filter is not None
+                else "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_COMPLETE"
+            ),
             "sessions": session_results,
             "mni_optcom_run_count": len(all_mni),
             "expected_run_count": expected_run_count,
@@ -518,7 +531,11 @@ def main() -> int:
         return 0
     except Exception as e:
         result.update({
-            "status": "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_TECHNICAL_FAILURE",
+            "status": (
+                "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_SESSION_SHARD_TECHNICAL_FAILURE"
+                if session_filter is not None
+                else "P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_TECHNICAL_FAILURE"
+            ),
             "preprocessing_complete": False,
             "error": {
                 "type": type(e).__name__,
