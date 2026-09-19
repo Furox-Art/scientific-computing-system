@@ -1,0 +1,137 @@
+name: Public external validation P08 V4 recovery GLM synthetic smoke
+
+on:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - '.github/workflows/public-external-validation-p08-v4-recovery-glm-synthetic-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 82466802a67d23e94b8a9ca05512a6f2c7506ec1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install frozen GLM tools
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check \
+            'nilearn==0.13.1' 'nipype==1.11.0' 'nitime==0.12.1' 'scipy>=1.11,<2'
+
+      - name: Download exact res-02 ROI artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: Furox-Art/scientific-computing-system
+          run-id: 35403999383
+          name: public-p08-harvard-oxford-roi-preflight-v2-res02
+          path: inputs/roi
+
+      - name: Generate deterministic synthetic recovery participant input
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          import nibabel as nib
+          import numpy as np
+          import pandas as pd
+
+          participant='sub-Bubbles'
+          pre=Path('inputs/preprocessed-sub-Bubbles')
+          prov=Path('inputs/provenance-sub-Bubbles')
+          roi_root=Path('inputs/roi')
+          nt=30
+          fm=nib.load(roi_root/'roi-FrontalMedialCortex_mask.nii.gz')
+          pc=nib.load(roi_root/'roi-CingulateGyrusPosterior_mask.nii.gz')
+          mask=(np.asanyarray(fm.dataobj)>0)|(np.asanyarray(pc.dataobj)>0)
+          rng=np.random.default_rng(20260919)
+          data=np.zeros(mask.shape+(nt,),dtype=np.float32)
+          data[mask,:]=1000.0+rng.normal(0,2,(int(mask.sum()),nt)).astype(np.float32)
+
+          func=pre/'bids'/participant/'ses-01'/'func'
+          mni=pre/'mni'
+          motion=pre/'afni'/'ses-01'/'results'
+          func.mkdir(parents=True,exist_ok=True); mni.mkdir(parents=True,exist_ok=True); motion.mkdir(parents=True,exist_ok=True)
+          prov.mkdir(parents=True,exist_ok=True)
+
+          bold=mni/f'{participant}_ses-01_task-SORPF_run-1_space-MNI152NLin2009cAsym_res-02_desc-optcom_bold.nii.gz'
+          hdr=fm.header.copy(); hdr.set_data_dtype(np.float32)
+          nib.save(nib.Nifti1Image(data,fm.affine,hdr),bold)
+
+          types=['Self','Other','Malleable','Flanker-Congruent','Flanker-Incongruent']
+          rows=[{'onset':float(on),'duration':1.5,'trial_type':types[i%5]} for i,on in enumerate(np.arange(0,42,3.0))]
+          events=func/f'{participant}_ses-01_task-SORPF_run-1_events.tsv'
+          pd.DataFrame(rows).to_csv(events,sep='\t',index=False)
+          np.savetxt(motion/'dfile_rall.1D',np.zeros((nt,6)),fmt='%.8f')
+
+          def sha(p):
+              h=hashlib.sha256()
+              with open(p,'rb') as f:
+                  for b in iter(lambda:f.read(8*1024*1024),b''):h.update(b)
+              return h.hexdigest()
+
+          prep={
+            'status':'P08_OPEN_SOURCE_SECONDARY_PREPROCESSING_V2_COMPLETE',
+            'participant':participant,
+            'preprocessing_complete':True,
+            'recovery_mode':'session_sharded_operational_recovery',
+            'self_other_glm_computed':False,
+            'roi_effect_computed':False,
+            'neural_effect_computed':False,
+            'expected_run_count':1,
+            'selected_output_files':[{'path':'mni/'+bold.name,'bytes':bold.stat().st_size,'sha256':sha(bold)}],
+          }
+          (pre/'opensource_preprocessing_result.json').write_text(json.dumps(prep,indent=2)+'\n')
+          recon={'participant':participant,'all_exact_verified':True,'files':[{
+            'path':f'{participant}/ses-01/func/{events.name}',
+            'hash_algorithm':'sha256','hash':sha(events),'bytes':events.stat().st_size
+          }]}
+          (prov/'input_reconstruction.json').write_text(json.dumps(recon,indent=2)+'\n')
+          PY
+
+      - name: Run V4 recovery GLM code on synthetic input
+        run: |
+          set -euo pipefail
+          python tools/public_external_validation_p08_v4_recovery_glm.py participant \
+            --participant sub-Bubbles \
+            --preproc-root inputs/preprocessed-sub-Bubbles \
+            --prov-root inputs/provenance-sub-Bubbles \
+            --roi-root inputs/roi \
+            --output-root synthetic-output
+          test -s synthetic-output/sub-Bubbles/participant_glm_result.json
+
+      - name: Verify V4 provenance and synthetic-only status
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p='synthetic-output/sub-Bubbles/participant_glm_result.json'
+          d=json.load(open(p))
+          assert d['participant']=='sub-Bubbles'
+          assert d['n_runs']==1
+          assert d['glm_lock']=='OPEN_SOURCE_V2_GLM_LOCK_V4_RECOVERY_2026-09-19.json'
+          assert d['status']=='P08_OPEN_SOURCE_V4_RECOVERY_PARTICIPANT_SELF_OTHER_GLM_COMPLETE'
+          print('P08 V4 SYNTHETIC CODE SMOKE COMPLETE; NOT A SCIENTIFIC OUTCOME')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-p08-v4-recovery-glm-synthetic-code-smoke
+          retention-days: 7
+          if-no-files-found: error
+          path: synthetic-output/sub-Bubbles/participant_glm_result.json
