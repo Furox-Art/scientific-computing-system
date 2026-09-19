@@ -51,7 +51,7 @@ jobs:
           ANNEX_RMET_BLOB="4b86879c6b6c0b9a1298b71bf9ebfb7963a5d041"
           REMOTE_LOG_BLOB="475f38853ca6b083a2f10c977a32e10c3896482c"
           S3_EXPORT_PATH="ds005237/phenotype/demos.tsv"
-          VERSION_ID="+w1UT7.laKVqqCGxNO8WGBVK.aLsb6eSZ"
+          VERSION_ID="w1UT7.laKVqqCGxNO8WGBVK.aLsb6eSZ"
 
           def get(url:str)->bytes:
               req=urllib.request.Request(url, headers={"User-Agent":"ds005237-diagnosis-audit/1.0"})
