@@ -1,0 +1,72 @@
+name: Molecular Toolchain Probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - external-validation-public-runner-20260918
+    paths:
+      - ".github/workflows/molecular-toolchain-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Runner preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          uname -a
+          python3 --version
+          df -h .
+
+      - name: Install micromamba
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/micromamba
+          curl -fL --retry 5 --retry-delay 2 https://micro.mamba.pm/api/micromamba/linux-64/latest -o /tmp/micromamba.tar.bz2
+          tar -xjf /tmp/micromamba.tar.bz2 -C /tmp/micromamba
+          /tmp/micromamba/bin/micromamba --version
+
+      - name: Create molecular environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          /tmp/micromamba/bin/micromamba create -y -p /tmp/mol -c conda-forge \
+            python=3.11 numpy scipy pandas matplotlib rdkit vina meeko gemmi openmm \
+            openbabel mdanalysis mdtraj parmed pdbfixer ambertools
+          /tmp/micromamba/bin/micromamba run -p /tmp/mol python - <<'PY'
+          import sys
+          import numpy, scipy, pandas, rdkit, openmm, MDAnalysis, mdtraj, parmed
+          import gemmi
+          print("Python", sys.version)
+          print("NumPy", numpy.__version__)
+          print("SciPy", scipy.__version__)
+          print("pandas", pandas.__version__)
+          print("RDKit", rdkit.__version__)
+          print("OpenMM", openmm.__version__)
+          print("MDAnalysis", MDAnalysis.__version__)
+          print("MDTraj", mdtraj.__version__)
+          print("ParmEd", parmed.__version__)
+          print("Gemmi", gemmi.__version__)
+          PY
+          /tmp/micromamba/bin/micromamba run -p /tmp/mol vina --version
+          /tmp/micromamba/bin/micromamba run -p /tmp/mol mk_prepare_ligand.py --help >/dev/null
+          /tmp/micromamba/bin/micromamba run -p /tmp/mol mk_prepare_receptor.py --help >/dev/null
+          /tmp/micromamba/bin/micromamba run -p /tmp/mol obabel -V
+          /tmp/micromamba/bin/micromamba run -p /tmp/mol cpptraj --version || true
+          /tmp/micromamba/bin/micromamba run -p /tmp/mol tleap -h >/dev/null || true
+
+      - name: Probe zinc-tool commands
+        shell: bash
+        run: |
+          set +e
+          command -v autogrid4
+          command -v autodock4
+          command -v pythonsh
+          exit 0
