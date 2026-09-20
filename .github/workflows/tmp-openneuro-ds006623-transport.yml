@@ -1,0 +1,92 @@
+name: Temporary OpenNeuro ds006623 Public Data Transport
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/tmp-openneuro-ds006623-transport.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-public-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout transport repository
+        uses: actions/checkout@v4
+
+      - name: Materialize public ds006623 v1.0.0 XCP-D files
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORK="$RUNNER_TEMP/ds006623-transport"
+          META="$WORK/meta"
+          DATA="$WORK/data"
+          BASE="derivatives/xcp_d_without_GSR_bandpass_output"
+          EXPECTED_COMMIT="9c36d2c59d58fbbced4af6d0413d22a6ea5c4880"
+          S3="https://s3.amazonaws.com/openneuro.org/ds006623"
+
+          rm -rf "$WORK"
+          mkdir -p "$DATA"
+          git clone --depth 1 --branch 1.0.0 https://github.com/OpenNeuroDatasets/ds006623.git "$META"
+          test "$(git -C "$META" rev-parse HEAD)" = "$EXPECTED_COMMIT"
+
+          find "$META/$BASE" -type l -name '*_space-MNI152NLin2009cAsym_seg-4S456Parcels_stat-mean_timeseries.tsv' | sort > "$WORK/timeseries_paths.txt"
+          find "$META/$BASE" -type f -name '*_motion.tsv' | sort > "$WORK/motion_paths.txt"
+
+          printf 'relative_path\tsource_type\texpected_size\texpected_sha256\tactual_size\tactual_sha256\n' > "$WORK/transport_manifest.tsv"
+
+          while IFS= read -r src; do
+            rel="${src#"$META/"}"
+            dst="$DATA/$rel"
+            mkdir -p "$(dirname "$dst")"
+            cp "$src" "$dst"
+            size="$(wc -c < "$dst" | tr -d ' ')"
+            sha="$(sha256sum "$dst" | awk '{print $1}')"
+            printf '%s\tgit-snapshot-blob\t%s\t%s\t%s\t%s\n' "$rel" "$size" "$sha" "$size" "$sha" >> "$WORK/transport_manifest.tsv"
+          done < "$WORK/motion_paths.txt"
+
+          while IFS= read -r src; do
+            rel="${src#"$META/"}"
+            dst="$DATA/$rel"
+            mkdir -p "$(dirname "$dst")"
+            target="$(readlink "$src")"
+            key="$(basename "$target")"
+            if [[ ! "$key" =~ ^SHA256E-s([0-9]+)--([0-9a-f]{64})(\..+)?$ ]]; then
+              echo "Unsupported annex key: $rel -> $key" >&2
+              exit 4
+            fi
+            expected_size="${BASH_REMATCH[1]}"
+            expected_sha="${BASH_REMATCH[2]}"
+            curl --fail --location --silent --show-error --retry 5 --retry-all-errors --connect-timeout 30 "$S3/$rel" -o "$dst"
+            actual_size="$(wc -c < "$dst" | tr -d ' ')"
+            actual_sha="$(sha256sum "$dst" | awk '{print $1}')"
+            test "$actual_size" = "$expected_size"
+            test "$actual_sha" = "$expected_sha"
+            printf '%s\tgit-annex-s3\t%s\t%s\t%s\t%s\n' "$rel" "$expected_size" "$expected_sha" "$actual_size" "$actual_sha" >> "$WORK/transport_manifest.tsv"
+          done < "$WORK/timeseries_paths.txt"
+
+          ts_count="$(wc -l < "$WORK/timeseries_paths.txt" | tr -d ' ')"
+          motion_count="$(wc -l < "$WORK/motion_paths.txt" | tr -d ' ')"
+          manifest_count="$(( $(wc -l < "$WORK/transport_manifest.tsv") - 1 ))"
+          echo "timeseries_count=$ts_count"
+          echo "motion_count=$motion_count"
+          echo "manifest_count=$manifest_count"
+          test "$ts_count" -gt 0
+          test "$motion_count" -gt 0
+          test "$manifest_count" -eq "$((ts_count + motion_count))"
+
+          cp "$WORK/transport_manifest.tsv" "$DATA/transport_manifest.tsv"
+          tar -C "$DATA" -czf "$RUNNER_TEMP/ds006623_xcpd_public_transport.tgz" derivatives transport_manifest.tsv
+          sha256sum "$RUNNER_TEMP/ds006623_xcpd_public_transport.tgz"
+
+      - name: Upload public data transport artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ds006623-xcpd-public-transport
+          path: ${{ runner.temp }}/ds006623_xcpd_public_transport.tgz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
