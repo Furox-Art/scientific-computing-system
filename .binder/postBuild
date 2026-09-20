@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-# Runs after Binder builds the environment. Installs the package itself
-# (and its declared runtime deps) so the demo notebooks can `import cds`.
-# We install without the dashboard extras to keep the image lean; the tour
-# notebooks only use the pure-Python numerical/quantum modules.
-set -euo pipefail
-
-python -m pip install --no-input -e .
-echo "✅ cds installed in Binder image"
