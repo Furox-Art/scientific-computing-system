@@ -1,0 +1,32 @@
+name: Sato 2018 Dryad DOM probe
+
+on:
+  push:
+    branches:
+      - direct-theory-test-raw-20260921
+    paths:
+      - "tools/probe_sato2018_dryad_dom.py"
+      - ".github/workflows/sato2018-dom-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --disable-pip-version-check selenium==4.35.0
+      - run: python tools/probe_sato2018_dryad_dom.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sato2018-dom-probe
+          path: sato2018_dom_probe/
+          if-no-files-found: error
+          retention-days: 30
