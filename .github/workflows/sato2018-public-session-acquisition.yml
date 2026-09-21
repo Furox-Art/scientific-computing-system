@@ -1,0 +1,35 @@
+name: Sato 2018 public session raw acquisition
+
+on:
+  push:
+    branches:
+      - direct-theory-test-raw-20260921
+    paths:
+      - "tools/acquire_sato2018_dryad_session.py"
+      - ".github/workflows/sato2018-public-session-acquisition.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install requests
+        run: python -m pip install --disable-pip-version-check requests==2.32.5
+      - name: Acquire Sato public Dryad file through landing-page session
+        run: python tools/acquire_sato2018_dryad_session.py
+      - name: Upload probe/raw artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sato2018-public-session-acquisition
+          path: sato2018_raw_acquisition_session/
+          if-no-files-found: error
+          retention-days: 30
