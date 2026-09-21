@@ -13,6 +13,7 @@ def sha256(p):
     return h.hexdigest()
 
 def get(url, dest, headers=None):
+    dest.parent.mkdir(parents=True, exist_ok=True)
     req=urllib.request.Request(url,headers=headers or {"User-Agent":"Mozilla/5.0"})
     with urllib.request.urlopen(req,timeout=120) as r, open(dest,"wb") as f:
         while True:
