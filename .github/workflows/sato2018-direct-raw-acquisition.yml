@@ -1,0 +1,33 @@
+name: Sato 2018 direct raw acquisition
+
+on:
+  push:
+    branches:
+      - direct-theory-test-raw-20260921
+    paths:
+      - "tools/acquire_sato2018_dryad.py"
+      - ".github/workflows/sato2018-direct-raw-acquisition.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Acquire Sato Dryad file
+        run: python tools/acquire_sato2018_dryad.py
+      - name: Upload Sato raw artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sato2018-direct-raw-acquisition
+          path: sato2018_raw_acquisition/
+          if-no-files-found: error
+          retention-days: 30
