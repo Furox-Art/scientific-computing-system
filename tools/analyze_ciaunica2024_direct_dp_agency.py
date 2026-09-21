@@ -69,9 +69,17 @@ def desc(df,var):
     return out
 
 files=download_all()
-av=pd.read_csv(RAW/"Extraction_IB_NEW.csv")
+av=pd.read_csv(RAW/"Extraction_IB_NEW.csv", dtype={"ID":str})
 grp=pd.read_excel(RAW/"GROUP.xlsx")
-# Mirror R full_join on shared ID only.
+# Mirror R's type inference/join semantics: CSV character IDs retain exact
+# whitespace; only numeric Excel ID cells are rendered as integer strings.
+def excel_id_to_r_character(v):
+    if pd.isna(v): return None
+    if isinstance(v,(int,np.integer)): return str(int(v))
+    if isinstance(v,(float,np.floating)) and float(v).is_integer(): return str(int(v))
+    return str(v)
+grp["ID"]=grp["ID"].map(excel_id_to_r_character)
+av["ID"]=av["ID"].map(lambda v: None if pd.isna(v) else str(v))
 df=grp.merge(av,on="ID",how="outer")
 audit=[{"stage":"full_join","n":int(len(df))}]
 df=df.dropna(subset=["GROUP"]).copy(); audit.append({"stage":"drop_missing_GROUP","n":int(len(df))})
