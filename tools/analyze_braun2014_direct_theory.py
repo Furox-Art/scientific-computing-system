@@ -168,7 +168,7 @@ result={
    "Secondary implicit results cannot rescue a failed primary explicit crossover.",
    "No aggregate theory-support score is computed."
  ],
- "outcome_dependent_tuning":false
+ "outcome_dependent_tuning":False
 }
 OUT.mkdir(exist_ok=True)
 with open(OUT/"result.json","w") as f: json.dump(result,f,indent=2)
