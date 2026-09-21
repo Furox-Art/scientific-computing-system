@@ -1,0 +1,44 @@
+name: Direct theory raw acquisition
+
+on:
+  push:
+    branches:
+      - direct-theory-test-raw-20260921
+    paths:
+      - "tools/acquire_direct_theory_raw.py"
+      - ".github/workflows/direct-theory-raw-acquisition.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Acquire raw files without inspecting outcomes
+        id: acquire
+        continue-on-error: true
+        run: python tools/acquire_direct_theory_raw.py
+      - name: Show manifest/schema/errors only
+        if: always()
+        run: |
+          find direct_raw_acquisition -maxdepth 3 -type f -printf '%p %s bytes\n' | sort || true
+          cat direct_raw_acquisition/errors.json || true
+          cat direct_raw_acquisition/schema_report.json || true
+      - name: Upload acquisition artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: direct-theory-raw-acquisition
+          path: direct_raw_acquisition/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce Braun acquisition
+        if: steps.acquire.outcome != 'success'
+        run: exit 1
