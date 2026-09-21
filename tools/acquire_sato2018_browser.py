@@ -31,18 +31,21 @@ try:
     WebDriverWait(driver,30).until(lambda d:"Data from:" in d.page_source or "data_able-bodied.csv" in d.page_source)
     log["landing_title"]=driver.title
     log["landing_url"]=driver.current_url
-    # Click the visible public file link if possible, otherwise navigate directly.
-    clicked=False
+    # Use the exact public href in the same browser tab. The page normally
+    # exposes it with target="_blank"; using the same tab lets us observe the
+    # JavaScript validation page and subsequent download.
+    els=driver.find_elements(By.CSS_SELECTOR,"a.js-individual-dl[href*='file_stream/61164']")
+    href=els[0].get_attribute("href") if els else legacy
+    log["resolved_href"]=href
+    driver.set_page_load_timeout(30)
     try:
-        els=driver.find_elements(By.PARTIAL_LINK_TEXT,"data_able-bodied.csv")
-        if els:
-            els[0].click(); clicked=True
+        driver.get(href)
     except Exception as e:
-        log["click_error"]=repr(e)
-    if not clicked:
-        driver.get(legacy)
+        # A download can abort/replace navigation; retain the browser and
+        # continue polling the download directory.
+        log["navigation_exception"]=repr(e)
     # Let JS validation run and watch for a download.
-    deadline=time.time()+60
+    deadline=time.time()+90
     challenge_seen=False
     while time.time()<deadline:
         files=[p for p in OUT.iterdir() if p.is_file() and not p.name.endswith((".crdownload",".tmp"))]
