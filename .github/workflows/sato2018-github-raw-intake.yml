@@ -1,0 +1,53 @@
+name: Sato 2018 GitHub raw intake
+
+on:
+  push:
+    branches:
+      - direct-theory-test-raw-20260921
+    paths:
+      - "external_data/sato2018/data_able-bodied.csv"
+      - ".github/workflows/sato2018-github-raw-intake.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  intake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate exact Sato CSV presence
+        run: test -s external_data/sato2018/data_able-bodied.csv
+      - name: Hash and schema audit
+        run: |
+          python - <<'PY'
+          import csv, hashlib, json
+          from pathlib import Path
+          p=Path("external_data/sato2018/data_able-bodied.csv")
+          b=p.read_bytes()
+          with p.open("r",encoding="utf-8-sig",errors="replace",newline="") as f:
+              r=csv.reader(f)
+              header=next(r,[])
+              rows=sum(1 for _ in r)
+          out={
+            "status":"SATO2018_GITHUB_RAW_INTAKE_READY",
+            "path":str(p),
+            "bytes":len(b),
+            "sha256":hashlib.sha256(b).hexdigest(),
+            "columns":header,
+            "data_rows":rows
+          }
+          Path("sato2018_github_intake").mkdir(exist_ok=True)
+          Path("sato2018_github_intake/intake.json").write_text(json.dumps(out,indent=2))
+          print(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sato2018-github-raw-intake
+          path: sato2018_github_intake/intake.json
+          retention-days: 30
