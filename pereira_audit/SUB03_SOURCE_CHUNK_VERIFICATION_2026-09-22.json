@@ -1,0 +1,36 @@
+{
+  "status": "PEREIRA_SUB03_SOURCE_CHUNKS_VERIFIED",
+  "source_url": "https://data.nemar.org/on001785/v1.0.0/derivatives/eegprep/sub-03/ses-01/eeg/sub-03_preproc_01hz.fdt",
+  "bytes": 121605120,
+  "expected_md5": "213db2fb392ecbc06f18b5a2dda1b853",
+  "verified_md5": "213db2fb392ecbc06f18b5a2dda1b853",
+  "whole_sha256": "356f9c2037ff32481478d65f4099b17ea1cea92790090fc5616580f092d5924d",
+  "chunk_bytes": 50331648,
+  "parts": [
+    {
+      "index": 1,
+      "start": 0,
+      "end": 50331647,
+      "bytes": 50331648,
+      "sha256": "38e4ae3c8d39f2b51c35cb07171daf56b58ce02e95ad953da3f506fc4da95f6b",
+      "git_blob_sha1": "5ae396c54983c27938f6d4d5e30888c5c00f10d7"
+    },
+    {
+      "index": 2,
+      "start": 50331648,
+      "end": 100663295,
+      "bytes": 50331648,
+      "sha256": "12ebef0ace4fe9b7c25e9f7c762eebecbd594a7d8f0adef3400e82fb03134a09",
+      "git_blob_sha1": "4e018658e8dcc2417a3d68039e29bab7ad4ad42a"
+    },
+    {
+      "index": 3,
+      "start": 100663296,
+      "end": 121605119,
+      "bytes": 20941824,
+      "sha256": "dde7b46bc82cac10f2f0f90177617b4bef476e1f63ab4e27c1b2314ac57f6421",
+      "git_blob_sha1": "d27b27270a54626761600a47084b6de0acdeb48c"
+    }
+  ],
+  "compute_location": "GitHub-hosted ephemeral runner; no user PC/WSL raw persistence"
+}
