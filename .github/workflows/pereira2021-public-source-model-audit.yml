@@ -7,6 +7,7 @@ on:
       - "tools/audit_pereira2021_source_model_direct_gitlab.py"
       - "tools/audit_pereira2021_nature_source_data.py"
       - "tools/reproduce_pereira2021_fig4h_bic.py"
+      - "tools/verify_pereira_sub03_source_chunks.py"
       - ".github/workflows/pereira2021-public-source-model-audit.yml"
   workflow_dispatch:
 
@@ -35,6 +36,9 @@ jobs:
       - name: Reproduce Fig4h participant-level BIC comparison
         run: python3 tools/reproduce_pereira2021_fig4h_bic.py
 
+      - name: Verify sub-03 source chunks off-device
+        run: python3 tools/verify_pereira_sub03_source_chunks.py
+
       - name: Commit audit
         run: |
           set -euo pipefail
@@ -43,6 +47,7 @@ jobs:
           git add pereira_audit/SOURCE_MODEL_SPEC_AUDIT_2026-09-22.json
           git add pereira_audit/NATURE_SOURCE_DATA_AUDIT_2026-09-22.json
           git add pereira_audit/FIG4H_BIC_REPRODUCTION_2026-09-22.json
+          git add pereira_audit/SUB03_SOURCE_CHUNK_VERIFICATION_2026-09-22.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Record Pereira pinned source-model audit"
           git push origin HEAD:pereira-source-audit-20260922
