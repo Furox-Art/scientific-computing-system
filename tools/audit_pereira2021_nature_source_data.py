@@ -11,6 +11,17 @@ def sha256(p):
         for b in iter(lambda:f.read(4*1024*1024),b""): h.update(b)
     return h.hexdigest()
 
+def xls_preview(raw):
+    import io, xlrd
+    book=xlrd.open_workbook(file_contents=raw)
+    sheets=[]
+    for ws in book.sheets():
+        rows=[]
+        for r in range(min(ws.nrows,300)):
+            rows.append([ws.cell_value(r,col) for col in range(ws.ncols)])
+        sheets.append({"title":ws.name,"max_row":ws.nrows,"max_column":ws.ncols,"rows":rows})
+    return sheets
+
 def xlsx_preview(raw):
     import io
     from openpyxl import load_workbook
@@ -44,13 +55,23 @@ with tempfile.TemporaryDirectory(prefix="pereira-nature-") as td:
         for info in z.infolist():
             audit["members"].append({"name":info.filename,"bytes":info.file_size,"compressed_bytes":info.compress_size})
             low=info.filename.lower()
-            if low.endswith(".xlsx"):
+            if low.endswith(".xls") and not info.filename.startswith("__MACOSX/"):
+                raw=z.read(info)
+                try:
+                    sheets=xls_preview(raw)
+                    audit["tabular_previews"].append({"member":info.filename,"type":"xls","sheets":sheets})
+                except Exception as e:
+                    audit["tabular_previews"].append({"member":info.filename,"type":"xls","error":repr(e)})
+            elif low.endswith(".xlsx"):
                 raw=z.read(info)
                 try:
                     sheets=xlsx_preview(raw)
                     audit["tabular_previews"].append({"member":info.filename,"type":"xlsx","sheets":sheets})
                 except Exception as e:
                     audit["tabular_previews"].append({"member":info.filename,"type":"xlsx","error":repr(e)})
+            elif low.endswith(".m") and ("fig4" in low or "config_model" in low):
+                raw=z.read(info).decode("utf-8","replace")
+                audit["tabular_previews"].append({"member":info.filename,"type":"matlab","lines":raw.splitlines()[:1000]})
             elif low.endswith((".csv",".tsv",".txt")) and info.file_size<5_000_000:
                 raw=z.read(info).decode("utf-8","replace")
                 audit["tabular_previews"].append({"member":info.filename,"type":"text","lines":raw.splitlines()[:500]})
@@ -60,5 +81,7 @@ with tempfile.TemporaryDirectory(prefix="pereira-nature-") as td:
       "zip_bytes":audit["zip_bytes"],
       "zip_sha256":audit["zip_sha256"],
       "members":audit["members"],
-      "tabular_members":[x["member"] for x in audit["tabular_previews"]]
+      "tabular_members":[x["member"] for x in audit["tabular_previews"]],
+      "fig4h":[x for x in audit["tabular_previews"] if "fig.4h" in x["member"].lower()],
+      "fig4_matlab":[x for x in audit["tabular_previews"] if x["member"].lower().endswith("fig4.m")]
     },indent=2))
