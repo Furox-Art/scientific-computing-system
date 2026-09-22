@@ -1,0 +1,35 @@
+name: Pereira 2021 Public Source Model Audit
+
+on:
+  push:
+    branches: [pereira-source-audit-20260922]
+    paths:
+      - "tools/audit_pereira2021_source_model_direct_gitlab.py"
+      - ".github/workflows/pereira2021-public-source-model-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pereira-source-audit-20260922
+          fetch-depth: 1
+
+      - name: Audit pinned public source model
+        run: python3 tools/audit_pereira2021_source_model_direct_gitlab.py
+
+      - name: Commit audit
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pereira_audit/SOURCE_MODEL_SPEC_AUDIT_2026-09-22.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record Pereira pinned source-model audit"
+          git push origin HEAD:pereira-source-audit-20260922
