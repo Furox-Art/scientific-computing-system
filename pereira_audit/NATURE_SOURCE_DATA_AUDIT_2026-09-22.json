@@ -1,0 +1,829 @@
+{
+  "status": "PEREIRA2021_NATURE_SOURCE_DATA_AUDITED",
+  "source_url": "https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41467-021-23540-y/MediaObjects/41467_2021_23540_MOESM4_ESM.zip",
+  "zip_bytes": 3841622,
+  "zip_sha256": "de9d02df70a0bc5171b472795b05412caaec9bd27fc99246721ee67fc6e536f8",
+  "members": [
+    {
+      "name": "Supplementary Data/",
+      "bytes": 0,
+      "compressed_bytes": 0
+    },
+    {
+      "name": "__MACOSX/._Supplementary Data",
+      "bytes": 178,
+      "compressed_bytes": 96
+    },
+    {
+      "name": "Supplementary Data/SFig.5_19.xls",
+      "bytes": 226304,
+      "compressed_bytes": 106150
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_19.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.1d.xls",
+      "bytes": 9728,
+      "compressed_bytes": 1732
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.1d.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.1e.xls",
+      "bytes": 6656,
+      "compressed_bytes": 1011
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.1e.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.5_18.xls",
+      "bytes": 226304,
+      "compressed_bytes": 105708
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_18.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.5_9.xls",
+      "bytes": 226304,
+      "compressed_bytes": 105731
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_9.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.1g.xls",
+      "bytes": 6656,
+      "compressed_bytes": 806
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.1g.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/Fig.4c.xls",
+      "bytes": 225280,
+      "compressed_bytes": 104664
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.4c.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.1f.xls",
+      "bytes": 6656,
+      "compressed_bytes": 913
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.1f.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/Fig.1f_inset.xls",
+      "bytes": 119808,
+      "compressed_bytes": 47508
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.1f_inset.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/SFig.1b.xls",
+      "bytes": 6656,
+      "compressed_bytes": 875
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.1b.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/.DS_Store",
+      "bytes": 10244,
+      "compressed_bytes": 941
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._.DS_Store",
+      "bytes": 120,
+      "compressed_bytes": 53
+    },
+    {
+      "name": "Supplementary Data/Fig.4f.xls",
+      "bytes": 6656,
+      "compressed_bytes": 1623
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.4f.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/Fig.4g.xls",
+      "bytes": 6656,
+      "compressed_bytes": 1478
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.4g.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.1c.xls",
+      "bytes": 6656,
+      "compressed_bytes": 963
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.1c.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.8b_inset.xls",
+      "bytes": 138240,
+      "compressed_bytes": 58210
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.8b_inset.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/SFig.1a.xls",
+      "bytes": 6656,
+      "compressed_bytes": 832
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.1a.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/Fig.4e.xls",
+      "bytes": 8192,
+      "compressed_bytes": 2256
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.4e.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/Fig.4d.xls",
+      "bytes": 6656,
+      "compressed_bytes": 1401
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.4d.xls",
+      "bytes": 178,
+      "compressed_bytes": 96
+    },
+    {
+      "name": "Supplementary Data/Fig.1e_right.xls",
+      "bytes": 6656,
+      "compressed_bytes": 835
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.1e_right.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/Fig.2a.xls",
+      "bytes": 6656,
+      "compressed_bytes": 783
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.2a.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/Fig.1e_left.xls",
+      "bytes": 6656,
+      "compressed_bytes": 840
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.1e_left.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/Fig.1d_left.xls",
+      "bytes": 204288,
+      "compressed_bytes": 82075
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.1d_left.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/Fig.3a.xls",
+      "bytes": 189952,
+      "compressed_bytes": 77820
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.3a.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/Fig.2e.xls",
+      "bytes": 368128,
+      "compressed_bytes": 154116
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.2e.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/Fig.1i.xls",
+      "bytes": 384000,
+      "compressed_bytes": 157102
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.1i.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/Fig.2f.xls",
+      "bytes": 50176,
+      "compressed_bytes": 15050
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.2f.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/Fig.3b.xls",
+      "bytes": 189952,
+      "compressed_bytes": 78136
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.3b.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/Fig.1d_right.xls",
+      "bytes": 210944,
+      "compressed_bytes": 85712
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.1d_right.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/SFig.4b.xls",
+      "bytes": 12800,
+      "compressed_bytes": 3556
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.4b.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/Fig.1f.xls",
+      "bytes": 204288,
+      "compressed_bytes": 81148
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.1f.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/Fig.1g.xls",
+      "bytes": 20992,
+      "compressed_bytes": 6591
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.1g.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/SFig.4c.xls",
+      "bytes": 12800,
+      "compressed_bytes": 3646
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.4c.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.3e_inset.xls",
+      "bytes": 7680,
+      "compressed_bytes": 1777
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.3e_inset.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.4a.xls",
+      "bytes": 12800,
+      "compressed_bytes": 3313
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.4a.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.8b.xls",
+      "bytes": 208896,
+      "compressed_bytes": 89156
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.8b.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/matlab/",
+      "bytes": 0,
+      "compressed_bytes": 0
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._matlab",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/Fig.1c.xls",
+      "bytes": 6656,
+      "compressed_bytes": 860
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.1c.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/Fig.2b_right.xls",
+      "bytes": 189952,
+      "compressed_bytes": 78564
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.2b_right.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.5_10.xls",
+      "bytes": 226304,
+      "compressed_bytes": 106647
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_10.xls",
+      "bytes": 178,
+      "compressed_bytes": 96
+    },
+    {
+      "name": "Supplementary Data/SFig.5_3.xls",
+      "bytes": 226304,
+      "compressed_bytes": 105490
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_3.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.2a.xls",
+      "bytes": 204800,
+      "compressed_bytes": 80063
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.2a.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/Fig.4h.xls",
+      "bytes": 6656,
+      "compressed_bytes": 1105
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.4h.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/Fig.2b_left.xls",
+      "bytes": 189952,
+      "compressed_bytes": 79295
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._Fig.2b_left.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.5_2.xls",
+      "bytes": 226304,
+      "compressed_bytes": 105990
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_2.xls",
+      "bytes": 177,
+      "compressed_bytes": 96
+    },
+    {
+      "name": "Supplementary Data/SFig.5_11.xls",
+      "bytes": 226304,
+      "compressed_bytes": 105691
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_11.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.5_13.xls",
+      "bytes": 226304,
+      "compressed_bytes": 105148
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_13.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.3d_inset.xls",
+      "bytes": 8192,
+      "compressed_bytes": 1961
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.3d_inset.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.2b.xls",
+      "bytes": 204800,
+      "compressed_bytes": 80388
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.2b.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/SFig.2c.xls",
+      "bytes": 204800,
+      "compressed_bytes": 81177
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.2c.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/SFig.5_1.xls",
+      "bytes": 226304,
+      "compressed_bytes": 105759
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_1.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.5_12.xls",
+      "bytes": 226304,
+      "compressed_bytes": 105663
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_12.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.5_16.xls",
+      "bytes": 226304,
+      "compressed_bytes": 105946
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_16.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.5_5.xls",
+      "bytes": 226304,
+      "compressed_bytes": 105420
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_5.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.6.xls",
+      "bytes": 6656,
+      "compressed_bytes": 1408
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.6.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.3c.xls",
+      "bytes": 156160,
+      "compressed_bytes": 67854
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.3c.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/SFig.3b.xls",
+      "bytes": 323584,
+      "compressed_bytes": 147307
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.3b.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/SFig.7.xls",
+      "bytes": 8192,
+      "compressed_bytes": 2264
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.7.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.5_4.xls",
+      "bytes": 226304,
+      "compressed_bytes": 106367
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_4.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.5_17.xls",
+      "bytes": 226304,
+      "compressed_bytes": 105655
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_17.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.5_15.xls",
+      "bytes": 226304,
+      "compressed_bytes": 106034
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_15.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.5_6.xls",
+      "bytes": 226304,
+      "compressed_bytes": 106514
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_6.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.2d.xls",
+      "bytes": 204800,
+      "compressed_bytes": 81673
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.2d.xls",
+      "bytes": 301,
+      "compressed_bytes": 199
+    },
+    {
+      "name": "Supplementary Data/SFig.1h.xls",
+      "bytes": 6656,
+      "compressed_bytes": 802
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.1h.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.1i.xls",
+      "bytes": 6656,
+      "compressed_bytes": 765
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.1i.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.3a.xls",
+      "bytes": 250880,
+      "compressed_bytes": 106994
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.3a.xls",
+      "bytes": 302,
+      "compressed_bytes": 200
+    },
+    {
+      "name": "Supplementary Data/SFig.5_7.xls",
+      "bytes": 226304,
+      "compressed_bytes": 105733
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_7.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/SFig.5_14.xls",
+      "bytes": 226304,
+      "compressed_bytes": 105897
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/._SFig.5_14.xls",
+      "bytes": 178,
+      "compressed_bytes": 97
+    },
+    {
+      "name": "Supplementary Data/matlab/Fig3.m",
+      "bytes": 813,
+      "compressed_bytes": 278
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/matlab/._Fig3.m",
+      "bytes": 178,
+      "compressed_bytes": 106
+    },
+    {
+      "name": "Supplementary Data/matlab/SFig7.m",
+      "bytes": 1068,
+      "compressed_bytes": 377
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/matlab/._SFig7.m",
+      "bytes": 178,
+      "compressed_bytes": 106
+    },
+    {
+      "name": "Supplementary Data/matlab/config_spikes.m",
+      "bytes": 9103,
+      "compressed_bytes": 2938
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/matlab/._config_spikes.m",
+      "bytes": 178,
+      "compressed_bytes": 106
+    },
+    {
+      "name": "Supplementary Data/matlab/SFig3.m",
+      "bytes": 2078,
+      "compressed_bytes": 389
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/matlab/._SFig3.m",
+      "bytes": 178,
+      "compressed_bytes": 106
+    },
+    {
+      "name": "Supplementary Data/matlab/Fig4.m",
+      "bytes": 3404,
+      "compressed_bytes": 824
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/matlab/._Fig4.m",
+      "bytes": 177,
+      "compressed_bytes": 104
+    },
+    {
+      "name": "Supplementary Data/matlab/SFig4.m",
+      "bytes": 1568,
+      "compressed_bytes": 503
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/matlab/._SFig4.m",
+      "bytes": 178,
+      "compressed_bytes": 106
+    },
+    {
+      "name": "Supplementary Data/matlab/Fig1.m",
+      "bytes": 3427,
+      "compressed_bytes": 598
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/matlab/._Fig1.m",
+      "bytes": 178,
+      "compressed_bytes": 105
+    },
+    {
+      "name": "Supplementary Data/matlab/SFig5.m",
+      "bytes": 734,
+      "compressed_bytes": 355
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/matlab/._SFig5.m",
+      "bytes": 177,
+      "compressed_bytes": 104
+    },
+    {
+      "name": "Supplementary Data/matlab/SFig1.m",
+      "bytes": 1494,
+      "compressed_bytes": 348
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/matlab/._SFig1.m",
+      "bytes": 178,
+      "compressed_bytes": 106
+    },
+    {
+      "name": "Supplementary Data/matlab/config_model.m",
+      "bytes": 2886,
+      "compressed_bytes": 1287
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/matlab/._config_model.m",
+      "bytes": 178,
+      "compressed_bytes": 106
+    },
+    {
+      "name": "Supplementary Data/matlab/Fig2.m",
+      "bytes": 2206,
+      "compressed_bytes": 547
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/matlab/._Fig2.m",
+      "bytes": 178,
+      "compressed_bytes": 106
+    },
+    {
+      "name": "Supplementary Data/matlab/SFig6.m",
+      "bytes": 611,
+      "compressed_bytes": 314
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/matlab/._SFig6.m",
+      "bytes": 178,
+      "compressed_bytes": 106
+    },
+    {
+      "name": "Supplementary Data/matlab/SFig2.m",
+      "bytes": 2017,
+      "compressed_bytes": 306
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/matlab/._SFig2.m",
+      "bytes": 178,
+      "compressed_bytes": 106
+    },
+    {
+      "name": "Supplementary Data/matlab/SFig8.m",
+      "bytes": 984,
+      "compressed_bytes": 287
+    },
+    {
+      "name": "__MACOSX/Supplementary Data/matlab/._SFig8.m",
+      "bytes": 178,
+      "compressed_bytes": 106
+    }
+  ],
+  "tabular_previews": []
+}
