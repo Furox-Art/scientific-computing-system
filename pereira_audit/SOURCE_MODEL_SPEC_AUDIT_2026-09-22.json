@@ -1,0 +1,1004 @@
+{
+  "status": "PEREIRA2021_EXACT_SOURCE_MODEL_SPEC_AUDITED",
+  "source_repo": "https://gitlab.com/michael.pereira/evidenceaccumulation_ppc.git",
+  "source_commit": "c9794592e5c97f8a2c79b0f46e2c8f295735df5b",
+  "files": {
+    "README": {
+      "bytes": 937,
+      "sha256": "a4a550f660713de883cf2fec4cbdb364eb54d885633f8e6bf77aded9b57b256f",
+      "line_count": 22,
+      "function_signatures": [],
+      "relevant_lines": []
+    },
+    "eeg/conf/config_model.m": {
+      "bytes": 2886,
+      "sha256": "8263322b276575df99a8157e6a01b3a16c3a6961bd7b4e2731442311dc8711d8",
+      "line_count": 94,
+      "function_signatures": [],
+      "relevant_lines": [
+        {
+          "line": 44,
+          "text": "% standard devation of the observation noise to compute the log-likelihood"
+        },
+        {
+          "line": 49,
+          "text": "% non-decision time into account so if opts.L=2 and ndtime is fitted to 0.3 will"
+        },
+        {
+          "line": 57,
+          "text": "% Censoring of RTs for the second-order fit (confidence), here we censor"
+        },
+        {
+          "line": 58,
+          "text": "% RTs > 500 ms."
+        },
+        {
+          "line": 65,
+          "text": "opts.N = 10000;"
+        },
+        {
+          "line": 68,
+          "text": "opts.fminfunc = @fminsearch;"
+        },
+        {
+          "line": 69,
+          "text": "opts.maxiter = 500;"
+        },
+        {
+          "line": 71,
+          "text": "opts.times = 100:50:1000;"
+        },
+        {
+          "line": 79,
+          "text": "opts.ndt = [];"
+        }
+      ]
+    },
+    "eeg/conf/paramset_1storder.m": {
+      "bytes": 2269,
+      "sha256": "38a613495c32a12ca5a0f6d0267a4d3df6bcc81e19cf9c14f40a748416e79383",
+      "line_count": 89,
+      "function_signatures": [
+        {
+          "line": 13,
+          "text": "function [ params ] = paramset_1storder(  )"
+        }
+      ],
+      "relevant_lines": [
+        {
+          "line": 62,
+          "text": "params.lambda.val = 0.01;"
+        },
+        {
+          "line": 63,
+          "text": "params.lambda.fit = 1;"
+        },
+        {
+          "line": 64,
+          "text": "params.lambda.init = 1:2:5;"
+        },
+        {
+          "line": 65,
+          "text": "params.lambda.trans = @(x) exp(x+1);"
+        },
+        {
+          "line": 66,
+          "text": "params.lambda.itrans = @(x) log(x)-1;"
+        },
+        {
+          "line": 68,
+          "text": "% The non-decision time (constrained to 0<ndtime<1)"
+        },
+        {
+          "line": 69,
+          "text": "params.ndt.val = 0.1;"
+        },
+        {
+          "line": 70,
+          "text": "params.ndt.fit = 1;"
+        },
+        {
+          "line": 71,
+          "text": "params.ndt.init = 0.1:0.2:0.5;"
+        },
+        {
+          "line": 72,
+          "text": "params.ndt.trans = @(x) 1./(1+exp(-x));"
+        },
+        {
+          "line": 73,
+          "text": "params.ndt.itrans = @(x) log((x)./(1-x));"
+        }
+      ]
+    },
+    "eeg/conf/paramset_2ndorder.m": {
+      "bytes": 1926,
+      "sha256": "e53940073590499c650e8cc2aee98b2c013ad7af3c719a22575d123426778640",
+      "line_count": 73,
+      "function_signatures": [
+        {
+          "line": 13,
+          "text": "function [ params2 ] = paramset_2ndorder(readout)"
+        }
+      ],
+      "relevant_lines": [
+        {
+          "line": 22,
+          "text": "% The sensitivity of confidence"
+        },
+        {
+          "line": 29,
+          "text": "% The bias in confidence"
+        },
+        {
+          "line": 37,
+          "text": "% The confidence readout timing (when relevant)"
+        },
+        {
+          "line": 51,
+          "text": "% The confidence readout timing (when relevant)"
+        }
+      ]
+    },
+    "eeg/model/README": {
+      "bytes": 837,
+      "sha256": "6b9f1821aba311962be27adc1ae2b1c1492989d56f75c0ffb6ac7416095a8359",
+      "line_count": 44,
+      "function_signatures": [],
+      "relevant_lines": [
+        {
+          "line": 21,
+          "text": "3) Fit second-order (confidence) models (maximal evidence and response-locked)"
+        }
+      ]
+    },
+    "eeg/model/paramset.m": {
+      "bytes": 99,
+      "sha256": "8e4ee0703ea48e5f26f3451974023e6f442709bedfc8d34b39bf904b255a8dfb",
+      "line_count": 6,
+      "function_signatures": [
+        {
+          "line": 1,
+          "text": "function [param] = paramset()"
+        }
+      ],
+      "relevant_lines": []
+    },
+    "eeg/model/paramset2.m": {
+      "bytes": 101,
+      "sha256": "6ea6a5e3d1490444d47181c84e041e36ff448d4a68c965cbc9b4156f7fed8ad7",
+      "line_count": 5,
+      "function_signatures": [
+        {
+          "line": 1,
+          "text": "function [param2] = paramset2()"
+        }
+      ],
+      "relevant_lines": []
+    },
+    "eeg/model/functions/evacc.m": {
+      "bytes": 4972,
+      "sha256": "bd612d5403fe434450c0a43f05b5d15c1428414fa0dd540a6ef9b6f406c6e5e8",
+      "line_count": 224,
+      "function_signatures": [
+        {
+          "line": 13,
+          "text": "function [ sim, dv, dvstim, dvresp,v] = evacc( stimon, params, opts )"
+        }
+      ],
+      "relevant_lines": [
+        {
+          "line": 45,
+          "text": "if isfield(params,'lambda')"
+        },
+        {
+          "line": 46,
+          "text": "lambda = params.lambda.val;"
+        },
+        {
+          "line": 48,
+          "text": "lambda = 0;"
+        },
+        {
+          "line": 50,
+          "text": "if isfield(params,'ndt')"
+        },
+        {
+          "line": 51,
+          "text": "ndtfixed = params.ndt.val;"
+        },
+        {
+          "line": 53,
+          "text": "ndtfixed = 0;"
+        },
+        {
+          "line": 55,
+          "text": "if isfield(params,'ndtvarperc')"
+        },
+        {
+          "line": 56,
+          "text": "ndtstdperc = params.ndtvarperc.val;"
+        },
+        {
+          "line": 58,
+          "text": "ndtstdperc = 0;"
+        },
+        {
+          "line": 60,
+          "text": "if isfield(params,'ndtmot')"
+        },
+        {
+          "line": 61,
+          "text": "ndtmot = params.ndtmot.val;"
+        },
+        {
+          "line": 63,
+          "text": "ndtmot = 0;"
+        },
+        {
+          "line": 65,
+          "text": "if isfield(params,'ndtvarmot')"
+        },
+        {
+          "line": 66,
+          "text": "ndtstdmot = params.ndtvarmot.val;"
+        },
+        {
+          "line": 68,
+          "text": "ndtstdmot = 0;"
+        },
+        {
+          "line": 131,
+          "text": "if ndtstdperc == 0"
+        },
+        {
+          "line": 132,
+          "text": "ndt = ndtfixed*ones(1,N);"
+        },
+        {
+          "line": 134,
+          "text": "ndt = ndtfixed + ndtstdperc*randn(1,N);"
+        },
+        {
+          "line": 155,
+          "text": "vshape = vshape*lambda;"
+        },
+        {
+          "line": 159,
+          "text": "fprintf('B=%.2f, drift=%.3f, driftvar=%.3f, lambda=%.5f, decay=%.3f, ndt=%.2f\\n',..."
+        },
+        {
+          "line": 160,
+          "text": "B,params.drift.val, params.driftvar.val,lambda,params.decay.val,params.ndt.val);"
+        },
+        {
+          "line": 165,
+          "text": "x = round((stimon(i)+ndt(i))/dt);"
+        },
+        {
+          "line": 189,
+          "text": "dv(j,i) = max((1-lambda*dt)*dv(j-1,i) + samples(i,j-1),-rB);"
+        },
+        {
+          "line": 191,
+          "text": "%dv(:,i) = satcumsum(samples(:,i),dv(:,i),lambda,rB);"
+        },
+        {
+          "line": 194,
+          "text": "ibnd = find(dv(1:3000,i) > B,1,'first') + round(ndtmot/dt+ndtstdmot/dt*randn(1));"
+        }
+      ]
+    },
+    "eeg/model/functions/fitconf.m": {
+      "bytes": 3099,
+      "sha256": "730adf6ee9c190911ac4271e9a2826a3a30e05d030c4706a51e9eb9d8a6448f2",
+      "line_count": 106,
+      "function_signatures": [
+        {
+          "line": 10,
+          "text": "function [ params2,stat,out] = fitconf( data,params,params2,opts, fit)"
+        },
+        {
+          "line": 62,
+          "text": "function stat = fitfunc(p)"
+        }
+      ],
+      "relevant_lines": [
+        {
+          "line": 71,
+          "text": "% simulate confidence"
+        },
+        {
+          "line": 79,
+          "text": "[~,p] = kstest2(sim.conf(sim.idxhit),confhit);"
+        },
+        {
+          "line": 81,
+          "text": "[~,p] = kstest2(sim.conf(sim.idxmiss),confmiss);"
+        },
+        {
+          "line": 83,
+          "text": "[~,p] = kstest2(sim.conf(sim.idxcrej),confcrej);"
+        }
+      ]
+    },
+    "eeg/model/functions/fitconf_wrapper.m": {
+      "bytes": 1911,
+      "sha256": "960f4079fe5817a353ba06b4a0c848b63f613c065c3ebfcebcdbec11dcbaa6f3",
+      "line_count": 62,
+      "function_signatures": [
+        {
+          "line": 10,
+          "text": "function [ params2,stat2,out2,allparams2,allstat2,allout2] = fitconf_wrapper( data, params, params2, opts)"
+        }
+      ],
+      "relevant_lines": [
+        {
+          "line": 27,
+          "text": "opts3.N = 500;"
+        }
+      ]
+    },
+    "eeg/model/functions/fiterp.m": {
+      "bytes": 5601,
+      "sha256": "803fb32a0c1aed9fe1cf6c02a3896dcfb6e369a3c8f0d4577c25a5f8f2eff787",
+      "line_count": 169,
+      "function_signatures": [
+        {
+          "line": 10,
+          "text": "function [ params,stat,out] = fiterp( stimon,resp, erp, params, opts, fit)"
+        },
+        {
+          "line": 72,
+          "text": "function stat = fitfunc(p)"
+        }
+      ],
+      "relevant_lines": [
+        {
+          "line": 27,
+          "text": "erp = bsxfun(@minus,erp,mean(erp(201:500,:)));"
+        },
+        {
+          "line": 28,
+          "text": "scale = 1e-3*mean(sum((erp(501:1700,:)),1));"
+        },
+        {
+          "line": 31,
+          "text": "erphit_mean = max(mean(erp(:,idxhit),2),0);"
+        },
+        {
+          "line": 32,
+          "text": "erphit_std = opts.t2llstd+0*std(erp(:,idxhit),[],2);"
+        },
+        {
+          "line": 34,
+          "text": "erpmiss_mean = max(mean(erp(:,idxmiss),2),0);"
+        },
+        {
+          "line": 35,
+          "text": "erpmiss_std = opts.t2llstd+0*std(erp(:,idxmiss),[],2);"
+        },
+        {
+          "line": 43,
+          "text": "fields = {'bound','drift','lambda','scale','driftvar','noise','startvar','decay','rbound','ndt'};"
+        },
+        {
+          "line": 82,
+          "text": "% simulate random walks and corresponding choice accuracy, rt"
+        },
+        {
+          "line": 99,
+          "text": "dverp = bsxfun(@minus,dverp,mean(dverp(201:500,:)));"
+        },
+        {
+          "line": 100,
+          "text": "dvscale = 1e-3*max(mean(sum((dverp(501:1700,:)),1)),0);"
+        },
+        {
+          "line": 105,
+          "text": "%stat3 = -mean(mean(log(eps+normpdf(dverp(501:end,sim.idxhit),erphit_mean(501:end),erphit_std(501:end)))));"
+        },
+        {
+          "line": 106,
+          "text": "stat3 = -mean(log(eps+normpdf(mean(dverp(501:1700,sim.idxhit),2),erphit_mean(501:1700),erphit_std(501:1700))));"
+        },
+        {
+          "line": 112,
+          "text": "%stat4 = -mean(mean(log(eps+normpdf(dverp(501:end,sim.idxmiss),erpmiss_mean(501:end),erpmiss_std(501:end)))));"
+        },
+        {
+          "line": 113,
+          "text": "stat4 = -mean(log(eps+normpdf(mean(dverp(501:1700,sim.idxmiss),2),erpmiss_mean(501:1700),erpmiss_std(501:1700))));"
+        }
+      ]
+    },
+    "eeg/model/functions/fiterp_wrapper.m": {
+      "bytes": 2911,
+      "sha256": "21953ebdffd35a9082d147d2681515530e27397b7a7e8897b9e2f07cd33dd477",
+      "line_count": 80,
+      "function_signatures": [
+        {
+          "line": 10,
+          "text": "function [ params,stat,out,allparams,allstat,allout] = fiterp_wrapper( stimon,resp, erp, params, opts)"
+        }
+      ],
+      "relevant_lines": [
+        {
+          "line": 18,
+          "text": "opts2.N = 500;"
+        },
+        {
+          "line": 21,
+          "text": "opts3.N = 500;"
+        },
+        {
+          "line": 24,
+          "text": "ntot = length(params.drift.init)*length(params.driftvar.init)*length(params.decay.init)*length(params.lambda.init);"
+        },
+        {
+          "line": 26,
+          "text": "ngrid = length(params.bound.init)*length(params.ndt.init);%*length(params.drift.init);"
+        },
+        {
+          "line": 31,
+          "text": "for lambda = 1:length(params.lambda.init)"
+        },
+        {
+          "line": 32,
+          "text": "params.lambda.val = params.lambda.init(lambda);"
+        },
+        {
+          "line": 42,
+          "text": "fprintf('%d/%d Starting grid search (N=%d) for driftvar=%.5f, ndt=%.3f, decay=%.1f, lambda=%.0f\\n',np,ntot,ngrid,params.driftvar.val,params.ndt.val,params.decay.val,params.lambda.val);"
+        },
+        {
+          "line": 44,
+          "text": "% we first find the best initial ndt and bound"
+        },
+        {
+          "line": 47,
+          "text": "for ndt = 1:length(params.ndt.init)"
+        },
+        {
+          "line": 49,
+          "text": "[pinit(b,ndt),ll(b,ndt)] = fiterp( stimon, resp, erp, params, opts2,0);"
+        },
+        {
+          "line": 63,
+          "text": "allparams(d,dvar,decay,lambda) = pbest;"
+        },
+        {
+          "line": 64,
+          "text": "allstat(d,dvar,decay,lambda) = ll;"
+        },
+        {
+          "line": 65,
+          "text": "allout(d,dvar,decay,lambda) = out;"
+        }
+      ]
+    },
+    "eeg/model/functions/readout.m": {
+      "bytes": 2164,
+      "sha256": "66aa1668166a8d8b0d3a457d2fb46537c26f355e8500bcf6ca2948a853ac65dc",
+      "line_count": 60,
+      "function_signatures": [
+        {
+          "line": 10,
+          "text": "function [simconf,evidence,ro] = readout(sim,params,params2,dv,dvstim,dvresp,opts)"
+        }
+      ],
+      "relevant_lines": [
+        {
+          "line": 11,
+          "text": "%readout simulate confidence based on evidence accumulation"
+        },
+        {
+          "line": 22,
+          "text": "%   - simconf: simulated confidence"
+        },
+        {
+          "line": 24,
+          "text": "%   - ro: raw confidence readout"
+        },
+        {
+          "line": 37,
+          "text": "alpha = itro - tro;"
+        },
+        {
+          "line": 38,
+          "text": "itro = min(max(itro,2),1000);"
+        },
+        {
+          "line": 39,
+          "text": "ro(sim.resp==1) = alpha*dvresp(itro,sim.resp==1) + (1-alpha)*dvresp(itro-1,sim.resp==1);"
+        },
+        {
+          "line": 41,
+          "text": "% for \"no\" response, confidence is based on a noise"
+        },
+        {
+          "line": 51,
+          "text": "% pass the evidence through a sigmoid to have 0 < confidence < 1"
+        }
+      ]
+    },
+    "eeg/model/functions/simconf.m": {
+      "bytes": 1337,
+      "sha256": "275deeb28124e977c8c1dd2b0edb42c37e3296a4371daae191bbc80b0d8f0da4",
+      "line_count": 38,
+      "function_signatures": [
+        {
+          "line": 10,
+          "text": "function [sim,dv,dvstim,dvresp] = simconf(stimon,params,params2,opts)"
+        }
+      ],
+      "relevant_lines": [
+        {
+          "line": 11,
+          "text": "%simconf simulates confidence based on first- and second-order parameters"
+        },
+        {
+          "line": 20,
+          "text": "%   - sim: simulated responses and confidence"
+        },
+        {
+          "line": 27,
+          "text": "% simulate confidence"
+        }
+      ]
+    },
+    "eeg/model/step1_fitresp.m": {
+      "bytes": 1401,
+      "sha256": "7a8765ddb2f8cf67dcd68ad370e75df1218dd08cf0507c0b2fbd2fcd5934650d",
+      "line_count": 54,
+      "function_signatures": [],
+      "relevant_lines": [
+        {
+          "line": 33,
+          "text": "save(['save/' subj '.mat'],'data');"
+        },
+        {
+          "line": 35,
+          "text": "load(['save/' subj '.mat'],'data');"
+        },
+        {
+          "line": 50,
+          "text": "save(['models/' subj '_fitresp_' opts.type '.mat'],'params','stat','out','allparams','allstat','allout');"
+        }
+      ]
+    },
+    "eeg/model/step2_fitresp_check.m": {
+      "bytes": 1431,
+      "sha256": "c15c826900f4a210001475830466ccdba7bc1778785f92b9a6ef23aeae4a3524",
+      "line_count": 52,
+      "function_signatures": [],
+      "relevant_lines": [
+        {
+          "line": 33,
+          "text": "save(['save/' subj '.mat'],'data');"
+        },
+        {
+          "line": 35,
+          "text": "load(['save/' subj '.mat'],'data');"
+        },
+        {
+          "line": 39,
+          "text": "load(modelfile,'params','stat','out','allparams','allstat','allout');"
+        },
+        {
+          "line": 42,
+          "text": "loglik = [allout.ll];"
+        },
+        {
+          "line": 43,
+          "text": "[srt,isrt] = sort(loglik);"
+        },
+        {
+          "line": 47,
+          "text": "fprintf(' [ stage 3 ] %s) ll: %.2f -> (B=%.0f, v=%.4f, ndt=%.3f, vvar=%.3f, decay=%.3f, lambda=%.3f\\n',..."
+        },
+        {
+          "line": 48,
+          "text": "subj,loglik(j),p.bound.val, p.drift.val, p.ndt.val, p.driftvar.val, p.decay.val, p.lambda.val);"
+        }
+      ]
+    },
+    "eeg/model/step3_fitconf_max.m": {
+      "bytes": 2352,
+      "sha256": "1d8ddf9c7d17edd28046fe6b881d6b1bf0a540bf2aed72395b89f6ac5bea949c",
+      "line_count": 84,
+      "function_signatures": [],
+      "relevant_lines": [
+        {
+          "line": 3,
+          "text": "%   Fit second-order model for maximal evidence confidence readout"
+        },
+        {
+          "line": 35,
+          "text": "save(['save/' subj '.mat'],'data');"
+        },
+        {
+          "line": 37,
+          "text": "load(['save/' subj '.mat'],'data');"
+        },
+        {
+          "line": 40,
+          "text": "load(['models/' subj '_fitresp_' opts.type '.mat'],'params');"
+        },
+        {
+          "line": 57,
+          "text": "%       stimon = 2*rand(10000,1);"
+        },
+        {
+          "line": 80,
+          "text": "save(['models/' subj '_fitconf_' opts.type '_' opts.confreadout opts.confsuffix '.mat'],..."
+        }
+      ]
+    },
+    "eeg/model/step3_fitconf_resp.m": {
+      "bytes": 2319,
+      "sha256": "536408792bfefd7bcbc19cc93019d66d6f0452074cfc56a72f25a41a6e2d4528",
+      "line_count": 83,
+      "function_signatures": [],
+      "relevant_lines": [
+        {
+          "line": 3,
+          "text": "%   Fit second-order model for resp-locked confidence readout"
+        },
+        {
+          "line": 34,
+          "text": "save(['save/' subj '.mat'],'data');"
+        },
+        {
+          "line": 36,
+          "text": "load(['save/' subj '.mat'],'data');"
+        },
+        {
+          "line": 39,
+          "text": "load(['models/' subj '_fitresp_' opts.type '.mat'],'params');"
+        },
+        {
+          "line": 56,
+          "text": "%       stimon = 2*rand(10000,1);"
+        },
+        {
+          "line": 79,
+          "text": "save(['models/' subj '_fitconf_' opts.type '_' opts.confreadout '.mat'],..."
+        }
+      ]
+    },
+    "eeg/model/step4_evaluate.m": {
+      "bytes": 7875,
+      "sha256": "aa1d28d20161efa7f6346c81ac764ad981044e1697ac61b08c0a6c41691d1bf6",
+      "line_count": 243,
+      "function_signatures": [],
+      "relevant_lines": [
+        {
+          "line": 17,
+          "text": "opts.N = 10000;"
+        },
+        {
+          "line": 32,
+          "text": "ci = @(x) std(x)./sqrt(length(x));"
+        },
+        {
+          "line": 49,
+          "text": "save(['save/' subj '.mat'],'data');"
+        },
+        {
+          "line": 51,
+          "text": "load(['save/' subj '.mat'],'data');"
+        },
+        {
+          "line": 59,
+          "text": "pop.topo_norm(:,s) = data.weights./std(data.weights);"
+        },
+        {
+          "line": 70,
+          "text": "idxhit1 = idxhit & data.conf <= median(data.conf(idxhit));"
+        },
+        {
+          "line": 71,
+          "text": "idxhit2 = idxhit & data.conf > median(data.conf(idxhit));"
+        },
+        {
+          "line": 72,
+          "text": "idxmiss1 = idxmiss & data.conf <= median(data.conf(idxmiss));"
+        },
+        {
+          "line": 73,
+          "text": "idxmiss2 = idxmiss & data.conf > median(data.conf(idxmiss));"
+        },
+        {
+          "line": 86,
+          "text": "pop.confhit(s) = mean(confhit);"
+        },
+        {
+          "line": 87,
+          "text": "pop.confmiss(s) = mean(confmiss);"
+        },
+        {
+          "line": 88,
+          "text": "pop.confcrej(s) = mean(confcrej);"
+        },
+        {
+          "line": 89,
+          "text": "pop.conffa(s) = mean(conffa);"
+        },
+        {
+          "line": 101,
+          "text": "erp = bsxfun(@minus,data.pEA,mean(data.pEA(201:500,:)));"
+        },
+        {
+          "line": 103,
+          "text": "pop.erp_hit(:,s) = mean(erp(:,idxhit),2);"
+        },
+        {
+          "line": 104,
+          "text": "pop.erp_miss(:,s) = mean(erp(:,idxmiss),2);"
+        },
+        {
+          "line": 106,
+          "text": "pop.erp_hit1(:,s) = mean(erp(:,idxhit1),2);"
+        },
+        {
+          "line": 107,
+          "text": "pop.erp_hit2(:,s) = mean(erp(:,idxhit2),2);"
+        },
+        {
+          "line": 108,
+          "text": "pop.erp_miss1(:,s) = mean(erp(:,idxmiss1),2);"
+        },
+        {
+          "line": 109,
+          "text": "pop.erp_miss2(:,s) = mean(erp(:,idxmiss2),2);"
+        },
+        {
+          "line": 129,
+          "text": "load(fmodel1,'allparams','params','allstat','stat','allout','out');"
+        },
+        {
+          "line": 131,
+          "text": "load(fmodel2,'params2','stat2','out2');"
+        },
+        {
+          "line": 136,
+          "text": "params.lambda.val params.decay.val params.ndt.val ..."
+        },
+        {
+          "line": 145,
+          "text": "pop.bicconf(s) = k*log(n)-2*sum(pop.llconf(:,s));"
+        },
+        {
+          "line": 146,
+          "text": "pop.aicconf(s) = 2*k-2*sum(pop.llconf(:,s));"
+        },
+        {
+          "line": 161,
+          "text": "idxsimconfhit1 = sim.idxhit & sim.conf <= median(sim.conf(sim.idxhit));"
+        },
+        {
+          "line": 162,
+          "text": "idxsimconfhit2 = sim.idxhit & sim.conf > median(sim.conf(sim.idxhit));"
+        },
+        {
+          "line": 163,
+          "text": "idxsimconfmiss1 = sim.idxmiss & sim.conf <= median(sim.conf(sim.idxmiss));"
+        },
+        {
+          "line": 164,
+          "text": "idxsimconfmiss2 = sim.idxmiss & sim.conf > median(sim.conf(sim.idxmiss));"
+        },
+        {
+          "line": 169,
+          "text": "scale = 1e-3*sum(max(mean(erp(501:1700,:),2),0),1);"
+        },
+        {
+          "line": 171,
+          "text": "simerp = bsxfun(@minus,dvstim,mean(dvstim(201:500,:)));"
+        },
+        {
+          "line": 173,
+          "text": "simscale = 1e-3*sum(max(mean(simerp(501:1700,:),2),0),1);"
+        },
+        {
+          "line": 203,
+          "text": "pop.simconfhit(s) = mean(sim.conf(sim.idxhit));"
+        },
+        {
+          "line": 204,
+          "text": "pop.simconfmiss(s) = mean(sim.conf(sim.idxmiss));"
+        },
+        {
+          "line": 205,
+          "text": "pop.simconfcrej(s) = mean(sim.conf(sim.idxcrej));"
+        },
+        {
+          "line": 206,
+          "text": "pop.simconffa(s) = mean(sim.conf(sim.idxfa));"
+        },
+        {
+          "line": 219,
+          "text": "pop.simerp_hit(:,s) = mean(simerp(:,sim.idxhit),2);"
+        },
+        {
+          "line": 220,
+          "text": "pop.simerp_miss(:,s) = mean(simerp(:,sim.idxmiss),2);"
+        },
+        {
+          "line": 222,
+          "text": "pop.simerp_hit1(:,s) = mean(simerp(:,idxsimconfhit1),2);"
+        },
+        {
+          "line": 223,
+          "text": "pop.simerp_hit2(:,s) = mean(simerp(:,idxsimconfhit2),2);"
+        },
+        {
+          "line": 224,
+          "text": "pop.simerp_miss1(:,s) = mean(simerp(:,idxsimconfmiss1),2);"
+        },
+        {
+          "line": 225,
+          "text": "pop.simerp_miss2(:,s) = mean(simerp(:,idxsimconfmiss2),2);"
+        },
+        {
+          "line": 243,
+          "text": "save(['save/pop_' opts.confreadout opts.confsuffix '_rt.mat'],'pop');"
+        }
+      ]
+    }
+  },
+  "model_tree": [
+    {
+      "path": "eeg/model/README",
+      "bytes": 837,
+      "sha256": "6b9f1821aba311962be27adc1ae2b1c1492989d56f75c0ffb6ac7416095a8359"
+    },
+    {
+      "path": "eeg/model/functions/cishade.m",
+      "bytes": 1671,
+      "sha256": "548425dbb54863b2751b60209affa9f2537b1c99c7bf95316bb144834a130b18"
+    },
+    {
+      "path": "eeg/model/functions/classif.m",
+      "bytes": 726,
+      "sha256": "3f4d0b131fa0fd673d6ab705eda7da7f62f2bbccb4f906e5dbb5976eb2050956"
+    },
+    {
+      "path": "eeg/model/functions/evacc.m",
+      "bytes": 4972,
+      "sha256": "bd612d5403fe434450c0a43f05b5d15c1428414fa0dd540a6ef9b6f406c6e5e8"
+    },
+    {
+      "path": "eeg/model/functions/fitconf.m",
+      "bytes": 3099,
+      "sha256": "730adf6ee9c190911ac4271e9a2826a3a30e05d030c4706a51e9eb9d8a6448f2"
+    },
+    {
+      "path": "eeg/model/functions/fitconf_wrapper.m",
+      "bytes": 1911,
+      "sha256": "960f4079fe5817a353ba06b4a0c848b63f613c065c3ebfcebcdbec11dcbaa6f3"
+    },
+    {
+      "path": "eeg/model/functions/fiterp.m",
+      "bytes": 5601,
+      "sha256": "803fb32a0c1aed9fe1cf6c02a3896dcfb6e369a3c8f0d4577c25a5f8f2eff787"
+    },
+    {
+      "path": "eeg/model/functions/fiterp_wrapper.m",
+      "bytes": 2911,
+      "sha256": "21953ebdffd35a9082d147d2681515530e27397b7a7e8897b9e2f07cd33dd477"
+    },
+    {
+      "path": "eeg/model/functions/loadsubjects_bids.m",
+      "bytes": 4223,
+      "sha256": "6265641a788e475a66d2a60b79a0086c86303503e4dcaf65ce9953b8af8d40aa"
+    },
+    {
+      "path": "eeg/model/functions/loadsubjects_eeg.m",
+      "bytes": 5449,
+      "sha256": "a350e219a9642b25c216c4c13eb88f9e660c02dbb0852544f13e0eaab055e7b5"
+    },
+    {
+      "path": "eeg/model/functions/plotconf.m",
+      "bytes": 2852,
+      "sha256": "33cee9fc35851676134641199448c4137ea1370fb6471d1dd763a644a6d2bca3"
+    },
+    {
+      "path": "eeg/model/functions/printparams.m",
+      "bytes": 480,
+      "sha256": "694f5d390adee82362ae5a1d373954de7020e388269852418141cb0d1939ca2a"
+    },
+    {
+      "path": "eeg/model/functions/readout.m",
+      "bytes": 2164,
+      "sha256": "66aa1668166a8d8b0d3a457d2fb46537c26f355e8500bcf6ca2948a853ac65dc"
+    },
+    {
+      "path": "eeg/model/functions/sigmoid.m",
+      "bytes": 1574,
+      "sha256": "9e6b0c442ff70f5a13c440cb754cc878048975ec70070807e5bbfc0c64fcf2aa"
+    },
+    {
+      "path": "eeg/model/functions/simconf.m",
+      "bytes": 1337,
+      "sha256": "275deeb28124e977c8c1dd2b0edb42c37e3296a4371daae191bbc80b0d8f0da4"
+    },
+    {
+      "path": "eeg/model/paramset.m",
+      "bytes": 99,
+      "sha256": "8e4ee0703ea48e5f26f3451974023e6f442709bedfc8d34b39bf904b255a8dfb"
+    },
+    {
+      "path": "eeg/model/paramset2.m",
+      "bytes": 101,
+      "sha256": "6ea6a5e3d1490444d47181c84e041e36ff448d4a68c965cbc9b4156f7fed8ad7"
+    },
+    {
+      "path": "eeg/model/plot_SI.m",
+      "bytes": 4744,
+      "sha256": "c02e07fdfacaf11adc22b4d64acb793062853aaaf0cb4d80e9881374b3f7a3e6"
+    },
+    {
+      "path": "eeg/model/plot_compare.m",
+      "bytes": 3256,
+      "sha256": "52016adc15dcb759167401639be6a6808764c9969ea7892b81bfdaaf6591ff03"
+    },
+    {
+      "path": "eeg/model/plot_erp.m",
+      "bytes": 4529,
+      "sha256": "7d0bfd94cdd7150064f6424460baebb87bbf197649e6bed1aa9102fbe78fb562"
+    },
+    {
+      "path": "eeg/model/plot_exampletrace.m",
+      "bytes": 3354,
+      "sha256": "2112cd2814ed81d2471d5272a65c1f291a2c70225823b4e2d0e3c4f8aef61c32"
+    },
+    {
+      "path": "eeg/model/plot_metacog.m",
+      "bytes": 2733,
+      "sha256": "0ab8290ea4413b171a6547c42f7a8d9503f8a2391f858a77a21f5cb4098f54ed"
+    },
+    {
+      "path": "eeg/model/plot_model.m",
+      "bytes": 10553,
+      "sha256": "b01cbca2185cb5d2abf75f1e09e640f584055f33b784c37702f4e155b300eafc"
+    },
+    {
+      "path": "eeg/model/plot_neuronresp.m",
+      "bytes": 4447,
+      "sha256": "74ed836a516a97cdd765b71d7e9ad07f4b9a06417ddc9f208806f9318cdbdb05"
+    },
+    {
+      "path": "eeg/model/plot_preproc.m",
+      "bytes": 1153,
+      "sha256": "c76ad284ddd6ac7473a923caec046beb1338bb8acc8b73537bbb5b96787c9b56"
+    },
+    {
+      "path": "eeg/model/step1_fitresp.m",
+      "bytes": 1401,
+      "sha256": "7a8765ddb2f8cf67dcd68ad370e75df1218dd08cf0507c0b2fbd2fcd5934650d"
+    },
+    {
+      "path": "eeg/model/step2_fitresp_check.m",
+      "bytes": 1431,
+      "sha256": "c15c826900f4a210001475830466ccdba7bc1778785f92b9a6ef23aeae4a3524"
+    },
+    {
+      "path": "eeg/model/step3_fitconf_max.m",
+      "bytes": 2352,
+      "sha256": "1d8ddf9c7d17edd28046fe6b881d6b1bf0a540bf2aed72395b89f6ac5bea949c"
+    },
+    {
+      "path": "eeg/model/step3_fitconf_resp.m",
+      "bytes": 2319,
+      "sha256": "536408792bfefd7bcbc19cc93019d66d6f0452074cfc56a72f25a41a6e2d4528"
+    },
+    {
+      "path": "eeg/model/step4_evaluate.m",
+      "bytes": 7875,
+      "sha256": "aa1d28d20161efa7f6346c81ac764ad981044e1697ac61b08c0a6c41691d1bf6"
+    }
+  ],
+  "supdata_files": []
+}
