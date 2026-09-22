@@ -24,7 +24,9 @@ TARGETS=[
  "eeg/model/step2_fitresp_check.m",
  "eeg/model/step3_fitconf_max.m",
  "eeg/model/step3_fitconf_resp.m",
- "eeg/model/step4_evaluate.m"
+ "eeg/model/step4_evaluate.m",
+ "eeg/model/plot_model.m",
+ "eeg/model/plot_compare.m"
 ]
 KEYS=["bic","aic","loglik","logl","likelihood","wilcoxon","signrank","ranksum",
       "npar","numel","alpha","beta","omega","t_ro","theta","ndt","lambda","gamma",
@@ -86,12 +88,23 @@ try:
             low=line.lower()
             if any(k in low for k in KEYS):
                 hits.append({"line":i,"text":line.strip()})
+        key_lines=sorted({h["line"] for h in hits})
+        contexts=[]
+        for ln in key_lines:
+            lo=max(1,ln-8); hi=min(len(lines),ln+8)
+            contexts.append({
+              "center_line":ln,
+              "start_line":lo,
+              "end_line":hi,
+              "lines":[{"line":j,"text":lines[j-1].rstrip()} for j in range(lo,hi+1)]
+            })
         audit["files"][path]={
           "bytes":p.stat().st_size,
           "sha256":sha256(p),
           "line_count":len(lines),
           "function_signatures":[{"line":i,"text":ln.strip()} for i,ln in enumerate(lines,1) if ln.strip().lower().startswith("function")],
-          "relevant_lines":hits[:1200]
+          "relevant_lines":hits[:1200],
+          "contexts":contexts[:300]
         }
 
     OUT.parent.mkdir(parents=True,exist_ok=True)
