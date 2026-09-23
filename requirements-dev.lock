@@ -4,7 +4,7 @@
 #
 #    pip-compile --extra=dev --extra=docs --extra=test --output-file=requirements-dev.lock pyproject.toml
 #
-anyio==4.14.0
+anyio==4.15.1
     # via
     #   httpx
     #   jupyter-server
@@ -143,7 +143,7 @@ jupyter-events==0.12.1
     # via jupyter-server
 jupyter-lsp==2.3.1
     # via jupyterlab
-jupyter-server==2.20.0
+jupyter-server==2.21.1
     # via
     #   jupyter-lsp
     #   jupyterlab
@@ -364,7 +364,7 @@ six==1.17.0
     # via
     #   python-dateutil
     #   rfc3339-validator
-soupsieve==2.8.4
+soupsieve==2.9.2
     # via beautifulsoup4
 stack-data==0.6.3
     # via ipython
