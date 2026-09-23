@@ -1,0 +1,45 @@
+name: WSL Science Runner Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wsl-science-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: [self-hosted, linux, x64, wsl-science]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify WSL scientific runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p wsl_runner_smoke
+          {
+            echo "status=WSL_SCIENCE_RUNNER_READY"
+            echo "repo=${GITHUB_REPOSITORY}"
+            echo "sha=${GITHUB_SHA}"
+            echo "runner_name=${RUNNER_NAME}"
+            echo "runner_os=${RUNNER_OS}"
+            echo "runner_arch=${RUNNER_ARCH}"
+            echo "hostname=$(hostname)"
+            echo "kernel=$(uname -srmo)"
+            echo "python=$(python3 --version 2>&1)"
+            echo "git=$(git --version)"
+            echo "disk:"
+            df -h .
+          } | tee wsl_runner_smoke/status.txt
+
+      - name: Upload runner proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: wsl-science-runner-smoke
+          path: wsl_runner_smoke/status.txt
+          retention-days: 30
