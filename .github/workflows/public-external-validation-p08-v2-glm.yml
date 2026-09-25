@@ -50,7 +50,7 @@ jobs:
           PY
 
       - name: Download exact V2 preprocessed participant artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           repository: Furox-Art/scientific-computing-system
@@ -59,7 +59,7 @@ jobs:
           path: inputs/public-p08-opensource-v2-preprocessed-${{ matrix.participant }}
 
       - name: Download exact V2 preprocessing provenance artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           repository: Furox-Art/scientific-computing-system
@@ -68,7 +68,7 @@ jobs:
           path: inputs/public-p08-opensource-v2-preprocessing-provenance-${{ matrix.participant }}
 
       - name: Download frozen res-02 Harvard-Oxford ROI artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           repository: Furox-Art/scientific-computing-system
@@ -138,7 +138,7 @@ jobs:
             'scipy>=1.11,<2'
 
       - name: Download participant GLM artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: public-p08-opensource-v2-glm-*
           path: participant-glm-artifacts

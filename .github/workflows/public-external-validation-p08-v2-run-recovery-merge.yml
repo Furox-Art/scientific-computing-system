@@ -37,7 +37,7 @@ jobs:
           python -m py_compile tools/public_external_validation_p08_v2_run_recovery_merge.py
 
       - name: Download exact run-shard artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           repository: Furox-Art/scientific-computing-system
