@@ -50,7 +50,7 @@ jobs:
         with:
           ref: 218dc1ef15509a6d1e4db4fc8c5f1cf6ac140aaa
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 

@@ -75,7 +75,7 @@ jobs:
         with:
           ref: 14c4a27c3d9db9e1e58d13a995bce850bb20d337
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -180,7 +180,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: 14c4a27c3d9db9e1e58d13a995bce850bb20d337
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Install frozen aggregation tools
