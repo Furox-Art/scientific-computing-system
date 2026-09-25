@@ -107,7 +107,7 @@ jobs:
 
       - name: Download merged recovery participant preprocessing
         if: matrix.source == 'recovery'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           repository: Furox-Art/scientific-computing-system
@@ -117,7 +117,7 @@ jobs:
 
       - name: Download merged recovery participant provenance
         if: matrix.source == 'recovery'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           repository: Furox-Art/scientific-computing-system
@@ -127,7 +127,7 @@ jobs:
 
       - name: Download frozen PILOT02 preprocessing
         if: matrix.source == 'original'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           repository: Furox-Art/scientific-computing-system
@@ -137,7 +137,7 @@ jobs:
 
       - name: Download frozen PILOT02 provenance
         if: matrix.source == 'original'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           repository: Furox-Art/scientific-computing-system
@@ -146,7 +146,7 @@ jobs:
           path: inputs/provenance-sub-PILOT02
 
       - name: Download frozen res-02 Harvard-Oxford ROI artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           repository: Furox-Art/scientific-computing-system
@@ -219,7 +219,7 @@ jobs:
           python -m pip install --disable-pip-version-check \
             'nilearn==0.13.1' 'nipype==1.11.0' 'nitime==0.12.1' 'scipy>=1.11,<2'
       - name: Download V4 participant artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: public-p08-v4-recovery-glm-*
           path: participant-artifacts
