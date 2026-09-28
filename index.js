@@ -1,0 +1,1 @@
+const { spawn } = require('child_process'); function runSCS(args) { const python = process.platform === 'win32' ? 'python' : 'python3'; const proc = spawn(python, ['-m', 'scs.cli', ...args], { stdio: 'inherit', cwd: __dirname }); proc.on('close', (code) =; } module.exports = { runSCS }; if (require.main === module) { runSCS(process.argv.slice(2)); } 
