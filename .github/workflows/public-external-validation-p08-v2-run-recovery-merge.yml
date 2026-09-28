@@ -26,7 +26,7 @@ jobs:
         with:
           ref: 52a6867d2b78dc4379418d4f9809754c4b63defe
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
