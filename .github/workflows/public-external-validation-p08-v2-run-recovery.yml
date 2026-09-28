@@ -90,7 +90,7 @@ jobs:
           docker run --rm "$image" afni -ver | head -n 6
 
       - name: Download exact verified participant anatomy artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           repository: Furox-Art/scientific-computing-system
