@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.0.1] - 2026-09-29
+
+Metadata-only patch release for improved PyPI discoverability. No runtime API or numerical behavior changes.
+
+### Changed
+
+- Expanded PyPI keywords and classifiers for reproducibility, uncertainty quantification, sensitivity analysis, dimensional analysis, scientific workflows, ODE/PDE, and related scientific-computing searches.
+- Refreshed development lock versions required by the current security audit.
+- Normalized repository trailing whitespace required by pre-commit.
+
+
 ### Added
 
 - **Random Forest classifier** (`cds.ml`): bagged CART trees with

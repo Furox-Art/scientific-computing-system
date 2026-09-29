@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata from this file."
 type: software
 title: "scientific-computing-system"
-version: 1.7.0
+version: 2.0.1
 authors:
   - name: "Furox-Art"
     email: "furkanarkn1451@gmail.com"
@@ -10,7 +10,7 @@ abstract: "Pure Python computational science system — quantum simulation, sign
 license: MIT
 repository-code: "https://github.com/Furox-Art/scientific-computing-system"
 url: "https://github.com/Furox-Art/scientific-computing-system"
-date-released: "2026-08-24"
+date-released: "2026-09-29"
 keywords:
   - "pure python"
   - "scientific computing"
@@ -25,5 +25,5 @@ preferred-citation:
   authors:
     - name: "Furox-Art"
   year: 2026
-  version: 1.7.0
+  version: 2.0.1
   url: "https://github.com/Furox-Art/scientific-computing-system"
