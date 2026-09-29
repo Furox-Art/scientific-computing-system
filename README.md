@@ -32,6 +32,14 @@ This is a from-scratch rethinking of what scientific computing in Python could l
 - **Signal processing**: filters, wavelets, STFT
 - **ODE/PDE solvers**: stiff and non-stiff, symplectic integrators
 
+## Common use cases
+
+- Learn and inspect **numerical methods in pure Python** without compiled extensions.
+- Prototype **scientific computing** workflows with transparent implementations.
+- Explore **ODE/PDE solvers**, numerical integration, optimization, Monte Carlo, signal processing, and linear algebra.
+- Run **statistics, uncertainty quantification, sensitivity analysis, dimensional analysis, and reproducible research** workflows.
+- Teach or audit algorithms where readable source code matters more than raw NumPy/SciPy performance.
+
 ## The catch
 
 It's slower than NumPy. Sometimes 10x slower, sometimes 100x. That's the price of pure Python. But it's also completely transparent-you can read every algorithm, understand every step, and modify anything without compiling C.

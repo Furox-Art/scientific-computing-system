@@ -64,6 +64,14 @@ Module dependency graph and data flow, for contributors and auditors.
     [Statistics](tutorials/stats_demo.md),
     [Machine Learning](tutorials/ml_demo.md), then branch out.
 
+## What people use CDS for
+
+CDS is designed for searchable, practical scientific-Python tasks such as
+**numerical methods**, **ODE and PDE solving**, **Monte Carlo simulation**,
+**statistics and hypothesis testing**, **uncertainty quantification**,
+**sensitivity analysis**, **signal processing**, **linear algebra**,
+**symbolic mathematics**, and **reproducible computational research**.
+
 ## Key Features
 
 - **Pure Python:** Every module is implemented from scratch using the Python standard library. No heavy dependencies like NumPy or SciPy required.
