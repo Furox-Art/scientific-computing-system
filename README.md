@@ -32,6 +32,29 @@ This is a from-scratch rethinking of what scientific computing in Python could l
 - **Signal processing**: filters, wavelets, STFT
 - **ODE/PDE solvers**: stiff and non-stiff, symplectic integrators
 
+## Quick Start
+
+```bash
+pip install scientific-computing-system
+```
+
+```python
+from scs.linear_algebra import svd
+from scs.ode import solve_ivp
+from scs.stats import bayesian_posterior
+
+# every algorithm is readable pure Python — open the source, see the math
+U, S, Vt = svd(matrix, full_matrices=False)
+
+solution = solve_ivp(
+    lambda t, y: [y[1], -y[0] - 0.1 * y[1]],   # damped oscillator
+    t_span=(0, 50), y0=[1.0, 0.0],
+    method="rk45", rtol=1e-8,
+)
+```
+
+Also on npm: `npm i scientific-computing-system`. Full docs: [furox-art.github.io/scientific-computing-system](https://furox-art.github.io/scientific-computing-system/).
+
 ## Common use cases
 
 - Learn and inspect **numerical methods in pure Python** without compiled extensions.
