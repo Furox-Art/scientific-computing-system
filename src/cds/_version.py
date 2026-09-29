@@ -1,4 +1,5 @@
 ﻿# Static version source. Kept in lockstep with `version` in `pyproject.toml`.
+# Release retry for 2.0.1 after dependency-audit root exclusion.
 # Bump both for a release; merging the version bump to main triggers the
 # verified GitHub + PyPI publish workflow. See `pyproject.toml` for the release
 # checklist. This file is committed (not generated) so mypy has a concrete

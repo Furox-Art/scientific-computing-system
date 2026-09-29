@@ -107,8 +107,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install ".[test,dev,docs,pandas,plot]" pip-audit
-      - name: Audit the actually installed environment
-        run: pip-audit --local --strict
+      - name: Audit the actually installed dependency environment
+        run: |
+          # The project itself may be a new, not-yet-published release candidate.
+          # Remove only the local root distribution so pip-audit evaluates its
+          # resolved third-party dependencies instead of querying PyPI for the
+          # unpublished project version.
+          python -m pip uninstall -y scientific-computing-system
+          pip-audit --local --strict
       - name: Record resolved environment for diagnostics
         run: python -m pip freeze --all | sort > resolved-ci-environment.txt
 
