@@ -19,7 +19,6 @@ import re
 from pathlib import Path
 
 import pytest
-import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT = ROOT / "pyproject.toml"
@@ -29,26 +28,84 @@ STUB_REQUIRES_PYTHON = (3, 13)
 # The numpy release whose stub introduced the `type` statement.
 CAP_BELOW = (2, 5)
 
+_REQUIREMENT = re.compile(r"""["']([^"']+)["']""")
+
 
 def _version_tuple(text: str) -> tuple[int, ...]:
     return tuple(int(part) for part in re.findall(r"\d+", text))
 
 
-def _pyproject() -> dict:
-    return tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
+def _table_body(text: str, header: str) -> list[str]:
+    """Return the lines of a single TOML table, stopping at the next table header.
+
+    ``tomllib`` is deliberately not used: it only exists on Python 3.11+, and CI
+    runs this test file on 3.10 too (the repo hit that exact wall once already,
+    in the commit 'fix(ci): drop tomllib from 3.10 tests'). The repo also takes
+    no test dependency on a backport, so the extraction stays textual.
+    """
+    lines = text.splitlines()
+    body: list[str] = []
+    inside = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("["):
+            if inside:
+                break
+            inside = stripped == header
+            continue
+        if inside:
+            body.append(line)
+    if not inside:
+        raise AssertionError(f"pyproject.toml has no {header} table")
+    return body
 
 
-def _mypy_python_version() -> tuple[int, ...]:
-    config = _pyproject().get("tool", {}).get("mypy", {})
-    assert "python_version" in config, "pyproject.toml must pin [tool.mypy] python_version"
-    return _version_tuple(str(config["python_version"]))
+def _extras() -> list[str]:
+    """Return every requirement string under [project.optional-dependencies].
+
+    The extras arrays span many lines, so scan the whole table body instead of
+    only the line that carries the ``=``.
+    """
+    body = "\n".join(
+        _table_body(PYPROJECT.read_text(encoding="utf-8"), "[project.optional-dependencies]")
+    )
+    return _REQUIREMENT.findall(body)
 
 
 def _dev_numpy_requirement() -> str:
-    dev = _pyproject()["project"]["optional-dependencies"]["dev"]
-    matches = [req for req in dev if re.match(r"\s*numpy\b", req)]
+    """Return the single numpy requirement from the [dev] extra's own array."""
+    lines = _table_body(PYPROJECT.read_text(encoding="utf-8"), "[project.optional-dependencies]")
+    collecting = False
+    found: list[str] = []
+    for line in lines:
+        if re.match(r"^dev\s*=", line):
+            collecting = True
+            tail = line.partition("=")[2]
+            found.extend(_REQUIREMENT.findall(tail))
+            continue
+        if collecting:
+            if line.strip().startswith("]"):
+                break
+            found.extend(_REQUIREMENT.findall(line))
+    matches = [req for req in found if re.match(r"\s*numpy\b", req)]
     assert len(matches) == 1, f"expected exactly one numpy requirement in [dev], found {matches}"
     return matches[0]
+
+
+def _mypy_python_version() -> tuple[int, ...]:
+    for line in _table_body(PYPROJECT.read_text(encoding="utf-8"), "[tool.mypy]"):
+        match = re.match(r"""^python_version\s*=\s*["']([^"']+)["']""", line)
+        if match:
+            return _version_tuple(match.group(1))
+    raise AssertionError("pyproject.toml must pin [tool.mypy] python_version")
+
+
+def _requires_python() -> tuple[int, ...]:
+    for line in _table_body(PYPROJECT.read_text(encoding="utf-8"), "[project]"):
+        match = re.match(r"""^requires-python\s*=\s*["']([^"']+)["']""", line)
+        if match:
+            return _version_tuple(match.group(1))
+    raise AssertionError("pyproject.toml must declare requires-python")
 
 
 def _upper_cap(requirement: str) -> tuple[int, ...] | None:
@@ -61,23 +118,37 @@ def _has_upper_cap(requirement: str) -> bool:
     return _upper_cap(requirement) is not None
 
 
-def test_dev_numpy_requirement_is_parseable():
+def test_dev_numpy_requirement_is_parseable() -> None:
     assert _dev_numpy_requirement().strip()
 
 
-def test_mypy_target_stays_below_stub_requirement():
+def test_table_extraction_reads_real_pyproject() -> None:
+    """The textual extractors must see the real file, not silently return nothing."""
+    assert "numpy>=2.0,<2.5" in _dev_numpy_requirement()
+    assert _mypy_python_version() < STUB_REQUIRES_PYTHON
+    assert _requires_python()[0] >= 3
+
+
+def test_extras_capture_every_extras_group() -> None:
+    """A regression guard on the extractor itself: a dropped table must not pass quietly."""
+    every = _extras()
+    assert len(every) > 40, f"expected the full extras list, extracted only {len(every)}"
+    assert any(req.startswith("pandas-stubs") for req in every)
+    assert any(req.startswith("mypy") for req in every)
+
+
+def test_mypy_target_stays_below_stub_requirement() -> None:
     """CDS supports 3.10+, so the mypy target must not silently outrun the stubs."""
     target = _mypy_python_version()
-    requires_python = _pyproject()["project"]["requires-python"]
-    supported = _version_tuple(requires_python)
-    assert min(supported) <= 3.10, f"requires-python drifted to {requires_python}"
+    supported = _requires_python()
+    assert min(supported) <= 3.10, f"requires-python drifted to {supported}"
     assert target < STUB_REQUIRES_PYTHON, (
         f"mypy python_version is {target}, which is >= {STUB_REQUIRES_PYTHON}. The numpy 2.5 stub now "
         "parses natively, so issue #62 says to drop the <2.5 cap from [dev] and update this test."
     )
 
 
-def test_numpy_cap_matches_mypy_target():
+def test_numpy_cap_matches_mypy_target() -> None:
     """The cap is required below 3.13 and forbidden at or above it."""
     requirement = _dev_numpy_requirement()
     capped = _has_upper_cap(requirement)
@@ -96,7 +167,7 @@ def test_numpy_cap_matches_mypy_target():
 
 
 @pytest.mark.parametrize(
-    "requirement,expected_cap",
+    ("requirement", "expected_cap"),
     [
         ("numpy>=2.0,<2.5", (2, 5)),
         ("numpy>=2.0,<2.4", (2, 4)),
@@ -105,16 +176,18 @@ def test_numpy_cap_matches_mypy_target():
         ("numpy>=2.0", None),
     ],
 )
-def test_upper_cap_parsing_handles_real_specifier_spellings(requirement, expected_cap):
+def test_upper_cap_parsing_handles_real_specifier_spellings(
+    requirement: str, expected_cap: tuple[int, ...] | None
+) -> None:
     assert _upper_cap(requirement) == expected_cap
 
 
-def test_cap_detection_agrees_with_parsed_cap():
+def test_cap_detection_agrees_with_parsed_cap() -> None:
     assert _has_upper_cap("numpy>=2.0,<2.5") is True
     assert _has_upper_cap("numpy>=2.0") is False
 
 
-def test_lower_bounds_are_not_mistaken_for_caps():
+def test_lower_bounds_are_not_mistaken_for_caps() -> None:
     """``>=`` must never read as an upper cap, or the guard would pass vacuously."""
     assert _upper_cap("numpy>=2.5") is None
     assert _has_upper_cap("numpy>=2.5") is False
