@@ -395,7 +395,7 @@ traitlets==5.15.1
     #   nbclient
     #   nbconvert
     #   nbformat
-typing-extensions==4.15.0
+typing-extensions==4.16.0
     # via
     #   anyio
     #   beautifulsoup4

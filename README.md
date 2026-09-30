@@ -47,9 +47,11 @@ from scs.stats import bayesian_posterior
 U, S, Vt = svd(matrix, full_matrices=False)
 
 solution = solve_ivp(
-    lambda t, y: [y[1], -y[0] - 0.1 * y[1]],   # damped oscillator
-    t_span=(0, 50), y0=[1.0, 0.0],
-    method="rk45", rtol=1e-8,
+    lambda t, y: [y[1], -y[0] - 0.1 * y[1]],  # damped oscillator
+    t_span=(0, 50),
+    y0=[1.0, 0.0],
+    method="rk45",
+    rtol=1e-8,
 )
 ```
 
