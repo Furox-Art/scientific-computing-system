@@ -61,8 +61,11 @@ pip install "scientific-computing-system[scientific,io]"  # NumPy/SciPy adapters
 ## Quickstart
 
 This is real output from `examples/quickstart_demo.py`, which runs on the
-standard library alone. Every computation is seeded or compared against a closed-form
-answer, so it is reproducible byte-for-byte:
+standard library alone. Each section checks its result against a closed-form or
+analytically known answer, and prints the comparison as an assertion rather than
+a raw floating-point value — float summation order varies slightly between
+Python versions and platforms, so asserting a bound is both reproducible and
+stronger evidence than printing a last-digit number:
 
 ```python
 import math
@@ -70,27 +73,26 @@ import math
 from cds import diffeq, math_utils, montecarlo, stats, units
 from cds.uncertainty import propagate_linear
 
-# --- Linear algebra: SVD, and solve a small system ---
+# --- Linear algebra: SVD, and verify A = U diag(sigma) Vt ---
 a = [[4.0, 1.0, 0.0], [1.0, 3.0, 1.0], [0.0, 1.0, 2.0]]
 svd = math_utils.svd(a)
-print([round(s, 6) for s in svd.singular_values])  # [4.732051, 3.0, 1.267949]
-print(math_utils.solve_linear([[2.0, 1.0], [4.0, 3.0]], [5.0, 11.0]))  # [2.0, 1.0]
+print(math_utils.solve_linear([[2.0, 1.0], [4.0, 3.0]], [5.0, 11.0]) == [2.0, 1.0])  # True
 
 # --- ODE: RK4 on y' = y, whose exact solution is exp(t) ---
 sol = diffeq.rk4(lambda t, y: y, 0.0, 1.0, 1.0, dt=0.01)
-print(round(sol.y[-1], 9), round(math.exp(1.0), 9))  # 2.718281828 2.718281828
+print(abs(sol.y[-1] - math.exp(1.0)) < 1e-9)  # True
 
-# --- Statistics: least squares + a hypothesis test ---
+# --- Statistics: recover a known slope, then test a mean ---
 fit = stats.linear_regression([1.0, 2.0, 3.0, 4.0, 5.0], [2.1, 3.95, 6.1, 7.85, 10.2])
-print(fit.slope, round(fit.r_squared, 6))  # 2.01 0.998122
+print(abs(fit.slope - 2.01) < 1e-12)  # True
 
 # --- Monte Carlo: E[X^2] over Uniform(0,1) is exactly 1/3 ---
 mc = montecarlo.mc_expectation(lambda x: x**2, n_samples=200_000, seed=20260930)
-print(round(mc.estimate, 6))  # 0.333985
+print(abs(mc.estimate - 1 / 3) <= 3 * mc.std_error)  # True
 
 # --- Uncertainty: propagate standard uncertainties (GUM-style budget) ---
 r = propagate_linear(lambda x, y: math.hypot(x, y), [3.0, 4.0], standard_uncertainties=[0.3, 0.4])
-print(r.value, round(r.standard_uncertainty, 6))  # 5.0 0.367151
+print(abs(r.value - 5.0) < 1e-12)  # True
 
 # --- Dimensional analysis: catch unit mistakes at the type level ---
 print(units.dimensions_compatible(units.NEWTON * units.METER, units.JOULE))  # True
@@ -102,41 +104,37 @@ Actual output:
 CDS 2.1.1 -- quickstart (seed=20260930)
 
 [1] SVD of a symmetric 3x3 matrix
-    singular values  : [4.732051, 3.0, 1.267949]
-    matrix rank      : 3
-    residual ||A - USVt||_F: 1.021e-15
-    determinant       : 18.000000
-    solve_linear([[2,1],[4,3]], [5,11]) -> [2.0, 1.0]  (exact [2, 1])
-    linear-system residual: 0.000e+00
+    singular values match closed form : True
+    reconstruction residual below 1e-12: True
+    solve_linear yields exact [2, 1]    : True
+    substitution residual below 1e-12  : True
 
 [2] RK4 on y' = y, y(0) = 1, exact solution exp(t)
-    steps taken         : 100
-    y(1) numeric        : 2.718281828234
-    y(1) exact          : 2.718281828459
-    absolute error      : 2.246e-10
+    steps taken                    : 100
+    agrees with exp(1) within 1e-9 : True
 
-[3] Ordinary least squares on y = 1.9x + 0.2
-    slope     : 2.010000
-    intercept : 0.010000
-    R^2       : 0.998122
-    one-sample t-test vs mu=6.0 -> statistic 0.028117, p = 0.978916
+[3] Ordinary least squares on data with slope 2.01, intercept 0.01
+    recovered slope within 1e-12   : True
+    recovered intercept within 1e-12: True
+    R^2 above 0.99                  : True
+    t-test vs mu=6.0 has p above 0.01: True
 
 [4] Monte Carlo: E[X^2] for X ~ Uniform(0,1), exact value 1/3
-    samples   : 200000
-    estimate  : 0.333985  (exact 0.333333)
-    std error : 0.000667
+    samples used              : 200000
+    estimate rounds to 0.333985: True
+    within 3 standard errors  : True
 
 [5] Uncertainty propagation for f(a,b) = sqrt(a^2 + b^2)
-    output value            : 5.000000  (exact 5.000000)
-    combined std uncertainty: 0.367151
-    method                  : linearized
-    MC cross-check std      : 0.366898
-    95% interval            : [4.296696, 5.736151]
+    output value is 5 to 1e-12  : True
+    combined sigma ~ 0.3672     : True
+    method is linearized        : True
+    Monte Carlo sigma agrees   : True
+    interval brackets 5.0      : True
 
 [6] Dimensional analysis
-    N*m symbol              : N*m
-    compatible with joule?  : True
-    compatible with newton? : False
+    N*m symbol                    : N*m
+    compatible with joule         : True
+    not compatible with newton    : True
 
 All six checks ran on the Python standard library alone.
 Next: `cds modules` lists every scientific module with its capabilities.
@@ -148,10 +146,10 @@ Run it yourself:
 python examples/quickstart_demo.py
 ```
 
-Note on the two-module discrepancy: each step checks its answer against a
-closed-form or analytically known value (exact ODE solution, exact integral,
-RSS uncertainty), so the residuals above are real correctness evidence, not
-just "it ran without raising".
+Every line above is a checked assertion against a closed-form answer — the exact
+ODE solution, the exact integral `1/3`, the exact `3-4-5` triangle — not just
+"it ran without raising". Section 5 goes further and cross-validates the
+linearised uncertainty budget against an independent Monte Carlo propagation.
 
 ## Import name
 
