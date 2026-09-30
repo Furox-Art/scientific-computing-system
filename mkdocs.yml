@@ -1,9 +1,10 @@
 site_name: Scientific Computing System
 site_url: https://furox-art.github.io/scientific-computing-system/
 site_description: >-
-  Pure-Python computational science platform - quantum simulation, FFT,
-  linear algebra, statistics, ODEs, symbolic math and ML from scratch,
-  with zero runtime dependencies.
+  Pure-Python scientific computing and numerical methods platform for ODE/PDE
+  solvers, statistics, uncertainty quantification, sensitivity analysis,
+  signal processing, Monte Carlo, linear algebra, symbolic math and reproducible
+  computational research, with zero runtime dependencies.
 site_author: Furox-Art
 repo_url: https://github.com/Furox-Art/scientific-computing-system
 repo_name: Furox-Art/scientific-computing-system

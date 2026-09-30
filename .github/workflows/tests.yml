@@ -63,7 +63,7 @@ jobs:
           fi
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: ./coverage.xml
           fail_ci_if_error: false
@@ -109,6 +109,10 @@ jobs:
           pip install ".[test,dev,docs,pandas,plot]" pip-audit
       - name: Audit the actually installed environment
         run: |
+          # The project itself may be a new, not-yet-published release candidate,
+          # so exclude only the local root distribution and let pip-audit evaluate
+          # the resolved third-party dependencies instead of querying PyPI for
+          # the unpublished project version.
           python -m pip freeze --exclude scientific-computing-system > resolved-ci-environment.txt
           pip-audit -r resolved-ci-environment.txt --strict
       - name: Record resolved environment for diagnostics

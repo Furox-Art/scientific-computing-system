@@ -10,7 +10,7 @@ abstract: "Pure Python computational science system with numerical methods, stat
 license: MIT
 repository-code: "https://github.com/Furox-Art/scientific-computing-system"
 url: "https://github.com/Furox-Art/scientific-computing-system"
-date-released: "2026-09-05"
+date-released: "2026-09-30"
 keywords:
   - "pure python"
   - "scientific computing"

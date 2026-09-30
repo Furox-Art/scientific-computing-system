@@ -1,4 +1,4 @@
-﻿# Static version source. Kept in lockstep with `version` in pyproject.toml and
+# Static version source. Kept in lockstep with `version` in pyproject.toml and
 # version metadata in CITATION.cff. Package-affecting changes require a
 # synchronized monotonic bump; scripts/check_version_discipline.py enforces it.
 from __future__ import annotations
