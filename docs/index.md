@@ -3,9 +3,10 @@
 <div class="cds-hero" markdown>
 <p class="cds-hero__title">Computational science, from scratch.</p>
 <p class="cds-hero__tagline">
-CDS is an open-source platform for research, simulation and discovery: 19 modules
-spanning quantum simulation, FFT, linear algebra, statistics, ODEs, symbolic math,
-machine learning and NLP, implemented in readable pure Python with
+CDS is an open-source platform for research, simulation and discovery:
+<strong>34 domain modules</strong> spanning quantum simulation, FFT, linear algebra,
+statistics, ODE/PDE solving, uncertainty quantification, Monte Carlo, symbolic
+math, machine learning and NLP, implemented in readable pure Python with
 <strong>zero runtime dependencies</strong>.
 </p>
 <div class="cds-hero__actions" markdown>
@@ -16,8 +17,14 @@ machine learning and NLP, implemented in readable pure Python with
 </div>
 
 ```bash
-pip install scientific-computing-system
-cds modules          # see what's inside
+pip install scientific-computing-system   # zero runtime dependencies
+cds modules                               # inventory of every module
+```
+
+The import name is `cds` (not `scs`). Run the verified five-minute transcript:
+
+```bash
+python examples/quickstart_demo.py
 ```
 
 ## Start here
@@ -116,4 +123,4 @@ CDS is designed for searchable, practical scientific-Python tasks such as
 - [Benchmarks](benchmarks.md)
 
 ---
-*CDS v1.6.0 is stable and actively developed. Contributions are welcome!*
+*CDS is stable and actively developed. Contributions are welcome!*

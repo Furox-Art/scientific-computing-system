@@ -2,8 +2,8 @@
 # Distribution name. Formerly published as "cognitive-discovery-system";
 # the import name stays `cds`. Keep the old PyPI project alive as an alias.
 name = "scientific-computing-system"
-version = "2.1.0"
-description = "A pure-Python computational science platform for numerical methods, modeling, validation, uncertainty, scientific workflows, dimensional analysis, and optional research-data backends. Zero runtime dependencies."
+version = "2.1.1"
+description = "Pure-Python scientific computing: linear algebra, ODE/PDE solvers, quadrature, statistics, uncertainty quantification, Monte Carlo, signals, quantum and ML. Zero runtime dependencies."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -11,21 +11,91 @@ requires-python = ">=3.10"
 authors = [
     {name = "Furox-Art", email = "furkanarkn1451@gmail.com"}
 ]
-keywords = ["quantum", "machine-learning", "nlp", "signal-processing", "optimization", "statistics", "probability", "scientific-computing", "numerical-methods", "numerical-integration", "differential-equations", "monte-carlo", "graph-theory", "knowledge-graph", "symbolic-math", "data-analysis", "physics", "linear-algebra", "hypothesis-generation", "pure-python", "reproducibility", "uncertainty-quantification", "sensitivity-analysis", "dimensional-analysis", "scientific-workflows", "ode", "pde"]
+keywords = [
+    # Core scientific-computing terms used in PyPI search.
+    "scientific-computing",
+    "numerical-methods",
+    "numerical-analysis",
+    "computational-science",
+    "linear-algebra",
+    "numerical-integration",
+    "quadrature",
+    "differential-equations",
+    "ode",
+    "ode-solver",
+    "pde",
+    "interpolation",
+    "optimization",
+    "numerical-optimization",
+    "statistics",
+    "probability",
+    "bayesian-inference",
+    "hypothesis-testing",
+    "regression",
+    "time-series",
+    "monte-carlo",
+    "markov-chain-monte-carlo",
+    "uncertainty-quantification",
+    "error-propagation",
+    "sensitivity-analysis",
+    "dimensional-analysis",
+    "units",
+    "signal-processing",
+    "fourier-transform",
+    "wavelet",
+    "filtering",
+    "matplotlib",
+    "quantum-computing",
+    "quantum-simulation",
+    "machine-learning",
+    "linear-regression",
+    "logistic-regression",
+    "pca",
+    "clustering",
+    "symbolic-math",
+    "graph-algorithms",
+    "information-theory",
+    "causal-inference",
+    "model-validation",
+    "data-analysis",
+    "physics",
+    "chemistry",
+    "natural-language-processing",
+    "transformers",
+    "scientific-workflows",
+    "reproducibility",
+    "provenance",
+    "hypothesis-generation",
+    # Differentiator: no compiled extensions, no runtime dependencies.
+    "pure-python",
+    "no-dependencies",
+    "zero-dependencies",
+    "educational",
+    "teaching",
+]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
     "Intended Audience :: Developers",
+    "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Mathematics",
     "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Information Analysis",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Education",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
@@ -148,9 +218,21 @@ cds = "cds.cli:main"
 Homepage = "https://github.com/Furox-Art/scientific-computing-system"
 Repository = "https://github.com/Furox-Art/scientific-computing-system"
 Documentation = "https://furox-art.github.io/scientific-computing-system/"
+"Getting Started" = "https://furox-art.github.io/scientific-computing-system/getting-started/"
+"Cookbook" = "https://furox-art.github.io/scientific-computing-system/cookbook/"
+"API Reference" = "https://furox-art.github.io/scientific-computing-system/api/"
+"Benchmarks" = "https://furox-art.github.io/scientific-computing-system/benchmarks/"
+"Source Code" = "https://github.com/Furox-Art/scientific-computing-system"
+"Issue Tracker" = "https://github.com/Furox-Art/scientific-computing-system/issues"
+"Discussions" = "https://github.com/Furox-Art/scientific-computing-system/discussions"
+"Security Policy" = "https://github.com/Furox-Art/scientific-computing-system/security/policy"
+"Changelog" = "https://github.com/Furox-Art/scientific-computing-system/blob/main/CHANGELOG.md"
+"Releases" = "https://github.com/Furox-Art/scientific-computing-system/releases"
+"Continuous Integration" = "https://github.com/Furox-Art/scientific-computing-system/actions/workflows/tests.yml"
+"Coverage" = "https://codecov.io/gh/Furox-Art/scientific-computing-system"
 "PyPI" = "https://pypi.org/project/scientific-computing-system/"
-Issues = "https://github.com/Furox-Art/scientific-computing-system/issues"
-Changelog = "https://github.com/Furox-Art/scientific-computing-system/releases"
+"npm" = "https://www.npmjs.com/package/scientific-computing-system"
+"Related NumPy/SciPy Package" = "https://github.com/Furox-Art/scientific-computing-system-2.0"
 
 [build-system]
 requires = ["hatchling==1.31.0"]

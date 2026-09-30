@@ -127,6 +127,7 @@ nav:
       - Cookbook: cookbook.md
       - ML Reference Values: ml_reference.md
       - Architecture: ARCHITECTURE.md
+      - Why Pure Python: why-pure-python.md
   - Research:
       - Research Workflows: research-workflows.md
       - Case Studies:

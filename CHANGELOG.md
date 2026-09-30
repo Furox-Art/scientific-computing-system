@@ -7,6 +7,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.1.1] - 2026-10-01
+
+Discoverability and documentation release. No runtime API or numerical
+behaviour changes; the package version is bumped because
+`scripts/check_version_discipline.py` requires a monotonic bump for any
+change to `pyproject.toml`.
+
+### Fixed
+
+- **README quickstart was not runnable.** The Quick Start block imported
+  `scs.linear_algebra`, `scs.ode` and `scs.stats`. No `scs` package exists
+  (the distribution is `scientific-computing-system`, the import name is
+  `cds`), and there is no `cds.linear_algebra` or `cds.ode` module — the
+  real modules are `cds.math_utils` and `cds.diffeq`, and `cds.stats` has no
+  `bayesian_posterior`. Every reader who copied the snippet got an immediate
+  `ModuleNotFoundError`. The README now uses verified calls, and
+  `tests/test_docs_and_metadata.py` executes every README `python` block and
+  resolves its imports so the class of mistake cannot return.
+- **`docs/why-pure-python.md` was unreachable.** The page existed on disk but
+  was absent from the mkdocs `nav`, so the site's best answer to "why not
+  NumPy?" was never rendered into the navigation. Now linked under Reference.
+- **Stale counts in user-facing docs.** `docs/index.md` claimed 19 modules
+  (there are 34 domain subpackages) and closed with "v1.6.0 is stable";
+  `docs/getting-started.md` and `CONTRIBUTING.md` claimed a fixed "1441
+  tests" that no longer matches the suite. All now state the verifiable
+  figure or show how to obtain it.
+- **`docs/index.md` module table was incomplete.** It omitted 14 shipped
+  domain subpackages, including `cds.uncertainty`, `cds.units`,
+  `cds.validation` and `cds.workflow`.
+
+### Added
+
+- **`examples/quickstart_demo.py`** — a runnable five-minute tour covering
+  linear algebra (SVD with an explicit `A = USVt` reconstruction residual),
+  ODE solving (RK4 against the exact solution `exp(t)`), statistics (least
+  squares plus a t-test), Monte Carlo (`E[X^2]` against its exact value
+  `1/3`), uncertainty propagation (linearised vs Monte Carlo cross-check),
+  and dimensional analysis. Fully seeded, so the transcript is byte-identical
+  on every run and platform.
+- **README first-screen rewrite**: a "Why this library" section stating the
+  differentiators and the honest performance tradeoff, the install command
+  with the optional extras spelled out, the verified quickstart transcript, a
+  table of every supported scientific domain mapped to its module, and links
+  to docs, tutorials, cookbook, API reference, case studies, benchmarks,
+  security policy, changelog and the sibling NumPy/SciPy project.
+- **Adoption path and troubleshooting table** in the README: a 2-minute trial
+  command, a 15-minute "check it against a number you already trust" path,
+  and 9 concrete failure modes including the `scs`-vs-`cds` import
+  confusion and the `estimate_pi` `ProcessPoolExecutor` `__main__` guard.
+- **`tests/test_docs_and_metadata.py`** — 38 deterministic, network-free
+  checks pinning documentation and packaging claims: README imports resolve,
+  the README transcript equals the quickstart script's real stdout, inline
+  `# expected` comments match actual execution, badge targets exist, every
+  `project.urls` entry is well-formed and resolves in-repo, `requires-python`
+  agrees with the classifiers, advertised Python versions appear in the CI
+  matrix, `Typing :: Typed` has a real `py.typed`, and no docs page is
+  orphaned from the nav. Includes guards rejecting fabricated social-proof
+  claims and unearned Scorecard/SLSA badges.
+
+### Changed
+
+- **`project.urls`** expanded from 6 to 16 entries, adding Getting Started,
+  Cookbook, API Reference, Benchmarks, Source Code, Issue Tracker,
+  Discussions, Security Policy, Changelog, Releases, Continuous Integration,
+  Coverage, npm, and the related NumPy/SciPy package.
+- **Classifiers** gained `Intended Audience :: Education`,
+  `Natural Language :: English`, `:: 3 :: Only`,
+  `:: Implementation :: CPython`, and the Chemistry, Astronomy,
+  Bio-Informatics, Information Analysis and Education topics.
+- **Keywords** restructured into commented groups and expanded with
+  differentiating terms (`numerical-analysis`, `computational-science`,
+  `quadrature`, `interpolation`, `error-propagation`, `bayesian-inference`,
+  `regression`, `markov-chain-monte-carlo`, `dimensional-analysis`,
+  `units`, `fourier-transform`, `causal-inference`, `model-validation`,
+  `provenance`, `no-dependencies`, `zero-dependencies`, `educational`,
+  `teaching`). Every shipped domain subpackage now has a keyword or a
+  verified search synonym, enforced by test.
+- **Description** rewritten to lead with the concrete domains instead of the
+  abstract "cognitive discovery" framing.
+- `docs/getting-started.md` now opens with the released-package install path
+  (`pip install scientific-computing-system`) and separates it from the
+  development checkout, which had been the only documented route.
+
 ## [v2.0.1] - 2026-09-29
 
 Metadata-only patch release for improved PyPI discoverability. No runtime API or numerical behavior changes.

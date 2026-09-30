@@ -1,14 +1,63 @@
 # Getting Started
 
-## Installation
+## Getting Started
+
+Two install paths: the released package (recommended for use), or a source
+checkout (for development). Pick one.
+
+## Install the released package
+
+```bash
+pip install scientific-computing-system
+```
+
+Requires Python 3.10+. The core has **zero runtime dependencies**, so this is the
+only command needed for everything on this page. Optional extras are opt-in:
+
+```bash
+pip install "scientific-computing-system[pandas,plot]"   # pandas interop, matplotlib plots
+pip install "scientific-computing-system[scientific,io]"  # NumPy/SciPy adapters, HDF5/NetCDF
+```
+
+Verify the install and see the full module inventory:
+
+```bash
+python -c "import cds; print(cds.__version__)"
+cds modules
+```
+
+## Install from source (development)
 
 ```bash
 git clone https://github.com/Furox-Art/scientific-computing-system.git
 cd scientific-computing-system
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
+pip install -e ".[dev,test,docs]"
 ```
+
+## Five-minute quickstart
+
+Run the verified transcript end to end — linear algebra, ODE solving,
+statistics, Monte Carlo, uncertainty propagation and dimensional analysis, all on
+the standard library:
+
+```bash
+python examples/quickstart_demo.py
+```
+
+The smallest possible first check, if you just want to confirm the install:
+
+```python
+from cds.math_utils import svd
+
+print(svd([[4.0, 1.0, 0.0], [1.0, 3.0, 1.0], [0.0, 1.0, 2.0]]).singular_values)
+# [4.732050807568878, 3.0, 1.2679491924311226]
+```
+
+> **Note:** the distribution is `scientific-computing-system` but the **import
+> name is `cds`**. There is no `scs` module — `from scs.math_utils import svd`
+> raises `ModuleNotFoundError`.
 
 ## Quick Usage
 
@@ -103,12 +152,29 @@ x = solve_linear([[2, 1], [4, 3]], [5, 11])
 print(x)  # [2.0, 1.0]
 ```
 
+## Troubleshooting
+
+| Symptom | Cause and fix |
+|---------|---------------|
+| `ModuleNotFoundError: No module named 'scs'` | The import name is `cds`, not `scs`. |
+| `ModuleNotFoundError: No module named 'cds'` | Not installed in the active environment. Check with `python -m pip show scientific-computing-system`. |
+| `command not found: cds` | The CLI entry point is not on `PATH`. Activate your venv, or run `python -m cds`. |
+| `ImportError` from `cds.plot`, `cds.data_io`, `cds.tools` | Optional backend missing — install the extra: `pip install "scientific-computing-system[plot,io,scientific]"`. |
+| `estimate_pi` raises about `__main__` on Windows/macOS | `estimate_pi` uses `ProcessPoolExecutor`, which needs an `if __name__ == "__main__":` guard on spawn-based platforms. Use `mc_expectation` / `mc_integrate` for single-process work. |
+| Results differ from the docs | Pin the version: `pip install "scientific-computing-system==2.1.1"`. |
+
 ## Running Tests
 
 ```bash
-pytest           # run all 1441 tests (see CI)
+pytest           # run the full suite
 pytest -v        # verbose output
 pytest -x        # stop on first failure
+```
+
+Get the exact current count (it grows over time):
+
+```bash
+pytest --collect-only -q | tail -1
 ```
 
 ## Running Examples
@@ -179,7 +245,7 @@ src/cds/
 ├── core/                # Shared models, config
 └── cli/                 # Command-line interface (argparse, zero-dependency)
 
-examples/                # Runnable demo scripts
-tests/                   # 1441 tests (see CI)
+examples/                # Runnable demo scripts (incl. quickstart_demo.py)
+tests/                   # Test suite (exact count via CI or pytest --collect-only)
 docs/                    # Documentation, API reference, benchmarks
 ```

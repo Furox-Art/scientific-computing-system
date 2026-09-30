@@ -34,7 +34,7 @@ pip install -e ".[dev,test]"
 pip install pre-commit
 pre-commit install
 
-# Run tests (1441 tests, see CI)
+# Run tests (exact count: pytest --collect-only -q | tail -1)
 pytest
 
 # Run linter
