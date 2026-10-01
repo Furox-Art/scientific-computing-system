@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import importlib
 import io
+import os
 import re
 import subprocess
 import sys
@@ -986,27 +987,41 @@ def test_readme_module_table_matches_the_cli_inventory() -> None:
 # --------------------------------------------------------------------------
 
 
-def _run_python_block_as_script(block: str, index: int) -> subprocess.CompletedProcess[str]:
+def _run_python_block_as_script(
+    block: str, index: int, *, encoding: str = "utf-8"
+) -> subprocess.CompletedProcess[str]:
     """Execute a code block as a standalone script in a temp directory.
 
     Running as a real script (rather than ``exec`` inside the test process) is
     the honest check: it reproduces ``__name__ == "__main__"``, which is what
     ``multiprocessing`` spawn-based platforms require. It also keeps a runaway
     snippet from taking the test session down with it.
+
+    ``encoding`` pins the child's ``PYTHONIOENCODING``. Windows CI runners
+    default to a legacy console codec, so a snippet printing a non-ASCII
+    character raises ``UnicodeEncodeError`` there and nowhere else -- exactly
+    the kind of platform-specific docs breakage that a Linux-only local run
+    never surfaces. See ``test_docs_python_blocks_run_on_a_legacy_console_codec``.
     """
     with tempfile.TemporaryDirectory(prefix="cds-docs-block-") as temp_dir:
         script = Path(temp_dir) / f"block_{index}.py"
         script.write_text(block, encoding="utf-8")
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = encoding
         return subprocess.run(
             [sys.executable, str(script)],
             capture_output=True,
             text=True,
             check=False,
             timeout=600,
+            env=env,
         )
 
 
-@pytest.mark.parametrize("page", ["getting-started.md", "index.md", "why-pure-python.md"])
+ENTRY_DOC_PAGES = ["getting-started.md", "index.md", "why-pure-python.md"]
+
+
+@pytest.mark.parametrize("page", ENTRY_DOC_PAGES)
 def test_docs_python_blocks_execute(page: str) -> None:
     """Every ``python`` block on the entry-point docs pages must run clean.
 
@@ -1021,4 +1036,41 @@ def test_docs_python_blocks_execute(page: str) -> None:
         result = _run_python_block_as_script(block, index)
         assert result.returncode == 0, (
             f"docs/{page} python block {index} exited {result.returncode}:\n{result.stderr[-2000:]}"
+        )
+
+
+@pytest.mark.parametrize("page", ENTRY_DOC_PAGES)
+def test_docs_python_blocks_run_on_a_legacy_console_codec(page: str) -> None:
+    """Docs blocks must not depend on a UTF-8 console to run.
+
+    A default Windows console uses a legacy single-byte codec that cannot
+    encode symbols like ``π``, ``∫`` or ``≈``. A reader who pastes a snippet
+    that prints one gets ``UnicodeEncodeError`` instead of a result. This
+    reproduced on the Windows CI matrix and on no other platform, so the
+    blocks are run under ``cp1252`` explicitly.
+
+    Note the guard does not rescue the snippet: the child process dies before
+    stdout is produced, so this fails loudly rather than silently truncating.
+    """
+    text = (DOCS / page).read_text(encoding="utf-8")
+    blocks = _fenced_blocks(text, "python")
+    for index, block in enumerate(blocks):
+        result = _run_python_block_as_script(block, index, encoding="cp1252")
+        assert result.returncode == 0, (
+            f"docs/{page} python block {index} fails on a legacy (cp1252) console codec, "
+            "so a reader on a default Windows terminal cannot run it:\n"
+            f"{result.stderr[-2000:]}\n"
+            "Use ASCII labels in printed output."
+        )
+
+
+def test_readme_python_blocks_run_on_a_legacy_console_codec() -> None:
+    """The README quickstart must also be console-codec independent."""
+    readme = _readme_text()
+    for index, block in enumerate(_fenced_blocks(readme, "python")):
+        result = _run_python_block_as_script(block, index, encoding="cp1252")
+        assert result.returncode == 0, (
+            f"README python block {index} fails on a legacy (cp1252) console codec:\n"
+            f"{result.stderr[-2000:]}\n"
+            "Use ASCII labels in printed output."
         )

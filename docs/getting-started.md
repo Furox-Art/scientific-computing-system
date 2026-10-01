@@ -137,6 +137,10 @@ print(dist)  # {0: 0.0, 1: 1.0, 2: 3.0}
 # it must run inside an `if __name__ == "__main__":` guard (spawn-based
 # platforms re-import the main module in each worker). `mc_integrate` /
 # `mc_expectation` are single-process and need no guard.
+#
+# Labels are ASCII on purpose: a default Windows console uses the cp1252
+# codec, which cannot encode symbols like pi or the integral sign and raises
+# UnicodeEncodeError. See the troubleshooting table below.
 from cds.montecarlo import mc_integrate
 
 
@@ -144,16 +148,17 @@ if __name__ == "__main__":
     from cds.montecarlo import estimate_pi
 
     result = estimate_pi(n_samples=50_000, seed=42)
-    print(f"π ≈ {result.estimate:.4f}")
+    print(f"pi ~= {result.estimate:.4f}")
 
-print(f"∫₀¹ x² dx ≈ {mc_integrate(lambda x: x**2, 0.0, 1.0, 50_000, seed=42).estimate:.4f}")
+integral = mc_integrate(lambda x: x**2, 0.0, 1.0, 50_000, seed=42)
+print(f"integral of x^2 over [0,1] ~= {integral.estimate:.4f}  (exact 0.3333)")
 
 # Differential equations
 from cds.diffeq import rk4
 import math
 
 sol = rk4(lambda t, y: -y, 0, 1.0, 1.0)
-print(f"e^-1 ≈ {sol.y[-1]:.6f}")  # 0.367879
+print(f"e^-1 ~= {sol.y[-1]:.6f}")  # 0.367879
 
 # Linear algebra
 from cds.math_utils import solve_linear, power_iteration
@@ -171,6 +176,7 @@ print(x)  # [2.0, 1.0]
 | `command not found: cds` | The CLI entry point is not on `PATH`. Activate your venv, or run `python -m cds`. |
 | `ImportError` from `cds.plot`, `cds.data_io`, `cds.tools` | Optional backend missing — install the extra: `pip install "scientific-computing-system[plot,io,scientific]"`. |
 | `estimate_pi` raises about `__main__` on Windows/macOS | `estimate_pi` uses `ProcessPoolExecutor`, which needs an `if __name__ == "__main__":` guard on spawn-based platforms. Use `mc_expectation` / `mc_integrate` for single-process work. |
+| `UnicodeEncodeError: 'charmap' codec can't encode character` when printing | A default Windows console uses a legacy single-byte codec that cannot encode symbols such as `π` or `≈`. Use ASCII labels in `print()`, or run `set PYTHONIOENCODING=utf-8` first. |
 | Results differ from the docs | Pin the version: `pip install "scientific-computing-system==2.1.1"`. |
 
 ## Running Tests

@@ -25,6 +25,18 @@ change to `pyproject.toml`.
   `ModuleNotFoundError`. The README now uses verified calls, and
   `tests/test_docs_and_metadata.py` executes every README `python` block and
   resolves its imports so the class of mistake cannot return.
+- **`docs/getting-started.md` snippets failed on Windows.** The page called
+  `estimate_pi` at module scope; that function uses `ProcessPoolExecutor`,
+  which re-imports `__main__` on spawn-based platforms, so the page's own
+  Python block raised on Windows and macOS. The call is now inside an
+  `if __name__ == "__main__":` guard, with a seeded single-process
+  `mc_integrate` call alongside it.
+- **`docs/getting-started.md` snippets failed on a legacy console codec.**
+  They printed `π`, `∫₀¹` and `≈`. A default Windows terminal uses a
+  single-byte codec that cannot encode those, so pasting the snippet raised
+  `UnicodeEncodeError` instead of showing a result. Printed labels are now
+  ASCII, and the troubleshooting table documents the `PYTHONIOENCODING`
+  workaround for user code that still needs non-ASCII output.
 - **`docs/why-pure-python.md` was unreachable.** The page existed on disk but
   was absent from the mkdocs `nav`, so the site's best answer to "why not
   NumPy?" was never rendered into the navigation. Now linked under Reference.
@@ -60,7 +72,7 @@ change to `pyproject.toml`.
   command, a 15-minute "check it against a number you already trust" path,
   and 9 concrete failure modes including the `scs`-vs-`cds` import
   confusion and the `estimate_pi` `ProcessPoolExecutor` `__main__` guard.
-- **`tests/test_docs_and_metadata.py`** — 59 deterministic, network-free
+- **`tests/test_docs_and_metadata.py`** — 63 deterministic, network-free
   checks pinning documentation and packaging claims. Import checking resolves
   every *name*, not just every module, so an import of a real module that
   names a nonexistent symbol is caught. The README transcript must equal the
@@ -73,9 +85,9 @@ change to `pyproject.toml`.
   under `src/cds`, the docs module table must list every shipped module, the
   README's quoted `cds modules` table must match live CLI output, every
   `python` block on the entry-point docs pages must execute as a standalone
-  script, and no docs page may be orphaned from the nav. Includes guards
-  rejecting fabricated social-proof claims and unearned Scorecard/SLSA
-  badges.
+  script both under UTF-8 and under a legacy `cp1252` console codec, and no
+  docs page may be orphaned from the nav. Includes guards rejecting fabricated
+  social-proof claims and unearned Scorecard/SLSA badges.
 
 ### Changed
 
