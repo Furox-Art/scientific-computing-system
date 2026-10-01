@@ -29,13 +29,17 @@ change to `pyproject.toml`.
   was absent from the mkdocs `nav`, so the site's best answer to "why not
   NumPy?" was never rendered into the navigation. Now linked under Reference.
 - **Stale counts in user-facing docs.** `docs/index.md` claimed 19 modules
-  (there are 34 domain subpackages) and closed with "v1.6.0 is stable";
+  (there are 36 importable domain modules: 34 subpackages plus the single-file
+  `cds.causal` and `cds.sensitivity`) and closed with "v1.6.0 is stable";
   `docs/getting-started.md` and `CONTRIBUTING.md` claimed a fixed "1441
   tests" that no longer matches the suite. All now state the verifiable
   figure or show how to obtain it.
-- **`docs/index.md` module table was incomplete.** It omitted 14 shipped
-  domain subpackages, including `cds.uncertainty`, `cds.units`,
-  `cds.validation` and `cds.workflow`.
+- **`docs/index.md` module table was incomplete.** It omitted 17 shipped
+  modules, including `cds.uncertainty`, `cds.units`, `cds.validation`,
+  `cds.workflow`, `cds.provenance`, `cds.data_io`, `cds.tools`,
+  `cds.bayes`, `cds.infotheory`, `cds.interpolate`, `cds.pde`,
+  `cds.wavelets`, `cds.fractals`, `cds.genetics`, `cds.causal`,
+  `cds.sensitivity` and `cds.cli`. All 36 are now listed.
 
 ### Added
 
@@ -56,22 +60,31 @@ change to `pyproject.toml`.
   command, a 15-minute "check it against a number you already trust" path,
   and 9 concrete failure modes including the `scs`-vs-`cds` import
   confusion and the `estimate_pi` `ProcessPoolExecutor` `__main__` guard.
-- **`tests/test_docs_and_metadata.py`** — 38 deterministic, network-free
-  checks pinning documentation and packaging claims: README imports resolve,
-  the README transcript equals the quickstart script's real stdout, inline
-  `# expected` comments match actual execution, badge targets exist, every
-  `project.urls` entry is well-formed and resolves in-repo, `requires-python`
-  agrees with the classifiers, advertised Python versions appear in the CI
-  matrix, `Typing :: Typed` has a real `py.typed`, and no docs page is
-  orphaned from the nav. Includes guards rejecting fabricated social-proof
-  claims and unearned Scorecard/SLSA badges.
+- **`tests/test_docs_and_metadata.py`** — 59 deterministic, network-free
+  checks pinning documentation and packaging claims. Import checking resolves
+  every *name*, not just every module, so an import of a real module that
+  names a nonexistent symbol is caught. The README transcript must equal the
+  quickstart script's real stdout, inline `# expected` comments must match
+  actual execution, badge targets must exist, every `project.urls` entry must
+  be well-formed and resolve in-repo, `requires-python` must agree with the
+  classifiers, advertised Python versions must appear in the CI matrix,
+  `Typing :: Typed` must have a real `py.typed`, classifiers must be published
+  PyPI trove codes, the "N domain modules" headline must equal the real count
+  under `src/cds`, the docs module table must list every shipped module, the
+  README's quoted `cds modules` table must match live CLI output, every
+  `python` block on the entry-point docs pages must execute as a standalone
+  script, and no docs page may be orphaned from the nav. Includes guards
+  rejecting fabricated social-proof claims and unearned Scorecard/SLSA
+  badges.
 
 ### Changed
 
-- **`project.urls`** expanded from 6 to 16 entries, adding Getting Started,
-  Cookbook, API Reference, Benchmarks, Source Code, Issue Tracker,
-  Discussions, Security Policy, Changelog, Releases, Continuous Integration,
-  Coverage, npm, and the related NumPy/SciPy package.
+- **`project.urls`** expanded from 6 to 18 entries. The 6 original labels are
+  retained (Homepage, Repository, Documentation, PyPI, plus Issues and
+  Changelog, whose targets were corrected to point at the right destinations);
+  12 labels were added: Getting Started, Cookbook, API Reference, Benchmarks,
+  Source Code, Issue Tracker, Discussions, Security Policy, Releases,
+  Continuous Integration, Coverage, npm, and the related NumPy/SciPy package.
 - **Classifiers** gained `Intended Audience :: Education`,
   `Natural Language :: English`, `:: 3 :: Only`,
   `:: Implementation :: CPython`, and the Chemistry, Astronomy,

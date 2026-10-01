@@ -133,10 +133,20 @@ dist, _ = dijkstra(g, 0)
 print(dist)  # {0: 0.0, 1: 1.0, 2: 3.0}
 
 # Monte Carlo
-from cds.montecarlo import estimate_pi
+# `estimate_pi` parallelises with ProcessPoolExecutor, so on Windows and macOS
+# it must run inside an `if __name__ == "__main__":` guard (spawn-based
+# platforms re-import the main module in each worker). `mc_integrate` /
+# `mc_expectation` are single-process and need no guard.
+from cds.montecarlo import mc_integrate
 
-result = estimate_pi(n_samples=50_000, seed=42)
-print(f"π ≈ {result.estimate:.4f}")
+
+if __name__ == "__main__":
+    from cds.montecarlo import estimate_pi
+
+    result = estimate_pi(n_samples=50_000, seed=42)
+    print(f"π ≈ {result.estimate:.4f}")
+
+print(f"∫₀¹ x² dx ≈ {mc_integrate(lambda x: x**2, 0.0, 1.0, 50_000, seed=42).estimate:.4f}")
 
 # Differential equations
 from cds.diffeq import rk4

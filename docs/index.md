@@ -4,7 +4,7 @@
 <p class="cds-hero__title">Computational science, from scratch.</p>
 <p class="cds-hero__tagline">
 CDS is an open-source platform for research, simulation and discovery:
-<strong>34 domain modules</strong> spanning quantum simulation, FFT, linear algebra,
+<strong>36 domain modules</strong> spanning quantum simulation, FFT, linear algebra,
 statistics, ODE/PDE solving, uncertainty quantification, Monte Carlo, symbolic
 math, machine learning and NLP, implemented in readable pure Python with
 <strong>zero runtime dependencies</strong>.
@@ -109,8 +109,25 @@ CDS is designed for searchable, practical scientific-Python tasks such as
 | `cds.diffeq` | ODE solvers (Euler, RK4, midpoint) |
 | `cds.numerical_integration` | Deterministic quadrature (trapezoid, Simpson, Romberg) + 2-D tensor-product rules (Simpson, Gauss-Legendre) |
 | `cds.nlp` | Educational NLP from scratch (BPE, embeddings, attention, autograd, MiniGPT) |
-| `cds.hypothesis` | Cognitive discovery and structured hypothesis generation |
+| `cds.hypothesis` | Structured scientific hypothesis generation and statistical evaluation |
 | `cds.plot` | Optional matplotlib charts (series, scatter, regression, spectra, ACF, seasonal, heatmaps, …) via `cds[plot]` |
+| `cds.uncertainty` | Measurement-uncertainty representation and propagation (linearised & Monte Carlo) |
+| `cds.sensitivity` | Local/global sensitivity, variance-based screening and identifiability analysis |
+| `cds.causal` | Conservative, assumption-gated causal effect estimators |
+| `cds.units` | SI units, conversions and dimensional-analysis compatibility checks |
+| `cds.validation` | Scientific validation, cross-method checking, distribution drift and final audit |
+| `cds.workflow` | Approval-gated scientific workflow orchestration |
+| `cds.provenance` | Reproducibility manifests, hashes, tool versions and local checkpoints |
+| `cds.data_io` | Memory-bounded streaming file I/O plus lazy HDF5/NetCDF backends via `cds[io]` |
+| `cds.tools` | Capability discovery and adapters for optional NumPy/SciPy/SymPy/Z3 backends |
+| `cds.bayes` | Bayesian conjugate analysis (pure Python) |
+| `cds.infotheory` | Information-theory measures (entropy, divergence, dependence) |
+| `cds.interpolate` | 1-D interpolation (`interp1d`) and bilinear `interp2d` on regular grids |
+| `cds.pde` | Finite-difference PDE solvers on uniform 1-D grids (heat & wave, CFL/stability guarded) |
+| `cds.wavelets` | Haar wavelet transform (`dwt`/`idwt`), orthonormal with perfect reconstruction |
+| `cds.fractals` | Fractal geometry (escape-time and IFS fractals) |
+| `cds.genetics` | DNA sequence analysis |
+| `cds.cli` | Stdlib `argparse` command-line interface (`cds --help`) |
 
 ## Quick Navigation
 

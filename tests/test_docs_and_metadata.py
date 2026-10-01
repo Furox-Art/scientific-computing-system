@@ -14,6 +14,9 @@ Covered:
 
 * ``README.md`` import statements resolve against the installed package, so the
   quickstart cannot advertise a ``scs`` module that does not exist.
+* Every *imported name* -- not just every module -- resolves, across the README
+  and the top-level docs pages. Resolving the module alone would still have
+  passed the original README's invented ``bayesian_posterior``.
 * The README transcript block is byte-identical to what
   ``examples/quickstart_demo.py`` actually prints.
 * README badges point at workflows and files that are present in this repo.
@@ -21,15 +24,22 @@ Covered:
   well-formed absolute URL.
 * Metadata self-consistency: `requires-python`, the Python classifiers, the
   license, the zero-dependency claim and the PyPI install command.
+* Classifiers are published PyPI trove codes, not merely well-formed strings.
+* The "N domain modules" headline equals the real count under ``src/cds``, and
+  the docs module table lists every shipped module.
+* Every ``python`` block on the entry-point docs pages executes as a standalone
+  script.
 * Every docs page on disk is reachable from the mkdocs ``nav``.
 """
 
 from __future__ import annotations
 
+import importlib
 import io
 import re
 import subprocess
 import sys
+import tempfile
 from contextlib import redirect_stdout
 from pathlib import Path
 from urllib.parse import urlparse
@@ -151,6 +161,78 @@ def _python_import_statements(text: str) -> list[str]:
     return statements
 
 
+def _imported_symbols(text: str) -> list[tuple[str, tuple[str, ...]]]:
+    """Every ``from <module> import <names>`` as (module, names) pairs.
+
+    Resolving the module alone is not enough. ``from cds.stats import
+    bayesian_posterior`` imports a real module and then fails on the missing
+    attribute, so the *names* have to be checked too. This is the exact defect
+    the original README shipped: ``from scs.stats import bayesian_posterior``
+    looked plausible and named a function that does not exist.
+
+    Parenthesised multi-line imports are joined first, and ``as`` aliases are
+    reduced to their original name.
+    """
+    joined = re.sub(r"\(\s*([^)]*?)\s*\)", r"\1", text)
+    pattern = re.compile(r"^\s*from\s+([\w.]+)\s+import\s+(.+)$", re.MULTILINE)
+    pairs: list[tuple[str, tuple[str, ...]]] = []
+    for line in joined.splitlines():
+        # Strip a trailing line comment before parsing; a name is an identifier,
+        # so anything after `#` is prose, not part of the import list.
+        code = line.split("#", 1)[0]
+        match = pattern.match(code)
+        if not match:
+            continue
+        module, raw = match.group(1), match.group(2)
+        if raw.strip() == "*":
+            continue
+        names: list[str] = []
+        for part in raw.split(","):
+            token = part.strip()
+            if not token or not token.isidentifier():
+                continue
+            # `name as alias` -> `name`
+            names.append(token.split(" as ")[0].strip())
+        if names:
+            pairs.append((module, tuple(names)))
+    return pairs
+
+
+def _resolve_imported_names(text: str, *, source: str, require_imports: bool = False) -> None:
+    """Every documented ``from cds... import y`` must have a real ``cds.y``.
+
+    Only first-party imports are checked. Third-party references such as
+    ``from sklearn.cluster import KMeans`` in the ML reference page name the
+    optional ``[scientific]`` backends, which are legitimately absent from a
+    core-only environment -- asserting on them would make this test depend on
+    which extras happen to be installed.
+
+    Raises ``AssertionError`` listing all unresolvable names at once, so a
+    single run reports every broken snippet rather than one per attempt.
+
+    ``require_imports`` guards against the check silently going vacuous on a
+    page that *should* carry importable code (the README). Prose-only pages
+    pass ``False`` and are simply skipped when they have nothing to verify.
+    """
+    broken: list[str] = []
+    checked = 0
+    for module_name, names in _imported_symbols(text):
+        if module_name != IMPORT_NAME and not module_name.startswith(f"{IMPORT_NAME}."):
+            continue
+        checked += 1
+        try:
+            module = importlib.import_module(module_name)
+        except ImportError as exc:
+            broken.append(f"{module_name} (cannot import: {exc})")
+            continue
+        for name in names:
+            if not hasattr(module, name):
+                broken.append(f"{module_name}.{name}")
+    if require_imports:
+        assert checked, f"{source} has no `from cds... import ...` statements to verify"
+    assert not broken, f"{source} imports names that do not exist: {sorted(broken)}"
+
+
 # --------------------------------------------------------------------------
 # README: the quickstart must be runnable
 # --------------------------------------------------------------------------
@@ -160,6 +242,30 @@ def test_readme_python_blocks_exist() -> None:
     """Guard the guard: a regex that silently matches nothing is not a test."""
     blocks = _fenced_blocks(_readme_text(), "python")
     assert len(blocks) >= 1, "README has no ```python block; the quickstart is missing"
+
+
+def test_readme_imported_names_all_resolve() -> None:
+    """Every ``from cds.X import name`` in the README must name a real symbol.
+
+    ``test_readme_import_statements_resolve`` only checks that the *module*
+    imports. That is too weak: the original README's
+    ``from scs.stats import bayesian_posterior`` failed at the module level,
+    but a plausible-looking ``from cds.stats import bayesian_posterior``
+    would import fine and then raise ``AttributeError`` at the next line.
+    """
+    readme = _readme_text()
+    _resolve_imported_names(readme, source="README.md", require_imports=True)
+
+
+@pytest.mark.parametrize("page", sorted(p.name for p in DOCS.glob("*.md")))
+def test_docs_getting_started_and_index_imported_names_resolve(page: str) -> None:
+    """Every documented import name on the top-level docs pages must resolve.
+
+    Covers ``docs/getting-started.md`` and ``docs/index.md``, the two pages a
+    new reader is most likely to copy code from.
+    """
+    text = (DOCS / page).read_text(encoding="utf-8")
+    _resolve_imported_names(text, source=f"docs/{page}")
 
 
 @pytest.mark.parametrize("statement", _python_import_statements(_readme_text()))
@@ -582,7 +688,7 @@ def test_keywords_cover_the_scientific_domains_the_package_actually_has() -> Non
     )
 
 
-def test_classifiers_are_valid_trove_codes() -> None:
+def test_classifiers_are_well_formed() -> None:
     """Classifiers must be well-formed ``A :: B`` codes with real top-levels."""
     top_levels = {
         "Development Status",
@@ -596,11 +702,38 @@ def test_classifiers_are_valid_trove_codes() -> None:
         "Topic",
         "Typing",
     }
-    for classifier in _string_array("classifiers"):
+    classifiers = _string_array("classifiers")
+    assert classifiers, "no classifiers declared"
+    for classifier in classifiers:
         assert " :: " in classifier, f"malformed classifier: {classifier!r}"
         assert classifier.split(" :: ")[0] in top_levels, (
             f"unknown classifier top-level: {classifier!r}"
         )
+
+
+def test_classifiers_are_published_trove_codes() -> None:
+    """Every classifier must be a real, published PyPI trove code.
+
+    ``trove-classifiers`` is the canonical registry PyPI itself validates
+    against. An invented or misspelled code does not fail a build -- PyPI's
+    upload API rejects it, or the classifier is silently dropped from the
+    rendered project page, which quietly removes the package from those
+    search facets.
+
+    ``trove-classifiers`` is available in the dev/docs environment via
+    ``hatchling``'s dependency, but is not a declared test dependency, so the
+    check skips rather than fails where it is genuinely absent.
+    """
+    classifiers = pytest.importorskip(
+        "trove_classifiers",
+        reason="trove-classifiers is not installed in this environment",
+    )
+    published = set(classifiers.classifiers)
+    invalid = sorted(code for code in _string_array("classifiers") if code not in published)
+    assert not invalid, (
+        f"classifiers not present in the published trove-classifiers registry: {invalid}. "
+        "PyPI will reject or drop these."
+    )
 
 
 def test_classifiers_do_not_claim_an_unheld_license() -> None:
@@ -736,3 +869,156 @@ def test_site_metadata_is_consistent_with_pyproject() -> None:
     assert re.search(r"^site_name:\s*\S", text, re.MULTILINE)
     assert "zero runtime dependencies" in text.lower()
     assert re.search(r"^site_url:\s*https://", text, re.MULTILINE)
+
+
+# --------------------------------------------------------------------------
+# Module counts must be derived from the source tree, not remembered
+# --------------------------------------------------------------------------
+
+
+def _source_domain_modules() -> dict[str, str]:
+    """Map every importable ``cds`` domain module to "subpackage" or "module".
+
+    Private internals and the version/`__main__`` plumbing are excluded: they
+    are not user-facing surface. ``cds.cli`` *is* included because it is
+    documented and ships as the ``cds`` console script.
+    """
+    package = ROOT / "src" / IMPORT_NAME
+    found: dict[str, str] = {}
+    for entry in package.iterdir():
+        if entry.is_dir() and not entry.name.startswith((".", "_")):
+            found[entry.name] = "subpackage"
+        elif entry.suffix == ".py" and entry.stem not in {"__init__", "__main__", "_version"}:
+            found[entry.stem] = "module"
+    return found
+
+
+def test_source_domain_module_count_matches_docs_headline() -> None:
+    """The "N domain modules" headline must equal the real module count.
+
+    The README and docs/index.md both lead with a module count. Both drifted
+    independently before (``docs/index.md`` said 19, the README said 34,
+    ``cds modules`` listed 26), so the headline is now computed from
+    ``src/cds`` and required to match.
+    """
+    modules = _source_domain_modules()
+    assert len(modules) >= 30, f"expected a broad module surface, found {len(modules)}"
+
+    # Every module must actually be importable; a stale directory would
+    # otherwise inflate the count.
+    for name in modules:
+        importlib.import_module(f"{IMPORT_NAME}.{name}")
+
+    expected = len(modules)
+    for page in ("README.md", "docs/index.md"):
+        text = (ROOT / page).read_text(encoding="utf-8")
+        match = re.search(r"(\d+)\s+domain modules", text)
+        assert match is not None, f"{page} does not state a 'domain modules' count"
+        assert int(match.group(1)) == expected, (
+            f"{page} claims {match.group(1)} domain modules but src/cds has {expected} "
+            f"({len([k for k, v in modules.items() if v == 'subpackage'])} subpackages + "
+            f"{len([k for k, v in modules.items() if v == 'module'])} single-file modules)"
+        )
+
+
+def test_docs_module_table_lists_every_shipped_module() -> None:
+    """The docs module table must cover every shipped domain module.
+
+    ``docs/index.md`` shipped a 19-row table that silently omitted 17 modules
+    -- including whole advertised capabilities such as uncertainty
+    quantification, units and workflow orchestration. A reader scanning the
+    table had no way to know they existed.
+    """
+    index = (DOCS / "index.md").read_text(encoding="utf-8")
+    listed = set(re.findall(r"`cds\.([a-z_]+)`", index))
+
+    modules = _source_domain_modules()
+    missing = sorted(set(modules) - listed)
+    assert not missing, (
+        f"docs/index.md module table omits shipped modules: {missing}. "
+        "Add a row for each, or update the table deliberately."
+    )
+
+    # Nothing may be advertised that does not exist.
+    unknown = sorted(listed - set(modules))
+    assert not unknown, f"docs/index.md lists modules that are not in src/cds: {unknown}"
+
+
+def test_readme_module_table_matches_the_cli_inventory() -> None:
+    """The README's quoted ``cds modules`` table must match the real CLI output.
+
+    The README embeds the CLI inventory verbatim so readers see it without
+    installing. Any drift is a false claim, so the row set is compared
+    against the live ``cds modules`` output.
+    """
+    completed = subprocess.run(
+        [sys.executable, "-m", IMPORT_NAME, "modules"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=ROOT,
+    )
+    assert completed.returncode == 0, (
+        f"`python -m cds modules` failed ({completed.returncode}): {completed.stderr}"
+    )
+
+    cli_rows = set(re.findall(r"\|\s*(cds\.[a-z_]+)\s*\|", completed.stdout))
+    assert cli_rows, "could not parse any module rows from `cds modules` output"
+
+    readme_rows = set(re.findall(r"\|\s*(cds\.[a-z_]+)\s*\|", _readme_text()))
+    assert readme_rows, "README has no `cds modules` inventory table"
+
+    assert readme_rows == cli_rows, {
+        "missing_from_readme": sorted(cli_rows - readme_rows),
+        "extra_in_readme": sorted(readme_rows - cli_rows),
+    }
+
+    # The prose count beside the table must match the table too.
+    count_match = re.search(r"(\d+)\s+scientific modules", _readme_text())
+    assert count_match is not None, "README does not state a 'scientific modules' count"
+    assert int(count_match.group(1)) == len(cli_rows), (
+        f"README says {count_match.group(1)} scientific modules but the table lists {len(cli_rows)}"
+    )
+
+
+# --------------------------------------------------------------------------
+# docs/getting-started.md must actually run
+# --------------------------------------------------------------------------
+
+
+def _run_python_block_as_script(block: str, index: int) -> subprocess.CompletedProcess[str]:
+    """Execute a code block as a standalone script in a temp directory.
+
+    Running as a real script (rather than ``exec`` inside the test process) is
+    the honest check: it reproduces ``__name__ == "__main__"``, which is what
+    ``multiprocessing`` spawn-based platforms require. It also keeps a runaway
+    snippet from taking the test session down with it.
+    """
+    with tempfile.TemporaryDirectory(prefix="cds-docs-block-") as temp_dir:
+        script = Path(temp_dir) / f"block_{index}.py"
+        script.write_text(block, encoding="utf-8")
+        return subprocess.run(
+            [sys.executable, str(script)],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=600,
+        )
+
+
+@pytest.mark.parametrize("page", ["getting-started.md", "index.md", "why-pure-python.md"])
+def test_docs_python_blocks_execute(page: str) -> None:
+    """Every ``python`` block on the entry-point docs pages must run clean.
+
+    ``docs/getting-started.md`` shipped a block that raised on Windows and
+    macOS: it called ``estimate_pi`` at module scope, and that function uses
+    ``ProcessPoolExecutor``, which re-imports ``__main__`` on spawn platforms.
+    The block now guards the call and the fix is enforced here.
+    """
+    text = (DOCS / page).read_text(encoding="utf-8")
+    blocks = _fenced_blocks(text, "python")
+    for index, block in enumerate(blocks):
+        result = _run_python_block_as_script(block, index)
+        assert result.returncode == 0, (
+            f"docs/{page} python block {index} exited {result.returncode}:\n{result.stderr[-2000:]}"
+        )

@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <b>34 domain modules</b> · <b>zero runtime dependencies</b> · <b>2,900+ tests</b> · <b>100% branch coverage</b> · <b>Python 3.10–3.13</b> · <b>MIT</b>
+  <b>36 domain modules</b> · <b>zero runtime dependencies</b> · <b>2,900+ tests</b> · <b>100% branch coverage</b> · <b>Python 3.10–3.13</b> · <b>MIT</b>
 </p>
 
 ## Why this library
@@ -170,7 +170,7 @@ A stdlib `argparse` CLI ships with the package — no extra install:
 
 ```bash
 cds --help        # every subcommand
-cds modules       # the 25 scientific modules and their capabilities
+cds modules       # the 26 scientific modules and their capabilities
 cds constants     # physical constants
 cds calc gravity  # quick physics calculation
 cds stats 1,2,3,4 # descriptive statistics
