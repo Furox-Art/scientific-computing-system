@@ -36,8 +36,8 @@ numerical kernel, public API signature or `cds` CLI subcommand changed.
   commit, follow with an unrelated commit, and pass the gate with no version bump
   at all. The gate now diffs against the PR merge-base.
 - **Release fail-closed behaviour**: the publish job could report success after a
-  verification step had failed, and the `pypi` environment permitted admin
-  bypass. Both paths are closed.
+  verification step had failed. That path is closed; every verification failure
+  now fails the job before any registry or tag mutation.
 - **Docs deployment ordering**: `deploy-docs` depended only on the `test` matrix,
   so gh-pages could be updated from a run whose `audit`, `version_discipline` or
   `test`-aggregate gates had failed. It now depends on the aggregate `CI` job.
@@ -48,10 +48,12 @@ numerical kernel, public API signature or `cds` CLI subcommand changed.
 
 ### Added
 
-- **`npm test` contract suite** (`npm.test.js`): nine assertions covering
+- **`npm test` contract suite** (`npm.test.js`): assertions covering
   `node --check` parseability, the `cds` module target, argument forwarding, exit
-  status propagation, the `files` allowlist and npm/Python version agreement. CI
-  runs `npm run check && npm test` on every push and pull request.
+  status propagation, the `files` allowlist, npm/Python version agreement, and a
+  guard that `npm-publish.yml` stays a disabled no-op. CI runs `npm run check`
+  and `npm test` on every push and pull request; **nothing in CI publishes to
+  a registry**.
 - **`scripts/check_version_lockstep.py`**: machine-enforced agreement across
   `pyproject.toml`, `package.json`, `src/cds/_version.py`, `CITATION.cff`, the
   runtime `cds.__version__` import, `CHANGELOG.md` and -- with `--dist-dir` --
@@ -67,16 +69,19 @@ numerical kernel, public API signature or `cds` CLI subcommand changed.
 
 - All GitHub Actions references are pinned to full immutable commit SHAs;
   previously several workflows used mutable `@v4` / `@v7` / `@v8` tags.
-- npm publishing uses OIDC trusted publishing with `--provenance` instead of a
-  long-lived static registry token.
 - Branch ruleset for `main` extended in place (not replaced) to require the
-  `Installed CLI Smoke` and npm contract checks, to dismiss stale reviews on
-  push, to require a review of the newest push, and to require CODEOWNERS review.
-- Removed the 15 retired `public-external-validation-p08-*` experiment workflows,
-  the one-shot `p08-cancel-noncanonical-runs.yml` / `tmp-compassion-raw-acquire.yml`
-  data-acquisition jobs, and `wsl-science-runner-smoke.yml`, which targeted a
-  self-hosted runner label with zero registered runners. All referenced
-  out-of-tree trigger paths and script targets that no longer exist.
+  aggregate `CI` check plus the `Installed CLI Smoke`, version-discipline,
+  packaging and npm contract jobs, and to dismiss stale reviews on push.
+- npm publishing stays disabled per product decision ("npm is no longer
+  published"; `npm-publish.yml` is a deliberate no-op). `package.json` is marked
+  `private`, the npm contract test asserts the workflow stays a no-op, and
+  nothing in CI uploads to a registry.
+- Removed the dead workflow files that main did not already remove:
+  `wsl-science-runner-smoke.yml` (targeted a self-hosted runner label with zero
+  registered runners). The retired `public-external-validation-p08-*` experiment
+  workflows and the one-shot `p08-cancel-noncanonical-runs.yml` /
+  `tmp-compassion-raw-acquire.yml` jobs were deleted on `main` directly and are
+  kept deleted here.
 
 ## [v2.0.1] - 2026-09-29
 

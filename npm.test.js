@@ -18,10 +18,11 @@
  *   - `index.js` and `bin/scs.js` parse (`node --check`, see CI).
  *   - The launcher targets the real import module `cds`, not `scs`.
  *   - The child exit status is propagated rather than swallowed.
- *   - `package.json` publishes an explicit `files` allowlist so the repository
- *     (tests, workflows, 10k+ statements of Python, promo media) is never
- *     shipped to the npm registry.
- *   - The npm version tracks the Python distribution version.
+ *   - The npm version tracks the Python distribution version (lockstep).
+ *   - npm publishing stays disabled: the `npm-publish.yml` workflow is a
+ *     no-op by explicit product decision ("npm is no longer published"), and
+ *     `package.json` is marked private so no command can publish it even if
+ *     the workflow is ever touched again.
  */
 
 'use strict';
@@ -114,24 +115,53 @@ test('package.json declares an explicit files allowlist', () => {
   assert.ok(listed.has('index.js'), 'files allowlist must include index.js');
   assert.ok(listed.has('bin/scs.js') || listed.has('bin/'), 'files allowlist must include bin/');
 
-  // Nothing that belongs only to the Python project or the CI pipeline may be
-  // published to npm.
+  // Defense in depth for the day publishing is ever reconsidered: nothing that
+  // belongs only to the Python project or the CI pipeline may be listed, even
+  // though the package is currently private and never uploaded.
   for (const forbidden of ['src/', 'tests/', 'docs/', '.github/', 'benchmarks/', 'assets/']) {
     assert.ok(
       !listed.has(forbidden),
-      `files allowlist must not publish the Python/repository tree: ${forbidden}`,
+      `files allowlist must not list the Python/repository tree: ${forbidden}`,
     );
   }
 });
 
 test('npm metadata is coherent', () => {
-  assert.strictEqual(pkg.private, undefined, 'the package must remain publishable');
+  assert.strictEqual(
+    pkg.private,
+    true,
+    'the package must stay private: npm publishing is disabled by product decision',
+  );
   assert.ok(pkg.bin && pkg.bin.scs, 'package.json must expose the `scs` bin shim');
   assert.ok(pkg.license, 'package.json must declare a license');
   assert.ok(
     typeof pkg.scripts.test === 'string' && !/no test specified/.test(pkg.scripts.test),
     '`npm test` must run a real test suite, not the placeholder echo',
   );
+});
+
+test('npm publishing stays disabled in the workflow', () => {
+  const workflow = fs.readFileSync(
+    path.join(ROOT, '.github', 'workflows', 'npm-publish.yml'),
+    'utf8',
+  );
+  // The only permitted publish-shaped statement is the explicit no-op echo.
+  // A real `npm publish` invocation here would silently re-enable the exact
+  // channel the product decision closed.
+  assert.ok(
+    /npm publishing is disabled/.test(workflow),
+    'npm-publish.yml must carry the explicit disabled marker',
+  );
+  for (const line of workflow.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('#') || trimmed.startsWith('name:')) {
+      continue;
+    }
+    assert.ok(
+      !/^\s*run:\s*npm publish\b/.test(line),
+      `npm-publish.yml must not invoke a real publish: ${trimmed}`,
+    );
+  }
 });
 
 test('npm version tracks the Python distribution version', () => {

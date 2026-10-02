@@ -368,16 +368,11 @@ jobs:
           node --check bin/scs.js
       - name: Run the npm entry-point contract suite
         run: npm test
-      - name: Assert the published tarball contains only the allowlist
-        run: |
-          set -euo pipefail
-          npm pack --dry-run 2>&1 | tee pack-dry-run.txt
-          for forbidden in "src/" "tests/" "docs/" ".github/" "benchmarks/" "assets/"; do
-            if grep -q "$forbidden" pack-dry-run.txt; then
-              echo "::error::npm tarball would publish $forbidden"
-              exit 1
-            fi
-          done
+      # NOTE: there is deliberately no tarball/publish step here. npm publishing
+      # was disabled by explicit product decision ("npm is no longer published",
+      # main @ 52717c5): `npm-publish.yml` is a no-op and `package.json` is
+      # private. This job guards the launcher files that remain in the
+      # repository -- nothing in it may upload to a registry.
       - name: Verify the launcher forwards to the real cds CLI
         run: |
           set -euo pipefail
