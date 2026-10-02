@@ -12,6 +12,7 @@ Release surfaces checked
 =========================  =========================================================
 ``pyproject.toml``         ``[project] version`` -- the authoritative source.
 ``package.json``           ``version`` for the Node launcher package.
+``codemeta.json``          ``version`` for the CodeMeta metadata record.
 ``src/cds/_version.py``    ``__version__`` -- re-exported as ``cds.__version__``.
 ``CITATION.cff``           top-level and ``preferred-citation`` version fields.
 ``CHANGELOG.md``           must carry a ``## [vX.Y.Z]`` heading for that version.
@@ -31,6 +32,17 @@ was the state of ``2.1.0`` on ``main``: PyPI, the wheel METADATA and
 ``CITATION.cff`` all declared ``2.1.0`` while the changelog stopped at
 ``2.0.1``. Nothing failed, because nothing compared them. The drift is silent by
 construction unless a machine reads all of them.
+
+Why codemeta.json is enforced
+-----------------------------
+
+``codemeta.json`` was left out of the original five surfaces and drifted: it
+still declared ``2.1.0`` after the package reached ``2.2.0``, while every other
+surface had moved. CodeMeta is a machine-readable publication record -- the file
+indexers and registries read -- so a stale ``version`` there advertises the
+previous release to every automated consumer while the installed package reports
+a different one. Nothing failed, because nothing compared it. It is now a locked
+surface, and ``tests/test_codemeta_version_lockstep.py`` fails CI on drift.
 
 Usage
 -----
@@ -89,6 +101,19 @@ def _package_json_version() -> str:
     return version
 
 
+def _codemeta_version() -> str:
+    path = ROOT / "codemeta.json"
+    if not path.exists():
+        raise VersionDriftError(
+            "codemeta.json is missing; the CodeMeta metadata record cannot be versioned"
+        )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    version = payload.get("version")
+    if not isinstance(version, str):
+        raise VersionDriftError("codemeta.json must contain a string version")
+    return version
+
+
 def _python_version() -> str:
     match = PY_VERSION.search(
         (ROOT / "src" / "cds" / "_version.py").read_text(encoding="utf-8-sig")
@@ -124,6 +149,7 @@ def collected_versions() -> dict[str, str]:
     return {
         "pyproject.toml [project].version": _pyproject_version(),
         "package.json version": _package_json_version(),
+        "codemeta.json version": _codemeta_version(),
         "src/cds/_version.py __version__": _python_version(),
         "CITATION.cff top-level version": citation,
         "CITATION.cff preferred-citation version": preferred,
