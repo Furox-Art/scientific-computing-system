@@ -13,6 +13,7 @@ on:
       - 'CONTRIBUTING.md'
       - 'LICENSE'
       - 'SECURITY.md'
+      - 'docs/**'
   pull_request:
     branches: [main]
 
@@ -20,6 +21,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Default-deny. Every job below opts in to exactly the scopes it needs; the
+# workflow-level default is `contents: read` so a job that forgets to declare
+# permissions cannot escalate by accident.
 permissions:
   contents: read
 
@@ -27,6 +31,9 @@ jobs:
   test:
     name: ${{ matrix.python-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -75,6 +82,9 @@ jobs:
   audit:
     name: lock-file audit on Linux with Python 3.12
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -87,6 +97,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pip-audit
+      # The runtime lock is intentionally empty (zero runtime dependencies), so
+      # this command resolves nothing. It is kept as an explicit assertion that
+      # the file stays empty: if a dependency is ever added to pyproject.toml
+      # without regenerating the lock, pip-compile drift becomes visible here.
       - name: Audit runtime lock
         run: pip-audit -r requirements.lock --strict
       - name: Audit dev/docs/test lock
@@ -95,6 +109,9 @@ jobs:
   resolved-audit:
     name: resolved CI environment audit on Linux with Python 3.12
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -121,6 +138,9 @@ jobs:
   property-tests:
     name: property tests on Linux with Python 3.12
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -141,6 +161,9 @@ jobs:
   ml-reference:
     name: ML reference parity on Linux with Python 3.12
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -159,6 +182,9 @@ jobs:
   pre-commit:
     name: pre-commit on Linux with Python 3.12
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -171,6 +197,9 @@ jobs:
   minimal-deps:
     name: minimal-deps coverage on Linux with Python 3.12
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -196,8 +225,11 @@ jobs:
   optional_audit:
     name: scientific/io extras audit and real backend smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Set up Python
@@ -219,23 +251,180 @@ jobs:
   version_discipline:
     name: synchronized monotonic package version
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 2
+          # Full history plus the base ref: the discipline diff must be taken
+          # against the PR merge-base, never HEAD^1 (see the script docstring).
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
+      - name: Resolve the comparison base (merge-base, never HEAD^1)
+        id: base
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          # `HEAD^1` is only correct for a single-commit update. For a
+          # multi-commit push or a rebase merge it resolves to the previous
+          # commit of the same branch, so the diff would cover only the tip and a
+          # package change made in an earlier commit would pass unbumped.
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git fetch --no-tags --depth=1000 origin "$BASE_REF"
+            base="$(git merge-base "origin/$BASE_REF" HEAD)"
+          else
+            # On push, `github.event.before` is the tip the branch pointed at
+            # before this push, which is the true comparison base.
+            base="$PUSH_BEFORE"
+            if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+              base="$(git rev-list --max-parents=0 HEAD)"
+            fi
+          fi
+          if [ -z "$base" ]; then
+            echo "::error::Could not resolve a comparison base for the version-discipline diff."
+            exit 1
+          fi
+          echo "ref=$base" >> "$GITHUB_OUTPUT"
+          echo "Comparing against $base ($BASE_REF)"
+      # The previous invocation was:
+      #     python scripts/check_version_discipline.py --base-ref HEAD^1
+      # `HEAD^1` is the parent of the checked-out commit, which under a rebase
+      # merge (and for any multi-commit push inspected at its tip) is the
+      # previous commit of the *same branch*. The diff then covered only the tip,
+      # so a PR could change `src/cds/` in one commit, add an unrelated follow-up
+      # commit, and pass this gate with no version bump. The base is now resolved
+      # to the PR merge-base above.
       - name: Reject source/version/citation drift
-        run: python scripts/check_version_discipline.py --base-ref HEAD^1
+        run: python scripts/check_version_discipline.py --base-ref "${{ steps.base.outputs.ref }}"
+      - name: Reject version metadata lockstep drift
+        run: python scripts/check_version_lockstep.py
+
+  packaging:
+    name: built wheel and sdist contents on Linux with Python 3.12
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Install the hash-locked build toolchain
+        run: |
+          python -m pip install --upgrade pip
+          pip install --require-hashes --only-binary=:all: -r requirements-build.lock
+      - name: Build sdist and wheel
+        run: python -m build --no-isolation
+      - name: Assert declared metadata matches the built artifacts
+        run: python scripts/check_version_lockstep.py --dist-dir dist
+      - name: Assert wheel and sdist contents
+        run: python scripts/check_distribution_contents.py dist
+      # A source distribution whose own test suite cannot pass is not a source
+      # distribution. 13 release-contract tests used to fail here because
+      # `.github/workflows` was missing from the sdist; this step is what keeps
+      # that regression from returning unnoticed.
+      - name: Run the test suite from the unpacked sdist
+        run: |
+          set -euo pipefail
+          python -m pip install ".[test]"
+          mkdir -p /tmp/sdist-check
+          tar -xzf dist/scientific_computing_system-*.tar.gz -C /tmp/sdist-check
+          cd /tmp/sdist-check/scientific_computing_system-*
+          pytest tests/ --no-cov -q
+
+  npm-contract:
+    name: npm launcher contract on Linux with Node 24
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "24"
+      # `node --check` runs standalone here as well as via the npm `pretest`
+      # hook: the shipped launcher previously could not be parsed at all, and
+      # nothing in CI ever invoked Node.
+      - name: Syntax-check the launcher and the bin shim
+        run: |
+          node --check index.js
+          node --check bin/scs.js
+      - name: Run the npm entry-point contract suite
+        run: npm test
+      - name: Assert the published tarball contains only the allowlist
+        run: |
+          set -euo pipefail
+          npm pack --dry-run 2>&1 | tee pack-dry-run.txt
+          for forbidden in "src/" "tests/" "docs/" ".github/" "benchmarks/" "assets/"; do
+            if grep -q "$forbidden" pack-dry-run.txt; then
+              echo "::error::npm tarball would publish $forbidden"
+              exit 1
+            fi
+          done
+      - name: Verify the launcher forwards to the real cds CLI
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install .
+          output="$(node index.js --version)"
+          echo "$output"
+          case "$output" in
+            *"$(python -c 'import cds; print(cds.__version__)')"*) ;;
+            *) echo "::error::launcher did not forward to the installed cds CLI"; exit 1 ;;
+          esac
+      - name: Verify the launcher propagates a failing exit status
+        run: |
+          set -euo pipefail
+          # A non-zero child status must not be reported as success, otherwise
+          # `scs` would lie about failed scientific runs.
+          set +e
+          node index.js integrate "x^" --a 0 --b 1 -n 4 >/dev/null 2>&1
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "::error::launcher swallowed a non-zero child exit status"
+            exit 1
+          fi
+          echo "launcher propagated exit status $status as expected"
 
   CI:
     name: CI
     if: always()
-    needs: [test, audit, resolved-audit, optional_audit, version_discipline, property-tests, pre-commit, minimal-deps, ml-reference]
+    needs:
+      [
+        test,
+        audit,
+        resolved-audit,
+        optional_audit,
+        version_discipline,
+        property-tests,
+        pre-commit,
+        minimal-deps,
+        ml-reference,
+        packaging,
+        npm-contract,
+      ]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - name: Report overall result
         shell: bash
@@ -250,6 +439,8 @@ jobs:
           echo "pre-commit=${{ needs.pre-commit.result }}"
           echo "minimal-deps=${{ needs.minimal-deps.result }}"
           echo "ml-reference=${{ needs.ml-reference.result }}"
+          echo "packaging=${{ needs.packaging.result }}"
+          echo "npm-contract=${{ needs.npm-contract.result }}"
           for result in \
             "${{ needs.test.result }}" \
             "${{ needs.audit.result }}" \
@@ -259,7 +450,9 @@ jobs:
             "${{ needs.property-tests.result }}" \
             "${{ needs.pre-commit.result }}" \
             "${{ needs.minimal-deps.result }}" \
-            "${{ needs.ml-reference.result }}"; do
+            "${{ needs.ml-reference.result }}" \
+            "${{ needs.packaging.result }}" \
+            "${{ needs.npm-contract.result }}"; do
             if [ "$result" != "success" ]; then
               echo "::error::One or more required jobs did not succeed."
               exit 1
@@ -267,11 +460,18 @@ jobs:
           done
           echo "All required jobs succeeded."
 
+  # gh-pages deployment depends on the AGGREGATE `CI` gate, not on the `test`
+  # matrix alone. It previously needed only `[test]`, so a push to main could
+  # publish documentation derived from a run whose audit, version-discipline,
+  # packaging or npm gates had all failed. `if: always()` on the aggregate job
+  # means it always reports; the dependency here is what makes staleness
+  # impossible.
   deploy-docs:
     name: Deploy docs to gh-pages
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.CI.result == 'success'
+    needs: [CI]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
     concurrency:
@@ -290,6 +490,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install ".[docs]"
+      # Rebuild strictly before publishing so a docs regression fails the job
+      # instead of being deployed and discovered on the live site.
+      - name: Verify the documentation builds strictly
+        run: mkdocs build --strict
       - name: Deploy to gh-pages
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

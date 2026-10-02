@@ -7,6 +7,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.1.0] - 2026-09-30
+
+Release-hardening pass covering the CI, quality-gate and packaging surface. No
+numerical kernel, public API signature or `cds` CLI subcommand changed.
+
+### Fixed
+
+- **npm launcher (`index.js`, `bin/scs.js`)**: the published launcher could not be
+  parsed by Node (`SyntaxError: Unexpected token ';'`), and had it parsed it
+  spawned `python -m scs.cli`, a module that has never existed in any release
+  (the import name is `cds`). Both defects shipped in `1.0.0` on npm and were
+  invisible because `npm test` was a placeholder that exited 1 without running
+  anything. The launcher is now syntactically valid, targets `python -m cds`,
+  propagates the child's exit status, and reports one actionable message when no
+  interpreter is found.
+- **npm package contents**: `package.json` shipped no `files` allowlist, so a
+  publish would have uploaded the whole repository (tests, workflows, 10k+
+  statements of Python, promo media). Publication is now restricted to an
+  explicit allowlist.
+- **npm version drift**: `package.json` declared `1.0.0` while the Python
+  distribution was at `2.1.0`. It now tracks the Python version and CI fails on
+  any drift.
+- **Version-discipline bypass under rebase merges**
+  (`scripts/check_version_discipline.py --base-ref HEAD^1`): `HEAD^1` resolves to
+  the previous commit of the *same branch*, so in a multi-commit rebase merge only
+  the final commit's diff was inspected. A PR could change `src/cds/` in one
+  commit, follow with an unrelated commit, and pass the gate with no version bump
+  at all. The gate now diffs against the PR merge-base.
+- **Release fail-closed behaviour**: the publish job could report success after a
+  verification step had failed, and the `pypi` environment permitted admin
+  bypass. Both paths are closed.
+- **Docs deployment ordering**: `deploy-docs` depended only on the `test` matrix,
+  so gh-pages could be updated from a run whose `audit`, `version_discipline` or
+  `test`-aggregate gates had failed. It now depends on the aggregate `CI` job.
+- **sdist test-suite failure**: `tests/test_release_contract.py` reads
+  `.github/workflows/*.yml`, which the sdist `only-include` list omitted, so the
+  shipped source distribution could not pass its own test suite (13 failures).
+  The CI workflow files are now part of the sdist.
+
+### Added
+
+- **`npm test` contract suite** (`npm.test.js`): nine assertions covering
+  `node --check` parseability, the `cds` module target, argument forwarding, exit
+  status propagation, the `files` allowlist and npm/Python version agreement. CI
+  runs `npm run check && npm test` on every push and pull request.
+- **`scripts/check_version_lockstep.py`**: machine-enforced agreement across
+  `pyproject.toml`, `package.json`, `src/cds/_version.py`, `CITATION.cff`, the
+  runtime `cds.__version__` import, `CHANGELOG.md` and -- with `--dist-dir` --
+  the built wheel and sdist metadata. `2.1.0` had shipped to PyPI with no
+  `CHANGELOG.md` entry; that class of drift is now a red build.
+- **Wheel/sdist content assertions in CI**: the packaging job now asserts the
+  exact filename, distribution name, version, `py.typed` marker, sdist root
+  directory and the absence of forbidden paths (test fixtures, promo media,
+  `.github`, `site/`) rather than building artifacts and trusting them.
+- **Timeouts on every CI job** and per-job least-privilege `permissions:`.
+
+### Changed
+
+- All GitHub Actions references are pinned to full immutable commit SHAs;
+  previously several workflows used mutable `@v4` / `@v7` / `@v8` tags.
+- npm publishing uses OIDC trusted publishing with `--provenance` instead of a
+  long-lived static registry token.
+- Branch ruleset for `main` extended in place (not replaced) to require the
+  `Installed CLI Smoke` and npm contract checks, to dismiss stale reviews on
+  push, to require a review of the newest push, and to require CODEOWNERS review.
+- Removed the 15 retired `public-external-validation-p08-*` experiment workflows,
+  the one-shot `p08-cancel-noncanonical-runs.yml` / `tmp-compassion-raw-acquire.yml`
+  data-acquisition jobs, and `wsl-science-runner-smoke.yml`, which targeted a
+  self-hosted runner label with zero registered runners. All referenced
+  out-of-tree trigger paths and script targets that no longer exist.
+
 ## [v2.0.1] - 2026-09-29
 
 Metadata-only patch release for improved PyPI discoverability. No runtime API or numerical behavior changes.

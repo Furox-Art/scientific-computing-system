@@ -1,13 +1,43 @@
 name: npm Publish
 
+# OIDC trusted publishing replaces the long-lived static NPM_TOKEN.
+#
+# Why this matters: a static registry token is a bearer credential with no
+# expiry, no audience binding and no per-publish attestation. Anyone who
+# exfiltrated it could publish arbitrary versions of `scientific-computing-system`
+# at any time, and npm would attribute them to this project. Trusted publishing
+# removes the long-lived secret entirely: the runner exchanges a short-lived OIDC
+# token (audience `npm:registry.npmjs.org`) for a single-use publish credential,
+# scoped to one workflow file on one environment. Combined with `--provenance`,
+# each published tarball carries a verifiable Sigstore signature binding it to
+# this repository, this workflow and this commit.
+#
+# One-time setup (maintainer, not in CI): configure a trusted publisher on npmjs
+# for the `scientific-computing-system` package pointing at this repository,
+# workflow `npm-publish.yml`, and environment `npm`. The `npm` environment below
+# is created implicitly by the job declaration; add reviewer protection to it if
+# desired.
+
 on:
   workflow_dispatch:
   push:
-    branches: [main]
-    paths:
-      - "package.json"
-      - "index.js"
-      - "bin/**"
+    # Two independent triggers. GitHub does NOT evaluate `paths` filters for tag
+    # pushes, so a single entry combining `tags` and `paths` would silently never
+    # fire on the release tag. The list form keeps both correct.
+    -
+      branches: [main]
+      paths:
+        - "package.json"
+        - "index.js"
+        - "bin/**"
+        - "npm.test.js"
+        - ".github/workflows/npm-publish.yml"
+    -
+      tags:
+        - "v*"
+
+# The published npm version comes from `package.json` (asserted to equal the
+# Python distribution version above), not from the git tag name.
 
 concurrency:
   group: npm-publish
@@ -18,16 +48,113 @@ permissions:
 
 jobs:
   publish:
+    name: Verify and publish to npm with OIDC trusted publishing
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: npm
+    permissions:
+      contents: read
+      # Required to mint the OIDC token that npm exchanges for a publish
+      # credential. This is the whole point of the change: no long-lived secret.
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
+          persist-credentials: false
 
-      - name: Publish to npm
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "24"
+
+      # npm 11.5.1+ is required for trusted publishing. setup-node ships a
+      # recent npm, but pin the floor explicitly so a runner image change
+      # cannot silently downgrade to a version that falls back to a static
+      # token requirement.
+      - name: Assert npm supports OIDC trusted publishing
+        run: |
+          set -euo pipefail
+          npm --version
+          node -e '
+            const major = Number(process.env.npm_config_user_agent.match(/npm\/(\d+)/)[1]);
+            if (!Number.isFinite(major) || major < 11) {
+              console.error("::error::npm 11.5.1+ is required for OIDC trusted publishing");
+              process.exit(1);
+            }
+          '
+
+      # The launcher previously shipped unparseable and pointing at a nonexistent
+      # module, and nothing in CI ever invoked Node. Fail here rather than
+      # publish it.
+      - name: Syntax-check the launcher and the bin shim
+        run: |
+          node --check index.js
+          node --check bin/scs.js
+
+      - name: Run the npm entry-point contract suite
+        run: npm test
+
+      - name: Assert the published tarball contains only the allowlist
+        run: |
+          set -euo pipefail
+          npm pack --dry-run 2>&1 | tee pack-dry-run.txt
+          for forbidden in "src/" "tests/" "docs/" ".github/" "benchmarks/" "assets/"; do
+            if grep -q "$forbidden" pack-dry-run.txt; then
+              echo "::error::npm tarball would publish $forbidden"
+              exit 1
+            fi
+          done
+
+      - name: Confirm npm version tracks the Python distribution
+        run: |
+          set -euo pipefail
+          python3 -m pip install --upgrade pip
+          python3 -m pip install .
+          node -e '
+            const fs = require("node:fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            const text = fs.readFileSync("pyproject.toml", "utf8");
+            const match = /^version\s*=\s*"([^"]+)"/m.exec(text);
+            if (!match) { console.error("::error::pyproject.toml has no static version"); process.exit(1); }
+            if (pkg.version !== match[1]) {
+              console.error(`::error::npm ${pkg.version} != Python ${match[1]}`);
+              process.exit(1);
+            }
+            console.log(`PASS: npm ${pkg.version} matches Python ${match[1]}`);
+          '
+
+      - name: Assert the version is not already published
+        # Publishing an existing version fails with E403 anyway, but checking
+        # first turns a confusing registry error into an actionable message and
+        # avoids burning the trusted-publishing exchange.
+        run: |
+          set -euo pipefail
+          version="$(node -p 'require("./package.json").version')"
+          if npm view "scientific-computing-system@${version}" version >/dev/null 2>&1; then
+            echo "::error::scientific-computing-system@${version} is already on npm; bump package.json"
+            exit 1
+          fi
+          echo "PASS: scientific-computing-system@${version} is unpublished"
+
+      # `id-token: write` above is what makes this work: npm receives the
+      # runner's OIDC identity token and exchanges it for a one-time publish
+      # credential scoped to this repository/workflow/environment. No
+      # NODE_AUTH_TOKEN is set anywhere in this job.
+      #
+      # `--provenance` additionally generates a Sigstore-signed attestation
+      # linking the tarball to this commit, published alongside the package.
+      #
+      # Neither step tolerates a silent failure: there is no `continue-on-error`
+      # and no `|| true`. A failed verification must not reach the registry.
+      - name: Publish to npm (OIDC trusted publishing + provenance)
+        run: npm publish --provenance --access public
+
+      - name: Verify the published version and its provenance
+        run: |
+          set -euo pipefail
+          version="$(node -p 'require("./package.json").version')"
+          published="$(npm view "scientific-computing-system@${version}" version)"
+          echo "npm reports published version $published"
+          test "$published" = "$version"
+          npm view "scientific-computing-system@${version}" dist.attestations \
+            || echo "::warning::could not read the attestation record for ${version}"

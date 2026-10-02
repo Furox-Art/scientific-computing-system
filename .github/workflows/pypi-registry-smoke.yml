@@ -15,6 +15,7 @@ on:
       - "scripts/verify_pypi_release.py"
       - "scripts/verify_release_integrity.py"
 
+# Default-deny; each job below declares exactly the scopes it needs.
 permissions:
   contents: read
 
@@ -29,6 +30,9 @@ jobs:
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     name: public PyPI CLI on ${{ matrix.os }} / Python 3.12
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -54,6 +58,7 @@ jobs:
     name: enforce metadata-only GitHub Release policy
     needs: registry-cli
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:

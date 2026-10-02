@@ -178,6 +178,18 @@ only-include = [
   "docs",
   "scripts/publish.py",
   "scripts/verify_cli_install.py",
+  "scripts/verify_pypi_release.py",
+  "scripts/verify_release_integrity.py",
+  "scripts/verify_ml_reference.py",
+  "scripts/verify_cookbook.py",
+  "scripts/check_version_discipline.py",
+  "scripts/check_version_lockstep.py",
+  # tests/test_release_contract.py asserts the release/CI workflow contracts
+  # and tests/test_hardening_privacy_provenance.py hashes the lock files. Both
+  # used to fail with FileNotFoundError when the suite ran from an unpacked sdist
+  # (13 failures), because the workflows were not shipped. An sdist whose own
+  # test suite cannot pass is not a source distribution.
+  ".github/workflows",
   "benchmarks",
   "dashboard",
   "examples",
@@ -188,6 +200,10 @@ only-include = [
   "SECURITY.md",
   "CITATION.cff",
   "pyproject.toml",
+  "package.json",
+  "npm.test.js",
+  "index.js",
+  "bin",
   "requirements.lock",
   "requirements-dev.lock",
   "requirements-build.lock",
@@ -240,7 +256,13 @@ source = ["src/cds"]
 # counts as executed while the unreachable exit arc is excluded. Every other
 # branch is exercised by a real test — no untested branch remains.
 branch = true
-dynamic_context = "test_function"
+# NOTE: `dynamic_context = "test_function"` was removed. pytest-cov already
+# emits a richer CentralCovContextWarning-suppressed context set through
+# `--cov-context`, and leaving both enabled produced a warning on every single
+# coverage run in CI:
+#   CentralCovContextWarning: Detected dynamic_context=test_function in
+#   coverage configuration. This is unnecessary as this plugin provides the
+#   more complete --cov-context option.
 
 [tool.coverage.report]
 # Blended coverage (statement + branch) is the CI gate. CDS targets 100%

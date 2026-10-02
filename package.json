@@ -1,1 +1,45 @@
-{"name":"scientific-computing-system","version":"1.0.0","description":"Cognitive Discovery System - pure Python scientific computing","main":"index.js","bin":{"scs":"./bin/scs.js"},"scripts":{"test":"echo \"Error: no test specified\" && exit 1"},"keywords":["scientific-computing","quantum","machine-learning","statistics","ode-solvers"],"author":"Furox-Art","license":"MIT","repository":{"type":"git","url":"git+https://github.com/Furox-Art/scientific-computing-system.git"},"bugs":{"url":"https://github.com/Furox-Art/scientific-computing-system/issues"},"homepage":"https://github.com/Furox-Art/scientific-computing-system#readme"}
+{
+  "name": "scientific-computing-system",
+  "version": "2.1.0",
+  "description": "Scientific Computing System launcher - thin Node wrapper that forwards to the pure-Python `cds` CLI (PyPI: scientific-computing-system)",
+  "main": "index.js",
+  "bin": {
+    "scs": "./bin/scs.js"
+  },
+  "files": [
+    "index.js",
+    "bin/scs.js",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md",
+    "SECURITY.md"
+  ],
+  "scripts": {
+    "check": "node --check index.js && node --check bin/scs.js",
+    "pretest": "npm run check",
+    "test": "node --test npm.test.js",
+    "lint": "npm run check"
+  },
+  "keywords": [
+    "scientific-computing",
+    "quantum",
+    "machine-learning",
+    "statistics",
+    "ode-solvers",
+    "cli",
+    "launcher"
+  ],
+  "author": "Furox-Art",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Furox-Art/scientific-computing-system.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Furox-Art/scientific-computing-system/issues"
+  },
+  "homepage": "https://github.com/Furox-Art/scientific-computing-system#readme"
+}
