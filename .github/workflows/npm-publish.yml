@@ -1,27 +1,228 @@
 name: npm Publish
 
+# Sole npm publish authority for this repository.
+#
+# ## What this package is
+#
+# `scientific-computing-system` on npm is a *launcher shim*: it ships
+# `index.js` and `bin/scs.js` (plus README/CHANGELOG/LICENSE/SECURITY) and
+# nothing else. It contains no Python. `scs` locates a Python interpreter and
+# execs `python -m cds`, which comes from the PyPI distribution. The npm package
+# is therefore only useful alongside `pip install scientific-computing-system`;
+# the launcher exits non-zero with an actionable message when no interpreter or
+# no `cds` package is present. This is stated in package.json's description and
+# asserted by npm.test.js.
+#
+# ## Authentication: OIDC trusted publishing
+#
+# npm receives this job's OIDC identity token (audience
+# `npm:registry.npmjs.org`) and exchanges it for a short-lived, single-use
+# publish credential scoped to this repository, this workflow file and this
+# environment. No long-lived registry secret is required for the primary path,
+# and there is deliberately no `NODE_AUTH_TOKEN` in this job: the npm CLI
+# detects the OIDC environment before it ever looks for a token.
+#
+# `--provenance` attaches a Sigstore-signed attestation to the published
+# tarball binding it to this commit. npm also generates one automatically for
+# trusted-publishing runs from a public repository; the explicit flag is kept
+# so the intent survives any future CLI behaviour change.
+#
+# Fallback: dispatching with `use_token_fallback=true` sets `NODE_AUTH_TOKEN`
+# from the `NPM_TOKEN` secret instead. That is an explicit, opt-in recovery path
+# for when trusted publishing is not yet configured on npmjs.com. It is off by
+# default and never runs automatically, so a broken OIDC configuration cannot
+# silently downgrade to the long-lived credential.
+#
+# One-time npmjs.com setup is documented in the README of the PR that
+# introduced this workflow.
+
 on:
   workflow_dispatch:
+    inputs:
+      use_token_fallback:
+        description: >-
+          Publish with the long-lived NPM_TOKEN secret instead of OIDC trusted
+          publishing. Only for bootstrapping before the trusted publisher is
+          configured on npmjs.com.
+        type: boolean
+        default: false
+  push:
+    # `branches` and `tags` in one `push` mapping are OR'd by GitHub.
+    #
+    # The `v*` tag is the release path: release.yml creates the tag only after
+    # the PyPI publish has succeeded, so a single version bump reaches PyPI
+    # first and npm second. `paths` narrows *branch* pushes so unrelated merges
+    # do not run this job; GitHub does not evaluate `paths` against tag pushes.
+    branches: [main]
+    tags:
+      - "v*"
+    paths:
+      - "package.json"
+      - "index.js"
+      - "bin/**"
+      - "npm.test.js"
+      - ".github/workflows/npm-publish.yml"
 
 concurrency:
   group: npm-publish
   cancel-in-progress: false
 
+# Default-deny; the publish job below declares exactly what it needs.
 permissions:
   contents: read
 
 jobs:
   publish:
+    name: Verify and publish to npm with OIDC trusted publishing
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The `npm` environment is referenced by the trusted-publisher configuration
+    # on npmjs.com. Adding a required reviewer here is the other half of that
+    # control; it is intentionally left to the maintainer because a required
+    # reviewer on a single-maintainer repository would deadlock releases.
+    environment: npm
+    permissions:
+      contents: read
+      # Required to mint the OIDC token npm exchanges for a publish credential.
+      # This is the entire point of the OIDC path: no long-lived secret.
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
+          persist-credentials: false
 
-      - name: Publish to npm
-        run: echo "npm publishing is disabled; PyPI is the install path" && exit 0
+      # Node 24 ships npm 11.5.1+, the floor for trusted publishing.
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "24"
+
+      - name: Assert npm supports OIDC trusted publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --version
+          node --version
+          # npm trusts the OIDC exchange rather than a token when the CLI is new
+          # enough; below 11.5.1 it would silently fall back to whatever token
+          # it finds, which is exactly the failure mode this workflow avoids.
+          node -e '
+            const [major, minor] = process.versions.node.split(".").map(Number);
+            if (major < 22 || (major === 22 && minor < 14)) {
+              console.error(`::error::Node 22.14.0+ is required for trusted publishing, got ${process.versions.node}`);
+              process.exit(1);
+            }
+          '
+          npm --version | grep -Eq '^11\.(5[1-9]|[6-9][0-9])\.|^1[2-9]\.' \
+            || {
+              echo "::error::npm 11.5.1+ is required for OIDC trusted publishing"
+              exit 1
+            }
+
+      # The launcher previously shipped unparseable and pointing at a
+      # nonexistent module, and nothing in CI ever invoked Node.
+      - name: Syntax-check the launcher and the bin shim
+        run: |
+          node --check index.js
+          node --check bin/scs.js
+
+      - name: Run the npm entry-point contract suite
+        run: npm test
+
+      # GATE: the published tarball must contain the allowlist and nothing else.
+      # Without this, a future edit to package.json could ship the repository
+      # (tests, workflows, 10k+ statements of Python) to the public registry.
+      - name: Assert the publish tarball contains only the allowlist
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm pack --dry-run 2>&1 | tee pack-dry-run.txt
+          for forbidden in "src/" "tests/" "docs/" ".github/" "benchmarks/" "assets/"; do
+            if grep -q "$forbidden" pack-dry-run.txt; then
+              echo "::error::npm tarball would publish $forbidden"
+              exit 1
+            fi
+          done
+
+      # GATE: package.json must not be private, or `npm publish` refuses to run.
+      - name: Assert package.json is publishable
+        run: |
+          set -euo pipefail
+          node -e '
+            const pkg = require("./package.json");
+            if (pkg.private === true) {
+              console.error("::error::package.json sets private:true; npm publish is blocked");
+              process.exit(1);
+            }
+            console.log(`PASS: ${pkg.name}@${pkg.version} is publishable`);
+          '
+
+      # GATE: the repo's own version-lockstep check, which covers package.json.
+      # Catches publishing a launcher whose version disagrees with the Python
+      # distribution it shells out to.
+      - name: Assert npm version tracks the Python distribution
+        run: |
+          set -euo pipefail
+          python3 -m pip install --upgrade pip
+          python3 -m pip install .
+          node -e '
+            const fs = require("node:fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            const text = fs.readFileSync("pyproject.toml", "utf8");
+            const match = /^version\s*=\s*"([^"]+)"/m.exec(text);
+            if (!match) { console.error("::error::pyproject.toml has no static version"); process.exit(1); }
+            if (pkg.version !== match[1]) {
+              console.error(`::error::npm ${pkg.version} != Python ${match[1]}`);
+              process.exit(1);
+            }
+            console.log(`PASS: npm ${pkg.version} matches Python ${match[1]}`);
+          '
+
+      # GATE: refuse to republish. A version can only be published once, so an
+      # already-present version means either a duplicate trigger or a
+      # half-finished recovery. Both should stop here rather than fail confusingly
+      # inside `npm publish`.
+      - name: Assert the version is not already published
+        run: |
+          set -euo pipefail
+          version="$(node -p 'require("./package.json").version')"
+          if npm view "scientific-computing-system@${version}" version >/dev/null 2>&1; then
+            echo "::error::scientific-computing-system@${version} is already on npm"
+            echo "::error::nothing to do; bump package.json (and the locked version surfaces) to publish again"
+            exit 1
+          fi
+          echo "PASS: scientific-computing-system@${version} is unpublished"
+
+      # Primary path: no NODE_AUTH_TOKEN is set anywhere in this step. The npm
+      # CLI detects the OIDC environment (id-token: write above) and exchanges
+      # the runner's identity token for a single-use publish credential.
+      #
+      # Fallback path: explicit opt-in only, never automatic, so a broken OIDC
+      # configuration fails loudly instead of silently reverting to the
+      # long-lived secret.
+      #
+      # Neither path tolerates a silent failure: there is no `continue-on-error`
+      # and no `|| true`.
+      - name: Publish to npm (OIDC trusted publishing + provenance)
+        if: ${{ !inputs.use_token_fallback }}
+        run: npm publish --provenance --access public
+
+      - name: Publish to npm (token fallback, explicit opt-in)
+        if: ${{ inputs.use_token_fallback }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::error::use_token_fallback was requested but the NPM_TOKEN secret is empty"
+            exit 1
+          fi
+          npm publish --access public
+
+      - name: Verify the published version
+        run: |
+          set -euo pipefail
+          version="$(node -p 'require("./package.json").version')"
+          published="$(npm view "scientific-computing-system@${version}" version)"
+          echo "npm reports published version $published"
+          test "$published" = "$version"
