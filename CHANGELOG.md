@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.1.0] - 2026-09-30
+
+Release hardening and scientific-audit closure. No public API removals.
+
+### Added
+
+- Scientific validation, cross-method verification, and distribution-shift
+  (`cds.validation`) reporting.
+- Conservative, assumption-gated causal effect estimation (`cds.causal`). The
+  module does not infer causal structure from observational correlation; unmet
+  assumptions are reported rather than ignored.
+- Local and variance-based global sensitivity analysis plus identifiability
+  analysis (`cds.sensitivity`).
+- SI units and dimensional analysis (`cds.units`).
+- Approval-gated scientific workflow orchestration (`cds.workflow`), fail-closed
+  on blocked methods, missing tools, denied approvals, failed validation, or
+  unresolved method suitability.
+- Reproducibility manifests, canonical hashing, decision records, and local
+  checkpoints (`cds.provenance`).
+- Memory-bounded streaming I/O with optional HDF5 and NetCDF backends
+  (`cds.data_io`).
+- Lazy capability discovery and normalised adapters for optional scientific
+  backends (`cds.tools`).
+- Uncertainty propagation, analytic and correlated Monte Carlo
+  (`cds.uncertainty`).
+
+### Changed
+
+- Release pipeline hardened: single publish authority, GitHub Releases kept free
+  of wheel/sdist distribution assets, releases gated on successful `main` CI, and
+  PyPI Trusted Publishing (OIDC) with artifact attestation.
+- Dependency auditing and CodeQL wired into CI; unsafe Dependabot automerge
+  disabled.
+- Documentation expanded with research-workflow guidance and case studies.
+
+### Fixed
+
+- mypy strict failures in the test annotations.
+- Development lock conflicts and CI formatting gate.
+
 ## [v2.0.1] - 2026-09-29
 
 Metadata-only patch release for improved PyPI discoverability. No runtime API or numerical behavior changes.
@@ -80,6 +120,31 @@ Metadata-only patch release for improved PyPI discoverability. No runtime API or
   Reference table. (The matching `ml-reference` CI job is prepared but
   not yet applied. It needs a push from a token with the `workflow`
   OAuth scope; see the `backup/pre-reorder` branch.)
+
+## [v2.0.0] - 2026-09-05
+
+Scientific workflow platform release. Reorganises the project from a numerical
+methods library into a layered system that separates computation, analysis,
+scientific assurance, orchestration, and data handling.
+
+### Added
+
+- Uncertainty propagation, provenance capture, and tool discovery.
+- Dimensional analysis, domain checks, and scalable data I/O.
+- Scientific adapters, sensitivity analysis, and tool orchestration.
+- CLI catalog refreshed for the expanded module set.
+
+### Changed
+
+- The project is organised into explicit layers (compute / analysis /
+  assurance / orchestration / data) with dependencies pointing downward.
+- Release pipeline enforces a single publish authority.
+
+## [v1.6.2] - 2026-08-23
+
+Patch release carrying the PyPI deprecation tombstone for the former
+`cognitive-discovery-system` distribution name, pointing users at
+`scientific-computing-system`. No API change; the import name stayed `cds`.
 
 ## [v1.6.1] - 2026-08-21
 

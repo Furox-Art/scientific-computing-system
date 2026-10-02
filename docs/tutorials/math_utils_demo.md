@@ -4,13 +4,17 @@
 
 ## 1. Calculus
 
+`derivative` and `integral` take a **single-argument** callable of one variable.
+`gradient` instead takes one callable of *n* scalar arguments plus the point
+list, so declare the parameters individually rather than indexing `v[0]`.
+
 ```python
 import math
 from cds.math_utils import derivative, integral, gradient
 
-print(derivative(lambda x: x**2, x=3.0))  # ≈ 6
-print(integral(lambda x: math.sin(x), a=0.0, b=math.pi))  # ≈ 2
-print(gradient(lambda v: v[0] ** 2 + v[1] ** 2, point=[1.0, 2.0]))  # [2, 4]
+print(f"{derivative(lambda x: x**2, x=3.0):.9f}")  # ≈ 6
+print(f"{integral(lambda x: math.sin(x), a=0.0, b=math.pi):.9f}")  # ≈ 2
+print(gradient(lambda a, b: a**2 + b**2, point=[1.0, 2.0]))  # ≈ [2, 4]
 ```
 
 ## 2. Linear Algebra Basics

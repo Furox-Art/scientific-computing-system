@@ -75,8 +75,10 @@ tree = DecisionTreeClassifier(max_depth=3).fit(X_train_s, y_train)
 
 km_model = KMeans(2, seed=0)
 res = km_model.fit(X_train_s)
-print(res.labels, res.inertia_, res.n_iter)
+print(res.labels, res.inertia, res.n_iter)
 ```
+
+`KMeansResult` exposes `inertia`, not the scikit-learn-style `inertia_`.
 
 - **k-NN**: ties break deterministically to the earliest-seen neighbour label.
 - **KMeans**: k-means++ seeding driven by a seeded `random.Random`; empty
