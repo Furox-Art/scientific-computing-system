@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import cast
 from uuid import uuid4
 
+from cds._paths import resolve_target
+
 
 @dataclass(frozen=True)
 class DecisionRecord:
@@ -212,11 +214,24 @@ class RunManifest:
         self.metadata["plan.sha256"] = digest
         return digest
 
-    def record_environment_lock(self, name: str, path: str | os.PathLike[str]) -> str:
-        """Bind an additional environment/lock file to the manifest."""
+    def record_environment_lock(
+        self,
+        name: str,
+        path: str | os.PathLike[str],
+        *,
+        root: str | os.PathLike[str] | None = None,
+    ) -> str:
+        """Bind an additional environment/lock file to the manifest.
+
+        When ``root`` is given, ``path`` is confined to it: a relative path is
+        resolved against ``root`` and any location that escapes ``root`` --
+        including via ``..`` segments, a shared textual prefix, or a symlink --
+        raises :class:`ValueError` instead of being hashed. Omitting ``root``
+        keeps the historical behaviour of reading the path as given.
+        """
         if not name.strip():
             raise ValueError("environment lock name must not be empty")
-        digest = sha256_file(path)
+        digest = sha256_file(resolve_target(path, root))
         self.metadata[f"lock.{name}.sha256"] = digest
         return digest
 
@@ -314,9 +329,15 @@ def save_checkpoint(
     path: str | os.PathLike[str],
     manifest: RunManifest,
     state: dict[str, object],
+    *,
+    root: str | os.PathLike[str] | None = None,
 ) -> None:
-    """Atomically save a JSON checkpoint and remove partial files on any failure."""
-    destination = Path(path)
+    """Atomically save a JSON checkpoint and remove partial files on any failure.
+
+    When ``root`` is given, ``path`` is confined to it; see
+    :meth:`RunManifest.record_environment_lock` for the confinement semantics.
+    """
+    destination = resolve_target(path, root)
     destination.parent.mkdir(parents=True, exist_ok=True)
     payload = {"manifest": manifest.to_dict(), "state": state}
     temporary: Path | None = None
@@ -341,9 +362,17 @@ def save_checkpoint(
         raise
 
 
-def load_checkpoint(path: str | os.PathLike[str]) -> tuple[RunManifest, dict[str, object]]:
-    """Load a checkpoint created by ``save_checkpoint``."""
-    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+def load_checkpoint(
+    path: str | os.PathLike[str],
+    *,
+    root: str | os.PathLike[str] | None = None,
+) -> tuple[RunManifest, dict[str, object]]:
+    """Load a checkpoint created by :func:`save_checkpoint`.
+
+    When ``root`` is given, ``path`` is confined to it; see
+    :meth:`RunManifest.record_environment_lock` for the confinement semantics.
+    """
+    raw = json.loads(resolve_target(path, root).read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise ValueError("checkpoint must contain a JSON object")
     obj = cast(dict[str, object], raw)
