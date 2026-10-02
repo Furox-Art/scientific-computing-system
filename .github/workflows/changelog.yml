@@ -44,6 +44,7 @@ jobs:
   changelog:
     name: Generate CHANGELOG
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout main (not the tag, to avoid detached HEAD)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

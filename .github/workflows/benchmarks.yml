@@ -22,7 +22,9 @@ jobs:
   regenerate:
     name: Regenerate benchmark report
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout default branch (full history for SHA)

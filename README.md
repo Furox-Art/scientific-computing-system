@@ -8,7 +8,6 @@
 
 <p align="center">
   <a href="https://pypi.org/project/scientific-computing-system/"><img src="https://img.shields.io/pypi/v/scientific-computing-system.svg" alt="PyPI version"></a>
-  <a href="https://www.npmjs.com/package/scientific-computing-system"><img src="https://img.shields.io/npm/v/scientific-computing-system.svg" alt="npm version"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10+-green.svg" alt="Python 3.10+"></a>
   <a href="https://codecov.io/gh/Furox-Art/scientific-computing-system"><img src="https://codecov.io/gh/Furox-Art/scientific-computing-system/branch/main/graph/badge.svg" alt="codecov"></a>
   <a href="https://github.com/Furox-Art/scientific-computing-system/actions/workflows/tests.yml"><img src="https://github.com/Furox-Art/scientific-computing-system/actions/workflows/tests.yml/badge.svg" alt="CI"></a>
@@ -38,6 +37,8 @@ Download counts: [PyPI stats](https://pypi.org/project/scientific-computing-syst
 I wrote this because NumPy and SciPy are incredible, but they're also 20 years old and carry two decades of design decisions that don't always make sense anymore.
 
 This is a from-scratch rethinking of what scientific computing in Python could look like if we started today. No C extensions, no Fortran legacy, no dependency hell. Just Python, type hints, and algorithms that are actually readable.
+
+This repository is the front door. The NumPy build is [scientific-computing-system-2.0](https://github.com/Furox-Art/scientific-computing-system-2.0), not a second project. Beside it: [axiomize](https://github.com/Furox-Art/axiomize) for units and Model IR, [quantum-reasoning-skill](https://github.com/Furox-Art/quantum-reasoning-skill) for the reasoning skill, and [plan-auditor](https://github.com/Furox-Art/plan-auditor) for a fail-closed agent check. Install this package from PyPI. npm is no longer published.
 
 The import name is **`cds`** (the distribution is `scientific-computing-system`). The zero-dependency core needs nothing but the standard library.
 
@@ -98,7 +99,7 @@ fit = linear_regression([1.0, 2.0, 3.0, 4.0, 5.0], [2.1, 3.9, 6.2, 7.8, 10.1])
 print(f"slope = {fit.slope:.4f} | intercept = {fit.intercept:.4f} | r^2 = {fit.r_squared:.4f}")
 ```
 
-Real output:
+Real output (executed verbatim; pasted from an actual run):
 
 ```text
 singular_values = [5.464986, 0.365966]

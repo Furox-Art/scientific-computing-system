@@ -33,6 +33,7 @@ jobs:
       github.event.workflow_run.head_branch == 'main' &&
       github.event.workflow_run.repository.full_name == github.repository
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     outputs:
@@ -80,6 +81,7 @@ jobs:
     needs: gate
     if: needs.gate.outputs.should_release == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: pypi
     permissions:
       contents: write
@@ -92,7 +94,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.RELEASE_SHA }}
-          fetch-depth: 2
+          # Full history + tags: the version-discipline base must be the previous
+          # *release*, not the parent commit.
+          fetch-depth: 0
 
       - name: Re-verify checkout identity
         shell: bash
@@ -109,9 +113,43 @@ jobs:
         with:
           python-version: "3.12"
 
+      # The comparison base is the most recent release tag reachable from the
+      # release commit, i.e. the previously published version. Using
+      # `${RELEASE_SHA}^1` instead would compare only against the immediate
+      # parent, so a release commit that happened to be a merge of several
+      # commits (or a rebase tip) could ship a package change made in an earlier
+      # commit with no version bump at all.
+      - name: Resolve the previous release as the version-discipline base
+        id: base
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text(encoding='utf-8'))['project']['version'])")"
+          previous_tag=""
+          while read -r tag; do
+            [ -z "$tag" ] && continue
+            tagged_version="${tag#v}"
+            if [ "$tagged_version" != "$version" ]; then
+              previous_tag="$tag"
+              break
+            fi
+          done < <(git tag --merged HEAD --sort=-creatordate --list 'v*')
+          if [ -n "$previous_tag" ]; then
+            base="$(git rev-list -n 1 "$previous_tag")"
+            echo "Previous release: $previous_tag ($base)"
+          else
+            base="$(git rev-list --max-parents=0 HEAD)"
+            echo "No previous release tag reachable; using repository root $base"
+          fi
+          echo "ref=$base" >> "$GITHUB_OUTPUT"
+
       - name: Verify synchronized monotonic release metadata
         shell: bash
-        run: python scripts/check_version_discipline.py --base-ref "${RELEASE_SHA}^1"
+        run: python scripts/check_version_discipline.py --base-ref "${{ steps.base.outputs.ref }}"
+
+      - name: Reject version metadata lockstep drift before publishing
+        shell: bash
+        run: python scripts/check_version_lockstep.py
 
       - name: Resolve release version
         id: release
@@ -140,6 +178,23 @@ jobs:
 
       - name: Build sdist + wheel without dependency isolation
         run: python -m build --no-isolation
+
+      # Assert the *contents* of both artifacts before anything is published.
+      # The version/name verification below proves the metadata says 2.1.0; this
+      # proves the wheel actually ships `cds` with its `py.typed` marker and the
+      # declared entry point, and that the sdist carries no build residue. A
+      # wheel missing `py.typed` imports and runs perfectly while silently
+      # degrading every downstream type checker.
+      - name: Assert wheel and sdist contents
+        run: python scripts/check_distribution_contents.py dist
+
+      # Second fail-closed artifact gate: the built files must declare the same
+      # version as every metadata source. Catches a stale `dist/` carried over
+      # from a previous build in the workspace.
+      - name: Assert built artifacts match the declared version
+        env:
+          EXPECTED_VERSION: ${{ steps.release.outputs.version }}
+        run: python scripts/check_version_lockstep.py --dist-dir dist
 
       - name: Verify package name and release version
         env:
@@ -338,6 +393,10 @@ jobs:
           --version "$RELEASE_VERSION"
           --repository "$GITHUB_REPOSITORY"
 
+      # The ONLY step in this workflow that may run after a failure. It reports the
+# deployment outcome for the `pypi` environment; it cannot publish, create a
+# tag, or alter any artifact, so it does not mask a failed publish. Everything
+# that touches the registry or the tag runs only on success.
       - name: Set PyPI deployment status
         if: always() && steps.deployment.outputs.id != ''
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0

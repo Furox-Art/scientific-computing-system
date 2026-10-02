@@ -145,6 +145,7 @@ catalog from the installed package.
 - [Case Studies](CASE_STUDY_HUBBLE.md)
 - [Benchmarks](benchmarks.md)
 - [Research Workflows](research-workflows.md)
+- [Related projects](related.md)
 
 ---
 *CDS is stable and actively developed. Contributions are welcome — see

@@ -34,10 +34,13 @@ for h in hypos:
     print(h.statement)
 
 # Example: treat a numeric prediction from a hypothesis as a test value
-# and run a quick statistical check with real or simulated data
-pi_est = estimate_pi(n_samples=100_000, seed=42)
-result = one_sample_ttest([pi_est.estimate], mu=3.141592653589793)
-print(result.p_value)
+# and run a quick statistical check with real or simulated data.
+# one_sample_ttest needs at least two observations, so estimate pi twice
+# with different seeds.
+pi_a = estimate_pi(n_samples=100_000, seed=42)
+pi_b = estimate_pi(n_samples=100_000, seed=7)
+result = one_sample_ttest([pi_a.estimate, pi_b.estimate], popmean=3.141592653589793)
+print(f"p = {result.p_value:.4f}")
 ```
 
 `domain` accepts either a `Domain` member or its string value
