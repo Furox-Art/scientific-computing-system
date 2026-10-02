@@ -78,6 +78,7 @@ plugins:
 
 nav:
   - Home: index.md
+  - Related projects: related.md
   - Getting Started:
       - Install & First Steps: getting-started.md
       - Tour of Numerical Methods: tour_of_numerical_methods.md
