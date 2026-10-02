@@ -2,12 +2,6 @@ name: npm Publish
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "package.json"
-      - "index.js"
-      - "bin/**"
 
 concurrency:
   group: npm-publish
@@ -28,6 +22,6 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Publish to npm
-        run: npm publish --access public
+        run: echo "npm publishing is disabled; PyPI is the install path" && exit 0
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

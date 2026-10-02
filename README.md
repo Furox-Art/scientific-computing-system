@@ -23,6 +23,8 @@ I wrote this because NumPy and SciPy are incredible, but they're also 20 years o
 
 This is a from-scratch rethinking of what scientific computing in Python could look like if we started today. No C extensions, no Fortran legacy, no dependency hell. Just Python, type hints, and algorithms that are actually readable.
 
+This repository is the front door. The NumPy build is [scientific-computing-system-2.0](https://github.com/Furox-Art/scientific-computing-system-2.0), not a second project. Beside it: [axiomize](https://github.com/Furox-Art/axiomize) for units and Model IR, [quantum-reasoning-skill](https://github.com/Furox-Art/quantum-reasoning-skill) for the reasoning skill, and [plan-auditor](https://github.com/Furox-Art/plan-auditor) for a fail-closed agent check. Install this package from PyPI. npm is no longer published.
+
 ## What's inside
 
 - **Linear algebra**: SVD, QR, Cholesky, eigenvalues-all implemented in pure Python with proper error handling
@@ -56,7 +58,7 @@ solution = solve_ivp(
 )
 ```
 
-Also on npm: `npm i scientific-computing-system`. Full docs: [furox-art.github.io/scientific-computing-system](https://furox-art.github.io/scientific-computing-system/).
+Full docs: [furox-art.github.io/scientific-computing-system](https://furox-art.github.io/scientific-computing-system/).
 
 ## Common use cases
 

@@ -1,5 +1,35 @@
 #!/usr/bin/env python3
-"""Fail CI when package code changes without a synchronized version bump."""
+"""Fail CI when package code changes without a synchronized version bump.
+
+Comparison base
+---------------
+
+The diff base must be the *merge base* with the target branch, never ``HEAD^1``.
+``HEAD^1`` is the parent of the current commit, which under a rebase merge (and
+for any multi-commit push inspected at its tip) is the previous commit of the
+same branch. The diff then covers only the final commit, so a pull request that
+changed ``src/cds/`` in one commit and added an unrelated follow-up commit passed
+this gate with no version bump at all. ``resolve_base_ref`` defaults to
+``git merge-base origin/main HEAD``; CI passes the PR merge-base explicitly.
+
+What counts as "package-affecting"
+--------------------------------
+
+A change is package-affecting when it touches ``src/cds/`` or alters the
+``[project]`` table in ``pyproject.toml`` (name, version, dependencies, extras,
+entry points, classifiers) -- that is, anything that changes the bytes a user
+installs. A change confined to ``[tool.*]`` configuration (coverage, ruff,
+mypy, pytest, the hatch sdist allowlist) is build configuration and does not
+require a version bump. See ``_distribution_metadata_changed``.
+
+Built artifacts
+---------------
+
+``--dist-dir`` additionally requires the built wheel and sdist to declare the
+same version as the metadata sources, so a release candidate cannot pass the
+discipline gate on source metadata while the artifacts that would actually be
+published disagree.
+"""
 
 from __future__ import annotations
 
@@ -88,15 +118,93 @@ def _changed_paths(base_ref: str) -> tuple[str, ...]:
     return tuple(line for line in output.splitlines() if line)
 
 
+def _pyproject_project_table(base_ref: str) -> dict[str, object] | None:
+    """The ``[project]`` table at ``base_ref``, or None if absent."""
+    try:
+        text = _run_git("show", f"{base_ref}:pyproject.toml")
+    except subprocess.CalledProcessError:
+        return None
+    project = tomllib.loads(text).get("project")
+    return project if isinstance(project, dict) else None
+
+
+def _distribution_metadata_changed(base_ref: str, changed: tuple[str, ...]) -> bool:
+    """Did this change alter what the distribution *ships*, as opposed to how it is built?
+
+    ``pyproject.toml`` is a single file holding two unrelated kinds of setting:
+
+    * ``[project]`` -- the distribution metadata (name, version, dependencies,
+      extras, entry points, classifiers). A change here alters the published
+      artifact and requires a version bump.
+    * ``[tool.*]`` -- local tooling configuration (coverage, ruff, mypy, pytest,
+      and the hatch ``only-include`` listing). None of it is part of the installed
+      package: ``[tool.coverage.run] source`` and ``[tool.ruff] line-length``
+      cannot change a single byte of the wheel.
+
+    Treating any ``pyproject.toml`` edit as package-affecting made the gate
+    reject CI/tooling-only pull requests that legitimately need no version bump
+    (adjusting the sdist allowlist, adding a coverage option), while providing no
+    extra safety for the changes it was meant to catch -- those all land in
+    ``src/cds/`` or in ``[project]`` anyway.
+
+    So: ``src/cds/`` is always package-affecting; ``pyproject.toml`` counts only
+    when its ``[project]`` table actually differs from the base revision.
+    """
+    if "pyproject.toml" not in changed:
+        return False
+    base_project = _pyproject_project_table(base_ref)
+    if base_project is None:
+        return True  # no base metadata to compare against; assume the worst
+    current_project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8")).get(
+        "project"
+    )
+    return base_project != current_project
+
+
+def resolve_base_ref(base_ref: str | None) -> str:
+    """Resolve the comparison base for the discipline diff.
+
+    ``HEAD^1`` is only correct for a single-commit or merge-commit update. Under
+    a *rebase* merge, or for any multi-commit push evaluated on its last commit,
+    ``HEAD^1`` is the previous commit of the same branch, so the diff covers only
+    the final commit. A pull request could then change ``src/cds/`` in one
+    commit, add an unrelated follow-up commit, and pass this gate with no version
+    bump at all:
+
+        commit A  feat: change package code, no version bump   <- invisible
+        commit B  docs: unrelated follow-up                    <- only diff seen
+
+    The comparison base must therefore be the *merge base* with the target
+    branch, which is stable across merge, squash and rebase strategies. CI passes
+    an explicit ``--base-ref``; this fallback covers local and release use.
+    """
+    if base_ref is not None:
+        return base_ref
+    for candidate in ("origin/main", "main"):
+        try:
+            merge_base = _run_git("merge-base", candidate, "HEAD")
+        except subprocess.CalledProcessError:
+            continue
+        if merge_base:
+            return merge_base
+    raise ValueError(
+        "could not resolve a comparison base: pass --base-ref explicitly "
+        "(CI uses the PR merge-base against the base branch)"
+    )
+
+
 def check_version_discipline(base_ref: str) -> None:
     """Require a monotonic synchronized bump for package-affecting changes."""
     current = assert_metadata_sync()
     changed = _changed_paths(base_ref)
-    package_changed = any(
-        path.startswith("src/cds/") or path == "pyproject.toml" for path in changed
+    package_changed = any(path.startswith("src/cds/") for path in changed) or (
+        _distribution_metadata_changed(base_ref, changed)
     )
     if not package_changed:
-        print(f"Version metadata synchronized at {current}; no package-affecting change detected.")
+        print(
+            f"Version metadata synchronized at {current}; no package-affecting "
+            f"change detected in {len(changed)} path(s) against {base_ref}."
+        )
         return
 
     base = _base_version(base_ref)
@@ -117,10 +225,34 @@ def check_version_discipline(base_ref: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base-ref", default="HEAD^1")
+    parser.add_argument(
+        "--base-ref",
+        default=None,
+        help=(
+            "comparison base for the diff; defaults to the merge-base with "
+            "origin/main. Do not use HEAD^1: it under-reports the change set for "
+            "multi-commit and rebased updates."
+        ),
+    )
+    parser.add_argument(
+        "--dist-dir",
+        type=Path,
+        default=None,
+        help=(
+            "additionally require built wheel/sdist metadata to agree with the "
+            "declared version (delegates to scripts/check_version_lockstep.py)"
+        ),
+    )
     args = parser.parse_args(argv)
     try:
-        check_version_discipline(args.base_ref)
+        base_ref = resolve_base_ref(args.base_ref)
+        check_version_discipline(base_ref)
+        if args.dist_dir is not None:
+            lockstep = ROOT / "scripts" / "check_version_lockstep.py"
+            command = [sys.executable, str(lockstep), "--dist-dir", str(args.dist_dir)]
+            completed = subprocess.run(command, cwd=ROOT, check=False, text=True)
+            if completed.returncode != 0:
+                raise ValueError("built artifacts do not match the declared version")
     except (ValueError, subprocess.CalledProcessError) as exc:
         print(f"VERSION DISCIPLINE FAILED: {exc}", file=sys.stderr)
         return 1
