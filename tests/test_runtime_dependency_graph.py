@@ -104,7 +104,13 @@ def test_declared_runtime_dependencies_are_empty() -> None:
 
 
 def test_runtime_requirements_mirror_declares_no_package() -> None:
-    text = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+    mirror = ROOT / "requirements.txt"
+    if not mirror.is_file():
+        # The sdist allowlist ships the lock files but not this convenience
+        # mirror. The wheel-METADATA test below still guards the shipped
+        # artifact, so there is nothing to assert against here.
+        pytest.skip("requirements.txt is not shipped in this distribution tree")
+    text = mirror.read_text(encoding="utf-8")
     packages = [
         line.strip()
         for line in text.splitlines()
