@@ -46,11 +46,14 @@ SDIST_ALLOWED_TOP_LEVEL = frozenset(
         ".gitignore",
         "CHANGELOG.md",
         "CITATION.cff",
+        "codemeta.json",
         "CONTRIBUTING.md",
         "LICENSE",
         "PKG-INFO",
         "README.md",
         "SECURITY.md",
+        "paper.bib",
+        "paper.md",
         "benchmarks",
         "bin",
         "dashboard",
@@ -232,6 +235,11 @@ def check_sdist(sdist: Path, expected_version: str) -> list[str]:
             f"{prefix}.github/workflows/release.yml",
             f"{prefix}.github/workflows/tests.yml",
             f"{prefix}requirements-build.lock",
+            # Locked version surfaces: the test suite reads all of them from the
+            # repository root, so omitting any one makes the suite fail with
+            # FileNotFoundError when run from an unpacked sdist.
+            f"{prefix}codemeta.json",
+            f"{prefix}package.json",
         )
         absent = [member for member in required if member not in names]
         if absent:
