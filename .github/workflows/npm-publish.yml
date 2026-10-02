@@ -21,20 +21,23 @@ name: npm Publish
 on:
   workflow_dispatch:
   push:
-    # Two independent triggers. GitHub does NOT evaluate `paths` filters for tag
-    # pushes, so a single entry combining `tags` and `paths` would silently never
-    # fire on the release tag. The list form keeps both correct.
-    -
-      branches: [main]
-      paths:
-        - "package.json"
-        - "index.js"
-        - "bin/**"
-        - "npm.test.js"
-        - ".github/workflows/npm-publish.yml"
-    -
-      tags:
-        - "v*"
+    # `branches` and `tags` in one `push` mapping are OR'd by GitHub.
+    #
+    # `paths` is retained for branch pushes: without it, every merge to main
+    # would run this job, and the "version is not already published" check
+    # would fail the build on all of them. GitHub does not evaluate `paths`
+    # filters against tag pushes, so a `v*` tag still triggers the publish.
+    # If a future GitHub change starts applying `paths` to tags,
+    # `workflow_dispatch` remains as the explicit manual release path.
+    branches: [main]
+    tags:
+      - "v*"
+    paths:
+      - "package.json"
+      - "index.js"
+      - "bin/**"
+      - "npm.test.js"
+      - ".github/workflows/npm-publish.yml"
 
 # The published npm version comes from `package.json` (asserted to equal the
 # Python distribution version above), not from the git tag name.
