@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Re-enabled: npm publishing
+
+This reverses two earlier decisions. Both were deliberate at the time and are
+recorded here so the history is not silently erased.
+
+- **Reverted: the decision in `52717c5` ("docs: make this the front door and stop
+  npm publishing") to disable npm publishing.** That commit replaced the real
+  publish step with
+  `run: echo "npm publishing is disabled; PyPI is the install path" && exit 0`.
+  npm publishing is now real again, by explicit user decision to publish all six
+  repositories to npm.
+- **Reverted: `"private": true` in `package.json`**, added by the hardening work in
+  `#140` while publishing was disabled. `private: true` makes `npm publish`
+  refuse to run at all, so the flag had to go before the workflow could work. The
+  `files` allowlist is retained: it is what keeps the repository (tests, CI
+  workflows, 10k+ statements of Python, promo media) out of the published tarball.
+
+Authentication is **OIDC trusted publishing** (`id-token: write`,
+`npm publish --provenance`). No long-lived registry token is used on the primary
+path. A token fallback exists for bootstrapping only: dispatching with
+`use_token_fallback=true` sets `NODE_AUTH_TOKEN` from the `NPM_TOKEN` secret. It
+is off by default and never runs automatically, so a broken OIDC configuration
+fails loudly instead of silently reverting to the long-lived credential.
+
+npm 2.2.0 is a **new version for npm**: the registry currently holds only 1.0.0,
+which shipped an unparseable launcher. The PyPI release of 2.2.0 already
+happened, so npm 2.2.0 is published by manual dispatch of `npm-publish.yml`
+rather than by the tag push that future releases will use.
+
+### Fixed
+
+- **The publish path is now guarded rather than merely enabled.**
+  `tests/test_codemeta_version_lockstep.py`-style machine checks were extended to
+  npm: the launcher contract test previously asserted that publishing stayed
+  disabled, which would have silently passed against a disabled workflow. It now
+  asserts a real `npm publish --provenance` invocation, `id-token: write`, the
+  absence of `private: true`, the absence of the disabled stub, and the presence
+  of every gate that makes a publish safe: the registry version-existence check,
+  the `npm pack --dry-run` tarball allowlist, and the npm/Python version lockstep.
+- **The package description states the Python prerequisite.** This npm package
+  is a launcher shim: it ships no Python and execs `python -m cds`. A user who
+  installs it without `pip install scientific-computing-system` gets a launcher
+  that cannot work, so the description (the only text npm renders on the package
+  page) now says so, and a test asserts it.
+
+### Known gap
+
+- `README.md` line 41 still states "npm is no longer published". That file is
+  owned elsewhere and is shipped verbatim in the npm tarball, so the published
+  package page and the README will contradict each other until its owner
+  updates it.
+
 ## [v2.2.0]
 
 Security hardening of the provenance path surface: provenance manifest paths

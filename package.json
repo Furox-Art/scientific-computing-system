@@ -1,8 +1,7 @@
 {
   "name": "scientific-computing-system",
   "version": "2.2.0",
-  "private": true,
-  "description": "Scientific Computing System launcher - thin Node wrapper that forwards to the pure-Python `cds` CLI (PyPI: scientific-computing-system). npm publishing is disabled by product decision; PyPI is the install path.",
+  "description": "Scientific Computing System launcher - a thin Node wrapper that forwards to the pure-Python `cds` CLI. This npm package ships NO Python code: it requires the Python distribution to be installed (`pip install scientific-computing-system`), otherwise `scs` exits non-zero with an actionable message.",
   "main": "index.js",
   "bin": {
     "scs": "./bin/scs.js"
