@@ -111,7 +111,7 @@ A CLI ships with the package:
 
 ```console
 $ cds --version
-System version 2.1.0
+System version 2.2.0
 $ cds modules          # live module catalog
 $ cds constants        # physical constants table
 ```

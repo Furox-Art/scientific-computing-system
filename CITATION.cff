@@ -3,8 +3,9 @@ message: "If you use this software, please cite it using the metadata from this 
 type: software
 title: "scientific-computing-system"
 # Keep `version` in lockstep with pyproject.toml [project].version and
-# src/cds/_version.py. scripts/check_version_discipline.py enforces this.
-version: 2.1.0
+# src/cds/_version.py. scripts/check_version_discipline.py and
+# scripts/check_version_lockstep.py enforce this.
+version: 2.2.0
 authors:
   - name: "Furox-Art"
     email: "furkanarkn1451@gmail.com"
@@ -49,5 +50,5 @@ preferred-citation:
   authors:
     - name: "Furox-Art"
   year: 2026
-  version: 2.1.0
+  version: 2.2.0
   url: "https://github.com/Furox-Art/scientific-computing-system"

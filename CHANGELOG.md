@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.2.0]
+
+Security hardening of the provenance path surface: provenance manifest paths
+are confined (`src/cds/_paths.py`), and the runtime dependency graph is guarded.
+No numerical kernel or public API signature changed. (Content owned by the
+security agent; this heading exists to satisfy the version-lockstep gate.)
+
 ## [v2.1.0] - 2026-09-30
 
 Release-hardening pass covering the CI, quality-gate and packaging surface. No
