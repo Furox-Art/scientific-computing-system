@@ -17,6 +17,9 @@ jobs:
   installed-cli:
     name: installed CLI on ${{ matrix.os }} / Python 3.12
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -43,3 +46,38 @@ jobs:
           python -m pip install --force-reinstall --no-deps "$wheel"
       - name: Verify installed console and module entry points
         run: python scripts/verify_cli_install.py
+      # The wheel is installed from `dist/`, but the *source* tree is still on
+      # disk for the checkout. Without this, a source-tree import could mask a
+      # packaging defect (a missing module, a broken `py.typed`, a bad
+      # entry point) that the installed wheel would have failed on.
+      - name: Assert the installed wheel has no source-tree fallback
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python - <<'PY'
+          import importlib.util
+          import pathlib
+          import subprocess
+          import sys
+          import tempfile
+
+          checkout = pathlib.Path.cwd().resolve()
+          with tempfile.TemporaryDirectory() as tmp:
+              result = subprocess.run(
+                  [sys.executable, "-c", "import cds, pathlib; print(pathlib.Path(cds.__file__).resolve())"],
+                  cwd=tmp,
+                  capture_output=True,
+                  text=True,
+                  check=True,
+              )
+          resolved = pathlib.Path(result.stdout.strip()).resolve()
+          if checkout in resolved.parents:
+              raise SystemExit(f"cds resolved from the checkout, not the wheel: {resolved}")
+          print(f"PASS: installed cds resolves to {resolved}")
+
+          spec = importlib.util.find_spec("cds")
+          if spec is None or not spec.origin:
+              raise SystemExit("cds is not importable from the installed distribution")
+          print("PASS: cds is importable from the installed distribution")
+          PY
