@@ -12,6 +12,16 @@ changed ``src/cds/`` in one commit and added an unrelated follow-up commit passe
 this gate with no version bump at all. ``resolve_base_ref`` defaults to
 ``git merge-base origin/main HEAD``; CI passes the PR merge-base explicitly.
 
+What counts as "package-affecting"
+--------------------------------
+
+A change is package-affecting when it touches ``src/cds/`` or alters the
+``[project]`` table in ``pyproject.toml`` (name, version, dependencies, extras,
+entry points, classifiers) -- that is, anything that changes the bytes a user
+installs. A change confined to ``[tool.*]`` configuration (coverage, ruff,
+mypy, pytest, the hatch sdist allowlist) is build configuration and does not
+require a version bump. See ``_distribution_metadata_changed``.
+
 Built artifacts
 ---------------
 
@@ -108,6 +118,49 @@ def _changed_paths(base_ref: str) -> tuple[str, ...]:
     return tuple(line for line in output.splitlines() if line)
 
 
+def _pyproject_project_table(base_ref: str) -> dict[str, object] | None:
+    """The ``[project]`` table at ``base_ref``, or None if absent."""
+    try:
+        text = _run_git("show", f"{base_ref}:pyproject.toml")
+    except subprocess.CalledProcessError:
+        return None
+    project = tomllib.loads(text).get("project")
+    return project if isinstance(project, dict) else None
+
+
+def _distribution_metadata_changed(base_ref: str, changed: tuple[str, ...]) -> bool:
+    """Did this change alter what the distribution *ships*, as opposed to how it is built?
+
+    ``pyproject.toml`` is a single file holding two unrelated kinds of setting:
+
+    * ``[project]`` -- the distribution metadata (name, version, dependencies,
+      extras, entry points, classifiers). A change here alters the published
+      artifact and requires a version bump.
+    * ``[tool.*]`` -- local tooling configuration (coverage, ruff, mypy, pytest,
+      and the hatch ``only-include`` listing). None of it is part of the installed
+      package: ``[tool.coverage.run] source`` and ``[tool.ruff] line-length``
+      cannot change a single byte of the wheel.
+
+    Treating any ``pyproject.toml`` edit as package-affecting made the gate
+    reject CI/tooling-only pull requests that legitimately need no version bump
+    (adjusting the sdist allowlist, adding a coverage option), while providing no
+    extra safety for the changes it was meant to catch -- those all land in
+    ``src/cds/`` or in ``[project]`` anyway.
+
+    So: ``src/cds/`` is always package-affecting; ``pyproject.toml`` counts only
+    when its ``[project]`` table actually differs from the base revision.
+    """
+    if "pyproject.toml" not in changed:
+        return False
+    base_project = _pyproject_project_table(base_ref)
+    if base_project is None:
+        return True  # no base metadata to compare against; assume the worst
+    current_project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8")).get(
+        "project"
+    )
+    return base_project != current_project
+
+
 def resolve_base_ref(base_ref: str | None) -> str:
     """Resolve the comparison base for the discipline diff.
 
@@ -144,8 +197,8 @@ def check_version_discipline(base_ref: str) -> None:
     """Require a monotonic synchronized bump for package-affecting changes."""
     current = assert_metadata_sync()
     changed = _changed_paths(base_ref)
-    package_changed = any(
-        path.startswith("src/cds/") or path == "pyproject.toml" for path in changed
+    package_changed = any(path.startswith("src/cds/") for path in changed) or (
+        _distribution_metadata_changed(base_ref, changed)
     )
     if not package_changed:
         print(
