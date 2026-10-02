@@ -12,30 +12,49 @@ primitives, and no module reaches back up into a higher-level one.
 
 ## 1. Module map
 
-CDS is split into **18 top-level subpackages** under `src/cds/`, each
-owning one scientific domain. Every subpackage exposes its public API
-through an `__init__.py` with an explicit `__all__`.
+`src/cds/` contains **34 subpackages** plus two single-file modules
+(`causal.py`, `sensitivity.py`). Each subpackage owns one scientific domain
+and exposes its public API through an `__init__.py` with an explicit
+`__all__`. Run `cds modules` for the same catalog from an installed package.
 
 | Module | Responsibility |
 | --- | --- |
-| [`core`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/core) | Shared data models (`DataPoint`, `Dataset`) and numeric guards. |
-| [`math_utils`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/math_utils) | Linear algebra, special functions, combinatorics, number theory. |
+| [`core`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/core) | Shared data models (`Domain`, `Hypothesis`, `HypothesisStatus`) and numeric guards. |
+| [`math_utils`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/math_utils) | Calculus, linear algebra (SVD, QR, Cholesky, LU, eigen), special functions. |
+| [`interpolate`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/interpolate) | `interp1d` / `interp2d` factory functions over sampled domains. |
 | [`probability`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/probability) | Discrete/continuous distributions and sampling, plus chi-square/Student-t quantiles and gamma/beta (Marsaglia–Tsang) samplers. |
+| [`bayes`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/bayes) | Conjugate updates, credible intervals, and the binomial Bayes factor. |
 | [`scientific`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/scientific) | Physical constants and closed-form scientific formulas. |
 | [`graph`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/graph) | Graph algorithms: BFS/DFS, Dijkstra, Kruskal MST, etc. |
-| [`signals`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/signals) | DFT/FFT, convolution, power spectra, Butterworth filter design. |
-| [`stats`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/stats) | Descriptive stats, hypothesis tests, regression, time-series, nonparametric rank tests. |
-| [`montecarlo`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/montecarlo) | Stochastic estimation and integration (e.g. π by dart-throwing). |
+| [`signals`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/signals) | DFT/FFT, convolution, power spectra, STFT, Butterworth filter design. |
+| [`wavelets`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/wavelets) | Haar DWT/IDWT, multi-level decomposition, denoising. |
+| [`stats`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/stats) | Descriptive stats, hypothesis tests, regression, effect sizes, time-series, nonparametric rank tests, multiple testing. |
+| [`montecarlo`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/montecarlo) | Stochastic estimation and integration (e.g. π by dart-throwing), random walks. |
 | [`numerical_integration`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/numerical_integration) | Deterministic quadrature: Newton-Cotes, Romberg, Gauss-Legendre, 2-D. |
-| [`diffeq`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/diffeq) | ODE solvers: Euler, RK4, RK45, plus implicit stiff methods (backward Euler, Crank–Nicolson). |
-| [`optimization`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/optimization) | Gradient descent, Newton, Adam, line search, Nelder–Mead, simulated annealing. |
+| [`diffeq`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/diffeq) | ODE solvers: Euler, RK4, adaptive RK45, implicit stiff methods (backward Euler, Crank–Nicolson), symplectic integrators. |
+| [`pde`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/pde) | Finite-difference heat and wave equation solvers on uniform 1-D grids. |
+| [`optimization`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/optimization) | Gradient descent, Newton, Adam, line search, Nelder–Mead, simulated annealing, constrained search. |
 | [`quantum`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/quantum) | Single- and multi-qubit circuit/state-vector simulation. |
-| [`ml`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/ml) | From-scratch neural networks plus k-NN, k-means, CART trees, logistic/linear regression, PCA, scaling and splitting. |
+| [`ml`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/ml) | From-scratch neural networks plus k-NN, k-means, CART trees, random forest, boosting, regression, PCA, scaling and splitting. |
 | [`nlp`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/nlp) | BPE tokenizer, embeddings, attention, a mini-GPT, autograd. |
 | [`modeling`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/modeling) | Symbolic expressions, equation systems, solvers. |
-| [`data_analysis`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/data_analysis) | Data loading, analysis, optional pandas interop, visualization. |
+| [`genetics`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/genetics) | GC content, k-mers, reverse complement, Needleman-Wunsch alignment. |
+| [`fractals`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/fractals) | Escape-time Mandelbrot/Julia and IFS fractals. |
+| [`infotheory`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/infotheory) | Shannon entropy, cross-entropy, KL/JS divergence, mutual information. |
+| [`uncertainty`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/uncertainty) | `UncertainValue` with analytic and correlated Monte-Carlo propagation. |
+| [`sensitivity`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/sensitivity.py) | Local and variance-based global sensitivity, identifiability analysis. |
+| [`validation`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/validation) | Validation checks, cross-method verification, data adequacy, drift/OOD reports. |
+| [`causal`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/causal.py) | Assumption-gated causal effect estimators (module, not subpackage). |
+| [`units`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/units) | SI quantities, conversions, dimension-compatibility checks. |
+| [`workflow`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/workflow) | Approval-gated orchestration, gate decisions, execution traces. |
+| [`provenance`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/provenance) | Run manifests, canonical hashing, decision records, checkpoints. |
+| [`data_analysis`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/data_analysis) | Data loading, analysis, optional pandas interop, ASCII visualization. |
+| [`data_io`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/data_io) | Streaming I/O, online moments, lazy HDF5/NetCDF backends. |
+| [`tools`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/tools) | Capability discovery and adapters for optional scientific backends. |
 | [`hypothesis`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/hypothesis) | Structured research-hypothesis generation and evaluation. |
 | [`knowledge`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/knowledge) | Concept graphs and structured research-note retrieval. |
+| [`plot`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/plot) | Optional matplotlib plotting helpers (`[plot]` extra). |
+| [`cli`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/cli) | The `cds` console script (pure-stdlib `argparse`). |
 
 ---
 
@@ -46,83 +65,146 @@ the bottom, domain toolkits in the middle, application-level composition
 at the top. No module imports something above it, which keeps the graph
 acyclic and lets each layer be understood (and tested) in isolation.
 
+Only cross-subpackage edges that actually appear in `import` statements are
+drawn. 18 subpackages have no outgoing internal dependency at all, so they are
+shown as standalone leaves rather than being forced into a layer.
+
 ```mermaid
 graph TD
-    %% Application / composition layer
-    knowledge["knowledge<br/>(concept graphs)"]
+    %% Application / composition
+    cli["cli<br/>(console script)"]
+    workflow["workflow<br/>(orchestration)"]
     hypothesis["hypothesis<br/>(research ideas)"]
     data_analysis["data_analysis<br/>(load + viz)"]
     modeling["modeling<br/>(symbolic math)"]
 
-    %% Domain toolkits layer
-    ml["ml<br/>(neural nets)"]
+    %% Domain toolkits
+    ml["ml<br/>(estimators)"]
     nlp["nlp<br/>(mini-GPT)"]
     quantum["quantum<br/>(circuits)"]
     diffeq["diffeq<br/>(ODEs)"]
+    bayes["bayes<br/>(conjugate)"]
     optimization["optimization<br/>(minimize)"]
     numerical_integration["numerical_integration<br/>(quadrature)"]
     stats["stats<br/>(tests, time-series)"]
     signals["signals<br/>(FFT, filters)"]
-    montecarlo["montecarlo<br/>(sampling)"]
-    graph["graph<br/>(algorithms)"]
     probability["probability<br/>(distributions)"]
-    scientific["scientific<br/>(constants)"]
+    plot["plot<br/>(matplotlib)"]
 
-    %% Primitives layer
+    %% Assurance layer
+    provenance["provenance<br/>(manifests)"]
+    validation["validation<br/>(checks)"]
+    tools["tools<br/>(adapters)"]
+
+    %% Primitives
     math_utils["math_utils<br/>(linalg)"]
     core["core<br/>(models, guards)"]
 
-    %% Application -> toolkits
+    %% Standalone leaves (no internal deps)
+    knowledge["knowledge<br/>(concept graphs)"]
+    montecarlo["montecarlo<br/>(sampling)"]
+    graph["graph<br/>(algorithms)"]
+    scientific["scientific<br/>(constants)"]
+    wavelets["wavelets<br/>(DWT)"]
+    genetics["genetics<br/>(DNA)"]
+    fractals["fractals"]
+    infotheory["infotheory"]
+    interpolate["interpolate"]
+    uncertainty["uncertainty<br/>(propagation)"]
+    sensitivity["sensitivity<br/>(identifiability)"]
+    causal["causal<br/>(estimators)"]
+    units["units<br/>(dimensional)"]
+    pde["pde<br/>(heat, wave)"]
+    data_io["data_io<br/>(streaming)"]
+
+    %% cli -> toolkits
+    cli --> stats
+    cli --> probability
+    cli --> scientific
+    cli --> numerical_integration
+    cli --> hypothesis
+    cli --> data_analysis
+    cli --> core
+    cli --> plot
+
+    %% orchestration -> assurance
+    workflow --> validation
+    workflow --> provenance
+    workflow --> tools
+
+    %% composition -> toolkits
     hypothesis --> stats
+    hypothesis --> core
     data_analysis --> stats
 
-    %% Domain toolkits -> toolkits / primitives
+    %% toolkits -> toolkits / primitives
     ml --> optimization
-    nlp --> math_utils
-    modeling --> optimization
-    optimization --> math_utils
-
-    %% Everything rests on core
-    math_utils --> core
-    stats --> core
-    diffeq --> core
-    optimization --> core
-    quantum --> core
+    ml --> math_utils
     ml --> core
+    nlp --> math_utils
     nlp --> core
+    modeling --> optimization
     modeling --> core
+    optimization --> math_utils
+    optimization --> core
+    diffeq --> math_utils
+    diffeq --> core
+    probability --> math_utils
+    stats --> math_utils
+    stats --> core
     numerical_integration --> core
-    hypothesis --> core
+    quantum --> core
+    bayes --> math_utils
+    plot --> signals
+    plot --> stats
+
+    %% primitives
+    math_utils --> core
 
     classDef app fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a;
     classDef domain fill:#dcfce7,stroke:#15803d,color:#14532d;
+    classDef assurance fill:#fce7f3,stroke:#be185d,color:#831843;
     classDef prim fill:#fef3c7,stroke:#b45309,color:#78350f;
-    class knowledge,hypothesis,data_analysis,modeling app;
-    class ml,nlp,quantum,diffeq,optimization,numerical_integration,stats,signals,montecarlo,graph,probability,scientific domain;
+    classDef leaf fill:#f3f4f6,stroke:#6b7280,color:#374151;
+    class cli,workflow,hypothesis,data_analysis,modeling app;
+    class ml,nlp,quantum,diffeq,bayes,optimization,numerical_integration,stats,signals,probability,plot domain;
+    class provenance,validation,tools assurance;
     class math_utils,core prim;
+    class knowledge,montecarlo,graph,scientific,wavelets,genetics,fractals,infotheory,interpolate,uncertainty,sensitivity,causal,units,pde,data_io leaf;
 ```
 
-The three colors denote the layers:
+The five colours denote the layers:
 
 - **Blue (application)**: composes lower toolkits into a workflow
-  (turning `stats` into hypothesis generation, or into a data pipeline).
-  Note these modules are at the *top* of the graph even though some have
-  no incoming edges: their role is composition, not primitives.
+  (turning `stats` into hypothesis generation, or into a data pipeline),
+  plus the `cli` entry point. Some of these sit at the *top* of the graph
+  even where nothing imports them: their role is composition, not
+  primitives.
 - **Green (domain toolkits)**: the scientific algorithms. Each is
   self-contained within its field and depends only on primitives or a
   sibling toolkit.
+- **Pink (assurance)**: the evidence layer — `validation` (cross-method
+  checks), `provenance` (run manifests and hashes), and `tools`
+  (lazy backend adapters). `workflow` consumes all three and is
+  deliberately fail-closed when they cannot vouch for a result.
 - **Amber (primitives)**: `core` (shared models and numeric guards) and
-  `math_utils` (linear algebra and special functions). These change the
-  least and are depended on the most.
+  `math_utils` (linear algebra and calculus). These change the least and
+  are depended on the most.
+- **Grey (standalone leaves)**: 15 subpackages with **no** internal
+  dependency in either direction — `knowledge`, `montecarlo`, `graph`,
+  `scientific`, `wavelets`, `genetics`, `fractals`, `infotheory`,
+  `interpolate`, `uncertainty`, `sensitivity`, `causal`, `units`, `pde`,
+  and `data_io`. They are pure-Python and self-contained, importable with
+  zero cross-package coupling, and therefore independently testable.
 
-> **Leaf modules** with *no* internal dependencies, `core`, `probability`,
-> `scientific`, `graph`, `signals`, `montecarlo`, `knowledge`, form the
-> foundation that everything else is built on. They can be imported with
-> zero cross-package coupling.
+> The graph is derived from actual `import` statements (docstring
+> references such as `:mod:` roles are excluded), so it reflects the real
+> coupling in the code rather than an intended layering.
 >
-> The graph is generated from actual `import` statements (docstring
-> references such as `:mod:` roles are excluded), so it always reflects
-> the real coupling in the code.
+> **The "downward-only" rule is a convention, not an enforced invariant.**
+> The graph is acyclic today, and section 3 states the rules contributors
+> are expected to hold to, but no static check currently rejects a
+> back-edge. Read the diagram as descriptive, not as a guarantee.
 
 ---
 
@@ -152,8 +234,8 @@ result**, where each stage is a plain Python object with no framework
 involvement.
 
 ```
-        ┌─────────────────┐
-input → │  parse / load   │  lists, floats, core.DataPoint/Dataset
+┌─────────────────┐
+ input → │  parse / load   │  lists, floats, core.Domain/Hypothesis
         └────────┬────────┘
                  │
                  ▼
@@ -173,7 +255,8 @@ Concretely, a call flows like this:
 
 1. **Input** arrives as native Python types: a `list[float]` signal, a
    2-D `list[list[float]]` matrix, a callable `f(x)`, or a
-   `core.models.Dataset`. No DataFrame or array library is required.
+   `core.Domain` / `core.Hypothesis` value. No DataFrame or array library
+   is required.
 2. **Algorithm** runs in a domain toolkit. It is a pure function: same
    input always yields the same output, no hidden state, no I/O. When a
    routine needs a lower-level primitive (e.g. `kpss_statistic` needs a
@@ -194,20 +277,35 @@ the output of `linear_regression` feeds `one_sample_ttest`, which feeds
 
 ## 5. The optional-dependency boundary
 
-CDS keeps its zero-dependency guarantee by isolating anything that needs
-a third-party library behind an **optional adapter**. Today that is the
-pandas interop in [`data_analysis/pandas_io.py`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/data_analysis/pandas_io.py):
+CDS keeps its zero-dependency guarantee by isolating anything that needs a
+third-party library behind an **optional adapter**. There are four such
+boundaries today, all resolved lazily at call time:
 
-- The core algorithms operate on plain `list` and `dict`.
-- `to_dataframe` / `from_dataframe` are the *only* places pandas appears,
-  imported lazily inside the function.
-- Installing via the `cds[pandas]` extra pulls in pandas; without it,
-  the rest of the library is unaffected.
+| Boundary | Extra | How it is isolated |
+| --- | --- | --- |
+| [`data_analysis/pandas_io.py`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/data_analysis/pandas_io.py) | `[pandas]` | `to_dataframe` / `from_dataframe` are the only places pandas appears; imported inside the function. |
+| [`plot/`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/plot) | `[plot]` | matplotlib is imported lazily on the first plot call, so `import cds.plot` itself is cheap and safe. |
+| [`data_io/`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/data_io) | `[io]` | HDF5 (h5py) and NetCDF (netCDF4) backends load only when requested; core streaming/CSV I/O stays stdlib-only. |
+| [`tools/`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/tools) | `[scientific]` | NumPy, SciPy, statsmodels, scikit-learn, SymPy and Z3 are discovered through a capability registry; none is imported by the core. |
 
-This is the pattern for any future interop (NumPy arrays, plotting
-backends): keep the algorithm pure-Python, and put the bridge behind a
-clearly-marked, lazily-imported adapter. Nothing in the dependency graph
-of section 2 ever crosses the optional-dependency line.
+The shared pattern:
+
+- Core algorithms operate on plain `list` and `dict`.
+- Third-party imports live **inside** the adapter function, never at module
+  top level, so a missing dependency degrades one call rather than breaking
+  `import cds`.
+- Installing the extra is opt-in; without it the rest of the library is
+  unaffected.
+
+This is the pattern for any future interop: keep the algorithm pure-Python,
+and put the bridge behind a clearly-marked, lazily-imported adapter.
+
+!!! warning "Not a sandbox"
+    These adapters do not make third-party libraries safe for adversarial
+    input. `sympy_verify_identity()` passes caller-provided symbolic strings
+    to SymPy's parser, and HDF5/NetCDF files carry their own security
+    guidance. See [SECURITY.md](https://github.com/Furox-Art/scientific-computing-system/blob/main/SECURITY.md)
+    for the full threat model.
 
 ---
 
@@ -215,28 +313,53 @@ of section 2 ever crosses the optional-dependency line.
 
 ```
 src/cds/
-├── __init__.py            # top-level convenience re-exports
-├── cli/                    # command-line entry point (cds command)
-├── _version.py
+├── __init__.py            # top-level re-exports, __version__
+├── _version.py            # static version source
+├── __main__.py            # `python -m cds`
+├── cli/                   # ← the `cds` console script (argparse)
+│
 ├── core/                  # ← primitives layer
 ├── math_utils/
-├── probability/
-├── scientific/
-├── graph/
-├── signals/               # ← domain toolkits layer
+│
+├── probability/           # ← domain toolkits layer
+├── bayes/
+├── interpolate/
 ├── stats/
+├── signals/
+├── wavelets/
 ├── montecarlo/
 ├── numerical_integration/
 ├── diffeq/
+├── pde/
 ├── optimization/
 ├── quantum/
 ├── ml/
 ├── nlp/
 ├── modeling/
+├── scientific/
+├── genetics/
+├── fractals/
+├── infotheory/
+├── graph/
+├── plot/                  # optional matplotlib helpers
+│
+├── uncertainty/           # ← assurance layer
+├── sensitivity.py         #   single-file module
+├── validation/
+├── causal.py              #   single-file module
+├── units/
+├── workflow/
+├── provenance/
+├── tools/
+├── data_io/
+│
 ├── data_analysis/         # ← application / composition layer
 ├── hypothesis/
 └── knowledge/
 ```
+
+That is 34 subpackages plus `sensitivity.py` and `causal.py`. The
+`cds modules` command prints the live catalog if this tree ever drifts.
 
 Tests mirror this layout one-to-one under `tests/` (e.g.
 `src/cds/stats/time_series.py` ↔ `tests/test_stats_time_series.py`), so

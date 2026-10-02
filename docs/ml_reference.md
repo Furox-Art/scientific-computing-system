@@ -1,9 +1,9 @@
 # ML Reference Values
 
-`cds.ml` estimators are written from scratch in pure Python. To prove they
-are *correct*, not just runnable, `scripts/verify_ml_reference.py` runs
-each v1.6 estimator on a fixed seeded dataset and compares against reference
-outputs computed with **scikit-learn 1.9.0**:
+`cds.ml` estimators are written from scratch in pure Python. To show they are
+*correct*, not just runnable, `scripts/verify_ml_reference.py` runs each
+estimator on a fixed seeded dataset and compares against reference outputs
+computed with **scikit-learn 1.9.0**:
 
 | Check | CDS | Reference (sklearn 1.9.0) | \|diff\| | Tol | Status |
 |---|---|---|---|---|---|
@@ -23,18 +23,35 @@ The dataset is generated in-process from `seed=42` (200 samples, 4 features:
 two Gaussian blobs with binary labels, plus a noisy linear regression
 target), so every run is bit-for-bit deterministic.
 
+These figures were last regenerated against scikit-learn 1.9.1 and reproduce
+the table above. `scripts/verify_ml_reference.py` itself needs no
+third-party dependency — the sklearn numbers are frozen constants, not
+something it recomputes.
+
 ## How the reference values were made
 
 Each metric was computed once with scikit-learn 1.9.0 on the *identical*
 generated data and hard-coded into the script, keeping the verification
 dependency-free:
 
+Run this **from the repository root** with scikit-learn installed
+(`pip install scikit-learn`). `scripts/` is not an importable package, so load
+the dataset generator by path:
+
 ```python
+import importlib.util
+import pathlib
+
 # Reference derivation (requires scikit-learn) — run once, then freeze the
 # numbers into scripts/verify_ml_reference.py:REFERENCE.
-from scripts.verify_ml_reference import make_dataset  # seed=42
+_spec = importlib.util.spec_from_file_location(
+    "verify_ml_reference", pathlib.Path("scripts/verify_ml_reference.py")
+)
+_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+make_dataset = _mod.make_dataset
 
-X, y, y_reg = make_dataset()
+X, y, y_reg = make_dataset()  # seed=42
 
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
@@ -51,12 +68,14 @@ km = KMeans(n_clusters=2, n_init=10, random_state=42).fit(X)
 pca = PCA(n_components=2).fit(Xs)
 lin = LinearRegression().fit(X, y_reg)
 
-print(accuracy_score(y, logreg.predict(Xs)))  # 0.930000
-print(accuracy_score(y, tree.predict(X)))  # 0.980000
-print(adjusted_rand_score(y, km.labels_))  # 0.738293
-print(pca.explained_variance_ratio_.sum())  # 0.712253
-print(r2_score(y_reg, lin.predict(X)))  # 0.981701975
+print(accuracy_score(y, logreg.predict(Xs)))
+print(accuracy_score(y, tree.predict(X)))
+print(adjusted_rand_score(y, km.labels_))
+print(pca.explained_variance_ratio_.sum())
+print(r2_score(y_reg, lin.predict(X)))
 ```
+
+The printed values reproduce the "Reference (sklearn 1.9.0)" column above.
 
 ## Honest differences between CDS and sklearn
 

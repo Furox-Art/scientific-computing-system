@@ -81,6 +81,7 @@ nav:
   - Related projects: related.md
   - Getting Started:
       - Install & First Steps: getting-started.md
+      - Why Pure Python?: why-pure-python.md
       - Tour of Numerical Methods: tour_of_numerical_methods.md
       - Quick Start Tutorial: tutorials/quick_start.md
   - Tutorials:

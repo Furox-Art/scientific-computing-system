@@ -2,13 +2,31 @@
 
 ## Installation
 
+Most people just want the package from PyPI:
+
+```bash
+pip install scientific-computing-system
+```
+
+That gives you the `cds` import and the `cds` command, with **zero runtime
+dependencies** — the core is pure standard library. Optional extras are listed
+in the [README](https://github.com/Furox-Art/scientific-computing-system#optional-extras).
+
+Install from source when you intend to contribute:
+
 ```bash
 git clone https://github.com/Furox-Art/scientific-computing-system.git
 cd scientific-computing-system
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate   # Windows PowerShell: .\.venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 ```
+
+Requires Python 3.10 or newer.
+
+!!! note "Import name"
+    The distribution is `scientific-computing-system`; the import name is `cds`.
+    `scs` is a different, unrelated project and will not work.
 
 ## Quick Usage
 
@@ -21,14 +39,17 @@ cds --help
 # List physical constants
 cds constants
 
-# Interactive physics calculator
-cds calc ke    # kinetic energy
-cds calc gravity
+# Interactive physics calculator — prompts for each variable, so it needs a TTY
+cds calc ke        # kinetic energy: asks for mass and velocity
+cds calc gravity   # asks for both masses and the separation
 cds calc wave
 cds calc gas
 
 # Generate hypotheses
 cds hypothesis "what causes the Hubble tension?" --domain cosmology
+
+# Live module catalog — the authoritative list of what is installed
+cds modules
 ```
 
 ### Python API
@@ -65,8 +86,12 @@ print(mean([1, 2, 3, 4, 5]))  # 3.0
 # Effect-size measures (companion to the significance tests above)
 from cds.stats import cohens_d, cramers_v
 
-print(cohens_d([20.0, 22.0, 19.0], [28.0, 31.0, 26.0]))  # standardized mean difference
-print(cramers_v([[10.0, 20.0], [30.0, 40.0]]))  # association strength for a contingency table
+print(
+    cohens_d([20.0, 22.0, 19.0], [28.0, 31.0, 26.0])
+)  # -3.843076, signed: negative = first group lower
+print(
+    cramers_v([[10.0, 20.0], [30.0, 40.0]])
+)  # 0.089087, association strength for a contingency table
 
 # Scientific computing
 from cds.scientific import kinetic_energy, get_constant
@@ -106,15 +131,17 @@ print(x)  # [2.0, 1.0]
 ## Running Tests
 
 ```bash
-pytest           # run all 1441 tests (see CI)
+pytest           # run the full suite (see the CI badge for current status)
 pytest -v        # verbose output
 pytest -x        # stop on first failure
 ```
 
 ## Running Examples
 
+Every script in `examples/` is standalone and runnable. This is the full list:
+
 ```bash
-# Core models & data
+# Core models, data & knowledge
 python examples/core_demo.py
 python examples/data_analysis_demo.py
 python examples/graph_demo.py
@@ -126,15 +153,20 @@ python examples/math_utils_demo.py
 python examples/linalg_demo.py
 python examples/numerical_integration_demo.py
 python examples/diffeq_demo.py
+python examples/pde_demo.py
 python examples/montecarlo_demo.py
 python examples/probability_demo.py
 python examples/optimization_demo.py
+python examples/interpolate_demo.py
 python examples/scientific_demo.py
 
 # Signals & ML
 python examples/signals_demo.py
 python examples/fft2_demo.py
 python examples/ml_and_viz_demo.py
+python examples/ml_advanced_demo.py
+python examples/pca_demo.py
+python examples/ensemble_showcase.py
 
 # NLP (educational)
 python examples/nlp_bpe_demo.py
@@ -153,33 +185,59 @@ python examples/hypothesis_with_stats_demo.py
 python examples/hypothesis_custom_generator.py
 ```
 
-See `docs/research-workflows.md` for guidance on using CDS inside larger research scripts and discovery pipelines.
+Notebooks live alongside the scripts:
+`examples/tour_of_numerical_methods.ipynb` and
+`examples/plotting_notebook.ipynb`. `plot_demo.py` and `plotting_notebook.ipynb`
+need the `[plot]` extra.
+
+See [Research Workflows](research-workflows.md) for guidance on using CDS inside
+larger research scripts and discovery pipelines.
 
 ## Project Structure
 
+`src/cds/` holds **34 subpackages** plus `sensitivity.py` and `causal.py`. Run
+`cds modules` for the live catalog.
+
 ```
 src/cds/
-├── quantum/             # Quantum circuit simulation (single & multi-qubit)
-├── optimization/        # Gradient descent, Newton, Adam, line search
-├── ml/                  # Pure Python neural networks (MLP, Adam training)
-├── signals/             # DFT, FFT, convolution, Butterworth IIR filters
-├── probability/         # Probability distributions & sampling
-├── stats/               # Descriptive stats, regression, hypothesis tests, time-series
-├── math_utils/          # Calculus, linear algebra, eigenvalues
-├── data_analysis/       # DataSet/DataTable + optional pandas interop (cds[pandas])
-├── scientific/          # Physical constants & formulas
-├── graph/               # Graph algorithms (Dijkstra, BFS, DFS, Kruskal)
-├── montecarlo/          # Monte Carlo methods (π, integration, random walks)
-├── diffeq/              # ODE solvers (Euler, RK4, midpoint)
+├── cli/                 # The `cds` console script (argparse, zero-dependency)
+├── core/                # Shared models: Domain, Hypothesis, HypothesisStatus
+├── math_utils/          # Calculus + linear algebra (SVD, QR, Cholesky, LU, eigen)
+├── interpolate/         # interp1d / interp2d
+├── probability/         # Distributions, quantiles, seeded sampling
+├── bayes/               # Conjugate updates, credible intervals, Bayes factors
+├── stats/               # Descriptive stats, regression, tests, time series
+├── signals/             # DFT, FFT, convolution, Butterworth filters, STFT
+├── wavelets/            # Haar DWT/IDWT, denoising
+├── montecarlo/          # π estimation, MC integration, random walks
 ├── numerical_integration/ # Quadrature (trapezoid, Simpson, Romberg) + 2-D rules
-├── modeling/            # Symbolic algebra, expression trees, MathModel
-├── knowledge/           # Concept graph, notebook, structured retrieval
+├── diffeq/              # ODE solvers (Euler, RK4, RK45, implicit, symplectic)
+├── pde/                 # 1-D heat & wave equation solvers
+├── optimization/        # Gradient descent, Newton, Adam, Nelder-Mead, annealing
+├── quantum/             # Quantum circuit simulation (single & multi-qubit)
+├── ml/                  # Estimators (MLP, k-NN, k-means, CART, forest, boosting)
 ├── nlp/                 # BPE tokenizer, attention, autograd, MiniGPT
-├── hypothesis/          # Hypothesis generation
-├── core/                # Shared models, config
-└── cli/                 # Command-line interface (argparse, zero-dependency)
+├── modeling/            # Symbolic algebra, expression trees, MathModel
+├── scientific/          # Physical constants & formulas
+├── genetics/            # GC content, k-mers, alignment
+├── fractals/            # Mandelbrot, Julia, Barnsley, Sierpinski
+├── infotheory/          # Entropy, KL/JS divergence, mutual information
+├── graph/               # Graph algorithms (Dijkstra, BFS, DFS, Kruskal)
+├── uncertainty/         # Analytic + Monte-Carlo propagation
+├── sensitivity.py       # Local/global sensitivity, identifiability
+├── validation/          # Validation checks, drift/OOD reports
+├── causal.py            # Assumption-gated causal estimators
+├── units/               # SI quantities, dimensional analysis
+├── workflow/            # Approval-gated orchestration
+├── provenance/          # Run manifests, hashing, checkpoints
+├── data_io/             # Streaming I/O, optional HDF5/NetCDF
+├── tools/               # Lazy adapters for NumPy/SciPy/SymPy/Z3
+├── data_analysis/       # DataSet/DataTable + optional pandas interop ([pandas])
+├── hypothesis/          # Hypothesis generation & evaluation
+├── knowledge/           # Concept graph, notebook, structured retrieval
+└── plot/                # Optional matplotlib helpers ([plot])
 
-examples/                # Runnable demo scripts
-tests/                   # 1441 tests (see CI)
+examples/                # Runnable demo scripts and notebooks
+tests/                   # Test suite (see the CI badge for current status)
 docs/                    # Documentation, API reference, benchmarks
 ```

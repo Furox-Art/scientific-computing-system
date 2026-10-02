@@ -7,9 +7,12 @@ assignees: ''
 ---
 
 > **Security vulnerability?** Do **not** open a public issue.
-> Report it via a [private GitHub advisory](https://github.com/Furox-Art/scientific-computing-system/security/advisories/new)
-> (or email the maintainer). See [SECURITY.md](../../SECURITY.md) for the policy, SLAs, and threat model.
+> Report it through GitHub's private advisory form:
+> https://github.com/Furox-Art/scientific-computing-system/security/advisories/new
+> See [SECURITY.md](../../SECURITY.md) for the policy, response expectations, and threat model.
 > Use this template only for ordinary bugs.
+>
+> **Usage question rather than a bug?** Use the Question template instead.
 
 ---
 
@@ -42,9 +45,13 @@ Paste the full error or unexpected output here.
 - Python version:
 - OS:
 - How installed: `pip install scientific-computing-system` / from source / other
+- Optional extras installed (`[plot]`, `[io]`, `[pandas]`, `[scientific]`):
 
 ## Module / function affected
 e.g. `cds.quantum`, `cds.numerical_integration.simpson`, `cds.cli`
+
+Reminder: the distribution is `scientific-computing-system`, the import name is
+`cds`, and the CLI command is `cds` — not `scs`, which is a different project.
 
 ## Additional context
 Anything else relevant.

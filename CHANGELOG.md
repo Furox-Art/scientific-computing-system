@@ -19,6 +19,17 @@ security agent; this heading exists to satisfy the version-lockstep gate.)
 Release-hardening pass covering the CI, quality-gate and packaging surface. No
 numerical kernel, public API signature or `cds` CLI subcommand changed.
 
+New public modules that first shipped in this release line (noted here because
+the release notes below cover only the hardening pass): `cds.validation`
+(cross-method verification, distribution-shift reporting), `cds.causal`
+(assumption-gated estimators — no causal-structure inference from observational
+correlation), `cds.sensitivity` (local and variance-based global sensitivity,
+identifiability), `cds.units` (SI dimensional analysis), `cds.workflow`
+(approval-gated, fail-closed orchestration), `cds.provenance` (manifests,
+hashing, checkpoints), `cds.data_io` (streaming I/O, optional HDF5/NetCDF),
+`cds.tools` (lazy optional-backend adapters), and `cds.uncertainty` (analytic
+and correlated Monte-Carlo propagation).
+
 ### Fixed
 
 - **npm launcher (`index.js`, `bin/scs.js`)**: the published launcher could not be
@@ -163,6 +174,31 @@ Metadata-only patch release for improved PyPI discoverability. No runtime API or
   Reference table. (The matching `ml-reference` CI job is prepared but
   not yet applied. It needs a push from a token with the `workflow`
   OAuth scope; see the `backup/pre-reorder` branch.)
+
+## [v2.0.0] - 2026-09-05
+
+Scientific workflow platform release. Reorganises the project from a numerical
+methods library into a layered system that separates computation, analysis,
+scientific assurance, orchestration, and data handling.
+
+### Added
+
+- Uncertainty propagation, provenance capture, and tool discovery.
+- Dimensional analysis, domain checks, and scalable data I/O.
+- Scientific adapters, sensitivity analysis, and tool orchestration.
+- CLI catalog refreshed for the expanded module set.
+
+### Changed
+
+- The project is organised into explicit layers (compute / analysis /
+  assurance / orchestration / data) with dependencies pointing downward.
+- Release pipeline enforces a single publish authority.
+
+## [v1.6.2] - 2026-08-23
+
+Patch release carrying the PyPI deprecation tombstone for the former
+`cognitive-discovery-system` distribution name, pointing users at
+`scientific-computing-system`. No API change; the import name stayed `cds`.
 
 ## [v1.6.1] - 2026-08-21
 

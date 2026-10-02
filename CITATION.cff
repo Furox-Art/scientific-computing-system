@@ -2,11 +2,22 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata from this file."
 type: software
 title: "scientific-computing-system"
+# Keep `version` in lockstep with pyproject.toml [project].version and
+# src/cds/_version.py. scripts/check_version_discipline.py and
+# scripts/check_version_lockstep.py enforce this.
 version: 2.2.0
 authors:
   - name: "Furox-Art"
     email: "furkanarkn1451@gmail.com"
-abstract: "Pure Python computational science system with numerical methods, statistical validation, global sensitivity and identifiability analysis, conservative causal estimation, distribution-shift checks, memory-bounded scientific I/O, workflow orchestration, and optional scientific backends."
+abstract: >-
+  Pure-Python computational science system with zero runtime dependencies.
+  Numerical linear algebra, ODE/PDE solvers, quadrature, statistics and
+  Bayesian conjugate analysis, Monte Carlo, signal processing, wavelets, quantum
+  circuit simulation, symbolic modeling, uncertainty propagation, local and
+  global sensitivity analysis, identifiability analysis, scientific validation,
+  conservative assumption-gated causal estimation, SI dimensional analysis,
+  approval-gated workflow orchestration, reproducibility provenance, and
+  streaming scientific data I/O, with optional scientific backends.
 license: MIT
 repository-code: "https://github.com/Furox-Art/scientific-computing-system"
 url: "https://github.com/Furox-Art/scientific-computing-system"
@@ -14,11 +25,25 @@ date-released: "2026-09-30"
 keywords:
   - "pure python"
   - "scientific computing"
+  - "numerical methods"
+  - "linear algebra"
+  - "differential equations"
+  - "numerical integration"
+  - "monte carlo"
+  - "statistics"
+  - "bayesian inference"
+  - "signal processing"
+  - "wavelets"
+  - "quantum computing"
+  - "symbolic mathematics"
   - "model validation"
+  - "uncertainty quantification"
   - "sensitivity analysis"
+  - "dimensional analysis"
   - "causal inference"
   - "out-of-distribution detection"
   - "scientific workflows"
+  - "reproducibility"
 preferred-citation:
   type: software
   title: "scientific-computing-system"

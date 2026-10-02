@@ -750,13 +750,20 @@ print(c.data, a.grad, b.grad)  # 6.0  3.0  2.0
 ### Load CSV data and normalize a column
 
 A `DataTable` exposes columns via `column(name)` and `column_as_float(name)`.
+`load_csv` takes a filesystem path, so create the file first.
 
 ```python
+import pathlib
+import tempfile
+
 from cds.data_analysis import load_csv, z_score
 
-table = load_csv("measurements.csv")  # DataTable
+path = pathlib.Path(tempfile.gettempdir()) / "measurements.csv"
+path.write_text("temp,rh\n18.0,0.42\n19.5,0.45\n22.0,0.51\n", encoding="utf-8")
+
+table = load_csv(str(path))  # DataTable
 col = table.column_as_float("temp")
-print(z_score(col)[:3])  # standardized values, mean 0
+print([round(v, 6) for v in z_score(col)])  # standardized values, mean 0
 ```
 
 ### Moving average and visualization
@@ -880,8 +887,16 @@ payload: ChiSquareGofPayload = {
     "expected": [10, 10, 10, 10, 10, 10],
 }
 result = HypothesisEvaluator().evaluate(h, {"chi_square_gof": payload})
-print(result.p_value, result.decision)  # large p => consistent with fair
+print(f"p = {result.p_value:.4f}")  # large p => consistent with fair
+print(f"significant = {result.is_significant}")
+print(result.conclusion)
 ```
+
+`EvaluationResult` has no `.decision` field. The verdict is carried by
+`is_significant` (a bool against alpha=0.05) with `conclusion` and
+`evidence_interpretation` giving the human-readable form. A non-significant
+result does **not** prove the hypothesis false, and the conclusion text says so
+explicitly — read it rather than treating `is_significant=False` as rejection.
 
 ---
 

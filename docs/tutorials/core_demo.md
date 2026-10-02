@@ -13,15 +13,19 @@ for d in Domain:
 
 ## 2. Building a Hypothesis
 
+The status enum has no `PROPOSED` member — the lifecycle values are `NEW`,
+`TESTABLE`, `VALIDATED`, `REFINED`, `REJECTED`, `CRITIQUED`, and `ARCHIVED`. A
+newly constructed `Hypothesis` defaults to `NEW`.
+
 ```python
 from cds.core import Domain, Hypothesis, HypothesisStatus
 
 h = Hypothesis(
     id="H-001",
+    statement="A cosmological constant (Λ) drives late-time acceleration.",
     domain=Domain.COSMOLOGY,
     research_question="Why is the Hubble expansion accelerating?",
-    statement="A cosmological constant (Λ) drives late-time acceleration.",
-    status=HypothesisStatus.PROPOSED,
+    status=HypothesisStatus.TESTABLE,
     confidence=0.62,
     assumptions=["GR holds on cosmological scales"],
     predictions=["(m-M) vs z bends downward"],

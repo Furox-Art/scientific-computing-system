@@ -1,14 +1,20 @@
 # Graph Algorithms Tutorial
 
-`cds.graph` implements traversal, shortest paths, MST, topo sort, and cycle detection on a small `Graph` class.
+`cds.graph` implements traversal, shortest paths, MST, topological sort, and
+cycle detection on a small `Graph` class.
+
+`Graph` is built over **integer vertex ids**, so every constructor call needs an
+explicit `n_vertices`. Vertex labels are not supported — map your own strings to
+integers at the call site if you need readable output.
 
 ## 1. Build a Graph
 
 ```python
 from cds.graph import Graph
 
-g = Graph(directed=False)
-for u, v, w in [("A", "B", 4), ("A", "C", 2), ("B", "C", 1), ("B", "D", 5), ("C", "D", 8)]:
+# Undirected weighted graph on vertices 0..5.
+g = Graph(n_vertices=6, directed=False)
+for u, v, w in [(0, 1, 4), (0, 2, 2), (1, 2, 1), (1, 3, 5), (2, 3, 8), (2, 4, 10), (3, 4, 2)]:
     g.add_edge(u, v, weight=w)
 ```
 
@@ -17,8 +23,8 @@ for u, v, w in [("A", "B", 4), ("A", "C", 2), ("B", "C", 1), ("B", "D", 5), ("C"
 ```python
 from cds.graph import bfs, dfs
 
-print(bfs(g, "A"))
-print(dfs(g, "A"))
+print(bfs(g, 0))
+print(dfs(g, 0))
 ```
 
 ## 3. Shortest Paths & MST
@@ -26,20 +32,30 @@ print(dfs(g, "A"))
 ```python
 from cds.graph import dijkstra, kruskal_mst
 
-print(dijkstra(g, "A"))  # {node: distance}
-print(kruskal_mst(g))  # list of (u, v, weight)
+dists, prev = dijkstra(g, 0)  # (distances, predecessors)
+print(dists)  # {vertex: distance}
+edges, total = kruskal_mst(g)  # (selected edges, total weight)
+print(edges)
+print("total weight:", total)
 ```
 
 ## 4. Topological Sort & Cycles
 
-```python
-from cds.graph import Graph, topological_sort, has_cycle
+Topological sort needs a directed acyclic graph, again with integer vertices.
 
-dag = Graph(directed=True)
-dag.add_edge("a", "b")
-dag.add_edge("b", "c")
-print(topological_sort(dag))  # valid ordering
+```python
+from cds.graph import topological_sort, has_cycle
+
+dag = Graph(n_vertices=3, directed=True)
+dag.add_edge(0, 1)
+dag.add_edge(1, 2)
+
+print(topological_sort(dag))  # a valid ordering
 print(has_cycle(dag))  # False
 ```
 
-Run the full demo with `python examples/graph_demo.py`.
+Run the full demo, which prints every algorithm with worked output, with:
+
+```bash
+python examples/graph_demo.py
+```
