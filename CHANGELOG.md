@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Documentation no longer claims npm is unpublished.** npm 2.2.0 is live and
+  npm is a supported channel, but `README.md` line 41 still said "npm is no
+  longer published". Because `README.md` is listed in the npm `files` allowlist,
+  that sentence shipped **verbatim inside the published 2.2.0 tarball**, so the
+  npm package page contradicted its own README. `README.md`, `SECURITY.md` and
+  `docs/related.md` now describe both channels accurately; the npm version badge
+  is restored now that the registry and PyPI agree at 2.2.0.
+
 ### Re-enabled: npm publishing
 
 This reverses two earlier decisions. Both were deliberate at the time and are

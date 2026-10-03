@@ -8,6 +8,7 @@
 
 <p align="center">
   <a href="https://pypi.org/project/scientific-computing-system/"><img src="https://img.shields.io/pypi/v/scientific-computing-system.svg" alt="PyPI version"></a>
+  <a href="https://www.npmjs.com/package/scientific-computing-system"><img src="https://img.shields.io/npm/v/scientific-computing-system.svg" alt="npm version"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10+-green.svg" alt="Python 3.10+"></a>
   <a href="https://codecov.io/gh/Furox-Art/scientific-computing-system"><img src="https://codecov.io/gh/Furox-Art/scientific-computing-system/branch/main/graph/badge.svg" alt="codecov"></a>
   <a href="https://github.com/Furox-Art/scientific-computing-system/actions/workflows/tests.yml"><img src="https://github.com/Furox-Art/scientific-computing-system/actions/workflows/tests.yml/badge.svg" alt="CI"></a>
@@ -38,9 +39,25 @@ I wrote this because NumPy and SciPy are incredible, but they're also 20 years o
 
 This is a from-scratch rethinking of what scientific computing in Python could look like if we started today. No C extensions, no Fortran legacy, no dependency hell. Just Python, type hints, and algorithms that are actually readable.
 
-This repository is the front door. The NumPy build is [scientific-computing-system-2.0](https://github.com/Furox-Art/scientific-computing-system-2.0), not a second project. Beside it: [axiomize](https://github.com/Furox-Art/axiomize) for units and Model IR, [quantum-reasoning-skill](https://github.com/Furox-Art/quantum-reasoning-skill) for the reasoning skill, and [plan-auditor](https://github.com/Furox-Art/plan-auditor) for a fail-closed agent check. Install this package from PyPI. npm is no longer published.
+This repository is the front door. The NumPy build is [scientific-computing-system-2.0](https://github.com/Furox-Art/scientific-computing-system-2.0), not a second project. Beside it: [axiomize](https://github.com/Furox-Art/axiomize) for units and Model IR, [quantum-reasoning-skill](https://github.com/Furox-Art/quantum-reasoning-skill) for the reasoning skill, and [plan-auditor](https://github.com/Furox-Art/plan-auditor) for a fail-closed agent check.
 
 The import name is **`cds`** (the distribution is `scientific-computing-system`). The zero-dependency core needs nothing but the standard library.
+
+## Install: two channels, two different things
+
+| Channel | Command | What you get |
+|---|---|---|
+| **PyPI** (the library) | `pip install scientific-computing-system` | The actual Python package. Zero runtime dependencies. This is what you want. |
+| **npm** (a launcher shim) | `npm i -g scientific-computing-system` | A thin Node wrapper that forwards to the `cds` CLI. **Ships no Python code** — it needs the PyPI package installed too. |
+
+Both are published at the same version, and the npm `scs` launcher only works
+once `pip install scientific-computing-system` has put `cds` on your PATH. If
+you want the library, use PyPI; npm exists so Node-based tooling can invoke the
+same CLI.
+
+The two registries are not equally verifiable. See
+[Supply-chain provenance](#supply-chain-provenance) before choosing a channel
+for anything security-sensitive.
 
 ## What's inside
 
@@ -144,6 +161,34 @@ Pure Python is slower than NumPy on dense numerics. On this machine's benchmark 
 The trade-off buys you something real: you can read every algorithm, follow every step, and change anything without compiling C.
 
 I use it for prototyping, for teaching, and for cases where I need to know exactly what the computer is doing. For production number crunching, I still reach for NumPy — or the companion project [`scientific-computing-system-2.0`](https://github.com/Furox-Art/scientific-computing-system-2.0), which takes the opposite trade-off on NumPy/SciPy.
+
+## Supply-chain provenance
+
+The two registries are **not** equally verifiable, and the difference matters if
+you are installing this in anything security-sensitive.
+
+**PyPI 2.2.0 carries a real attestation.** The wheel and sdist were published
+through Trusted Publishing (OIDC) from the release workflow, and PyPI serves a
+PEP 740 provenance bundle for both files. You can check it yourself against the
+SHA-256 digests PyPI shows for each artifact.
+
+**npm 2.2.0 carries no attestation.** That release went out in *token mode*: the
+workflow publishes with `--provenance` on the OIDC path, but a long-lived
+registry token cannot mint a Sigstore identity, so the token fallback
+deliberately omits the flag and prints a notice saying so. Consequently:
+
+- `npm view scientific-computing-system` shows a legacy registry signature
+  (`dist.signatures`) — that is npm's own transport signing, **not** a build
+  provenance attestation.
+- There is no attestation bundle for it; the npm attestations endpoint returns
+  404 for this package@version.
+- The publish workflow supports OIDC trusted publishing with `--provenance`, and
+  uses it by default. It is not in effect for the currently published npm
+  2.2.0, because that dispatch ran with `use_token_fallback=true`.
+
+If you need attested provenance today, use the PyPI channel. The npm channel is
+a convenience shim, not a supply-chain-trust path. Full policy, threat model,
+and reporting instructions are in [SECURITY.md](SECURITY.md).
 
 ## License
 
