@@ -24,9 +24,26 @@ pip install -e ".[dev]"
 
 Requires Python 3.10 or newer.
 
-!!! note "Import name"
-    The distribution is `scientific-computing-system`; the import name is `cds`.
-    `scs` is a different, unrelated project and will not work.
+### The npm channel (Node launcher only)
+
+There is also an npm package of the same name. It is a **thin Node wrapper**, not
+the library: it contains no Python and simply forwards to the `cds` CLI.
+
+```bash
+pip install scientific-computing-system   # required — provides `cds`
+npm i -g scientific-computing-system      # optional — provides the `scs` shim
+```
+
+Without the PyPI install the `scs` command exits non-zero and tells you so.
+For anything security-sensitive prefer the PyPI channel: the two registries carry
+different provenance guarantees, detailed in
+[SECURITY.md](https://github.com/Furox-Art/scientific-computing-system/blob/main/SECURITY.md#distribution-channels-and-provenance).
+
+!!! note "Two different things named `scs`"
+    The Python **import** name is `cds`, never `scs` — `from scs... import`
+    fails, and an unrelated PyPI distribution also uses that name. Separately,
+    `scs` **is** the name of the npm launcher's command, so `scs --help` works
+    once both channels are installed.
 
 ## Quick Usage
 

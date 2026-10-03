@@ -4,8 +4,8 @@
 
 | Version | Supported | Notes |
 |---|---|---|
-| 2.0.x | Yes | Current stable release line |
-| < 2.0 | No | Superseded by the 2.0 release line unless a specific security advisory states otherwise |
+| 2.2.x | Yes | Current stable release line |
+| < 2.2 | No | Superseded by the 2.2 release line unless a specific security advisory states otherwise |
 
 Security fixes target the current stable release line. Older release lines should not be assumed to receive backports unless an advisory explicitly says so.
 
@@ -23,17 +23,43 @@ You may also contact the maintainer directly. Reports should include the affecte
 
 `scientific-computing-system` is a local-first, pure-Python scientific-computing library distributed through PyPI. The core package has no required runtime dependencies. Optional scientific backends are loaded only when explicitly requested.
 
+It is also published to npm as `scientific-computing-system`, but that package is a **Node launcher shim only** — it contains no Python and execs the `cds` CLI. npm users must install the Python distribution separately. The two registries carry **different provenance guarantees**; see [Distribution channels and provenance](#distribution-channels-and-provenance).
+
 ### In Scope
 
 | Threat | Mitigation |
 |---|---|
-| **Supply chain: malicious or substituted release artifact** | The release workflow is the sole PyPI publish authority. It builds wheel + sdist on a GitHub-hosted runner, verifies package metadata/version, installs the built wheel, smoke-tests the installed CLI, generates GitHub artifact attestation for those exact runner-local files, and publishes through PyPI Trusted Publishing (OIDC). |
-| **Registry drift** | Public PyPI is treated as the distribution registry. The release integrity check requires exactly one wheel and one sdist on PyPI and requires the matching GitHub Release to contain no wheel/sdist assets. A registry-policy workflow rechecks the public PyPI package and removes accidental distribution assets from GitHub Releases. |
+| **Supply chain: malicious or substituted PyPI artifact** | The release workflow is the sole PyPI publish authority. It builds wheel + sdist on a GitHub-hosted runner, verifies package metadata/version, installs the built wheel, smoke-tests the installed CLI, generates GitHub artifact attestation for those exact runner-local files, and publishes through PyPI Trusted Publishing (OIDC). PyPI serves a PEP 740 provenance bundle for both artifacts. |
+| **Supply chain: malicious or substituted npm artifact** | The npm workflow is the sole npm publish authority and gates on the registry version-existence check, a `npm pack --dry-run` tarball allowlist, and npm/Python version lockstep. **Provenance depends on the publish mode:** the OIDC path publishes with `--provenance` and yields a Sigstore attestation; the token fallback path cannot mint one and deliberately publishes without it. See below for the status of the currently published npm release. |
+| **Registry drift** | Public PyPI is treated as the distribution registry for the library. The release integrity check requires exactly one wheel and one sdist on PyPI and requires the matching GitHub Release to contain no wheel/sdist assets. A registry-policy workflow rechecks the public PyPI package and removes accidental distribution assets from GitHub Releases. |
 | **Dependency vulnerabilities** | The core has no required runtime dependencies. Development/test/docs lock files are audited in CI with `pip-audit`; optional backends are isolated behind extras and lazy loading. |
 | **Code execution from package install** | The build backend is `hatchling`; there is no `setup.py` execution and package versioning is static in `pyproject.toml` plus `src/cds/_version.py`. |
 | **Unexpected scientific-tool loading** | Optional tools are selected through an explicit registry/capability layer and are not imported into the zero-dependency core unless requested. |
 | **Untrusted CLI input** | The CLI uses `argparse`-based typed/explicit parsing and does not evaluate arbitrary Python expressions. |
 | **Scientific workflow overclaiming** | The research orchestrator is fail-closed: blocked methods, missing tools, denied approvals, incomplete execution, validation failures, and unresolved method suitability prevent an unqualified final conclusion. |
+
+### Distribution channels and provenance
+
+| | PyPI `scientific-computing-system` | npm `scientific-computing-system` |
+|---|---|---|
+| Contents | the library (wheel + sdist) | `index.js`, `bin/scs.js`, `LICENSE`, `README.md`, `CHANGELOG.md`, `SECURITY.md` — **no Python** |
+| Requires the other channel | no | yes; `scs` needs `cds` on PATH |
+| Publish authentication | Trusted Publishing (OIDC) | OIDC trusted publishing is implemented and is the default; a token fallback exists |
+| Attestation on the currently published release | **yes** — PEP 740 bundle served by PyPI | **no** — the published 2.2.0 went out in token mode, which cannot produce a Sigstore attestation |
+
+The npm release published as 2.2.0 was produced by a manual dispatch with
+`use_token_fallback=true`. A long-lived registry token has no build identity to
+attest, so npm's `--provenance` flag cannot be honoured on that path; the
+workflow omits the flag and prints a notice instead of publishing something that
+looks attested and is not. `npm view <pkg>` reports a legacy `dist.signatures`
+value for it, which is npm's own transport signing and **not** a build
+provenance attestation; the npm attestations endpoint returns 404 for this
+package at this version.
+
+**Practical consequence:** for anything security-sensitive, install from PyPI
+and verify the PEP 740 provenance bundle against the SHA-256 digests PyPI
+publishes. Do not rely on the npm channel for supply-chain assurance until a
+release is published through the OIDC path.
 
 ### Optional Backend Boundary
 
@@ -59,9 +85,9 @@ In particular, `sympy_verify_identity()` passes caller-provided symbolic strings
 
 ## Security Best Practices for Users
 
-1. **Pin the package version** in reproducible environments, for example `scientific-computing-system==2.0.0` rather than an unconstrained range.
+1. **Pin the package version** in reproducible environments, for example `scientific-computing-system==2.2.0` rather than an unconstrained range.
 2. **Install only the optional extras you need.** Fewer third-party packages reduce supply-chain and compatibility surface.
-3. **Verify provenance for high-assurance use.** Compare the PyPI wheel/sdist SHA-256 digests with the subjects recorded by the GitHub release workflow's artifact attestation.
+3. **Verify provenance for high-assurance use.** Compare the PyPI wheel/sdist SHA-256 digests with the subjects recorded by the GitHub release workflow's artifact attestation, or fetch the PEP 740 provenance bundle from PyPI. There is currently **no** equivalent attestation for the npm package — see [Distribution channels and provenance](#distribution-channels-and-provenance).
 4. **Treat optional backend inputs as backend inputs.** Do not pass hostile symbolic expressions or untrusted scientific files without the validation/sandboxing appropriate to SymPy, HDF5, NetCDF, or the relevant backend.
 5. **Keep the environment current.** Review dependency updates and run vulnerability auditing against the exact environment deployed.
 6. **Do not use the library as the sole validation layer for safety-critical conclusions.** Independent domain validation remains necessary.
