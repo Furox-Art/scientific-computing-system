@@ -23,7 +23,7 @@ You may also contact the maintainer directly. Reports should include the affecte
 
 `scientific-computing-system` is a local-first, pure-Python scientific-computing library distributed through PyPI. The core package has no required runtime dependencies. Optional scientific backends are loaded only when explicitly requested.
 
-It is also published to npm as `scientific-computing-system`, but that package is a **Node launcher shim only** — it contains no Python and execs the `cds` CLI. npm users must install the Python distribution separately. The two registries carry **different provenance guarantees**; see [Distribution channels and provenance](#distribution-channels-and-provenance).
+It is also published to npm as `scientific-computing-system`, but that package is a **Node launcher shim only** — it contains no Python, resolves an interpreter (`python`/`python3`/`py`), and runs `python -m cds`. npm users must install the Python distribution so that `python -m cds` resolves; the launcher never looks for a `cds` console script on `PATH`. The two registries carry **different provenance guarantees**; see [Distribution channels and provenance](#distribution-channels-and-provenance).
 
 ### In Scope
 

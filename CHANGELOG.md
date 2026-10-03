@@ -9,6 +9,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **README performance claim corrected to the committed artifact.** The "catch"
+  paragraph asserted "~0.05 s versus ~0.0001 s ... roughly 580x slower" and
+  described it as "this machine's benchmark run", while pointing readers at
+  `docs/benchmarks.md` for "the hardware they came from". `benchmarks/results.json`
+  actually records 0.0696 s versus 0.000060 s (**1154.8x**) at commit `7213425`,
+  and that same file records Platform / CPU / Python / NumPy as "not recorded"
+  with an explicit "treat the absolute timings as unverified" warning. The line
+  added by the earlier truthfulness commit therefore contradicted the warnings
+  it shipped alongside. Both the README and `docs/why-pure-python.md` now quote
+  the artifact's own numbers and state that the environment was not recorded.
+
+- **npm launcher prerequisite stated correctly.** README and `SECURITY.md`
+  said the `scs` shim works once `cds` is "on your PATH". `index.js` resolves an
+  interpreter (`python`/`python3`/`py`) and runs `python -m cds`; it never looks
+  for a console script on `PATH`. Corrected to "requires the Python
+  distribution installed so that `python -m cds` resolves".
+
+- **Module-surface claims are now accurate.** "34 subpackages" silently omitted
+  the two top-level public modules (`causal.py`, `sensitivity.py`), and
+  "`cds modules` for the live list" was wrong twice over: that command prints a
+  curated 26-entry subset and omits `bayes`, `causal`, `core`, `fractals`,
+  `genetics`, `infotheory`, `interpolate`, `pde`, and `wavelets`. README,
+  `docs/api.md` and `docs/index.md` now state the real counts and flag
+  `cds modules` as a subset. The unsupported "46 public functions / 534 exports"
+  hero claim does not exist in the repository or in any reachable commit; the
+  README instead carries counts derived from the package itself (505 exports:
+  342 functions, 163 classes across 35 feature modules).
+
+- **`tests/test_readme_surface.py`** derives the README's structural claims from
+  `src/cds/` and from the installed package: subpackage count, presence of both
+  top-level public modules, the export total, per-module table coverage, the
+  benchmark ratio against `benchmarks/results.json`, and a guard against
+  describing `cds modules` as exhaustive. This drift was previously invisible to
+  CI, which is how it survived several releases. Verified by mutation: five
+  separate re-introductions of the audited defects each turn the suite red.
+
+### Added
+
+- README coverage: `cds.core` and `cds.graph` rows, `examples/` (35 runnable
+  files) and `dashboard/app.py` entries, all 13 CLI subcommands, the `[pandas]`
+  extra, `paper.md`/`paper.bib` (JOSS) and `codemeta.json`, and a Contributing
+  section with the `pip install -e ".[dev]"` / `pytest` / `mkdocs serve` loop and
+  the 100% blended-coverage gate. Duplicated prose was removed (the
+  supply-chain section now defers to `SECURITY.md` instead of restating it, and
+  the generic "Common use cases" filler is gone).
+
+### Changed
+
+- README shortened from 197 to fewer lines with **higher** coverage: the
+  supply-chain section dropped from 209 to a 3-line summary plus a link, and
+  "The catch" reduced to a short paragraph. See the PR for the before/after
+  word count.
+
 - **Documentation no longer claims npm is unpublished.** npm 2.2.0 is live and
   npm is a supported channel, but `README.md` line 41 still said "npm is no
   longer published". Because `README.md` is listed in the npm `files` allowlist,

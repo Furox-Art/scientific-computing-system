@@ -29,63 +29,80 @@
   <a href="https://github.com/Furox-Art/scientific-computing-system/blob/main/SECURITY.md">Security</a> ·
   <a href="https://github.com/Furox-Art/scientific-computing-system/blob/main/CODE_OF_CONDUCT.md">Code of Conduct</a> ·
   <a href="https://github.com/Furox-Art/scientific-computing-system/blob/main/CITATION.cff">Citation</a> ·
+  <a href="https://github.com/Furox-Art/scientific-computing-system/blob/main/paper.md">Paper (JOSS)</a> ·
   <a href="https://github.com/Furox-Art/scientific-computing-system/discussions">Discussions</a> ·
   <a href="https://github.com/Furox-Art/scientific-computing-system/issues">Issues</a>
 </p>
 
-Download counts: [PyPI stats](https://pypi.org/project/scientific-computing-system/)
-
 I wrote this because NumPy and SciPy are incredible, but they're also 20 years old and carry two decades of design decisions that don't always make sense anymore.
+
+Download counts: [PyPI stats](https://pypi.org/project/scientific-computing-system/)
 
 This is a from-scratch rethinking of what scientific computing in Python could look like if we started today. No C extensions, no Fortran legacy, no dependency hell. Just Python, type hints, and algorithms that are actually readable.
 
-This repository is the front door. The NumPy build is [scientific-computing-system-2.0](https://github.com/Furox-Art/scientific-computing-system-2.0), not a second project. Beside it: [axiomize](https://github.com/Furox-Art/axiomize) for units and Model IR, [quantum-reasoning-skill](https://github.com/Furox-Art/quantum-reasoning-skill) for the reasoning skill, and [plan-auditor](https://github.com/Furox-Art/plan-auditor) for a fail-closed agent check.
+The import name is **`cds`** (the distribution is `scientific-computing-system`). The zero-dependency core needs nothing but the standard library. The sibling NumPy build of this work is [`scientific-computing-system-2.0`](https://github.com/Furox-Art/scientific-computing-system-2.0); related projects are listed in [docs/related.md](docs/related.md).
 
-The import name is **`cds`** (the distribution is `scientific-computing-system`). The zero-dependency core needs nothing but the standard library.
-
-## Install: two channels, two different things
+## Install
 
 | Channel | Command | What you get |
 |---|---|---|
 | **PyPI** (the library) | `pip install scientific-computing-system` | The actual Python package. Zero runtime dependencies. This is what you want. |
-| **npm** (a launcher shim) | `npm i -g scientific-computing-system` | A thin Node wrapper that forwards to the `cds` CLI. **Ships no Python code** — it needs the PyPI package installed too. |
+| **npm** (a launcher shim) | `npm i -g scientific-computing-system` | A thin Node wrapper that runs `python -m cds`. It ships no Python and needs the Python distribution installed so that `python -m cds` resolves. |
 
-Both are published at the same version, and the npm `scs` launcher only works
-once `pip install scientific-computing-system` has put `cds` on your PATH. If
-you want the library, use PyPI; npm exists so Node-based tooling can invoke the
-same CLI.
-
-The two registries are not equally verifiable. See
-[Supply-chain provenance](#supply-chain-provenance) before choosing a channel
-for anything security-sensitive.
+Both channels are published at the same version. They are **not** equally
+verifiable: the PyPI release carries a PEP 740 provenance attestation, while the
+currently published npm release does not. Prefer PyPI for anything
+security-sensitive — [SECURITY.md](SECURITY.md#distribution-channels-and-provenance)
+has the per-channel comparison.
 
 ## What's inside
 
-34 subpackages under `src/cds/`. Run `cds modules` for the live list.
+`src/cds/` holds **34 subpackages plus `causal.py` and `sensitivity.py`**. That is
+35 public feature modules — the `cds` CLI entry point is the 36th subpackage —
+exporting **505 names** (342 functions, 163 classes), all pure standard library.
+`tests/test_readme_surface.py` derives these numbers from the package, so they
+cannot drift silently.
 
 | Area | Modules | What you get |
 |---|---|---|
+| Core models | `cds.core` | Shared `Domain`, `Hypothesis`, `HypothesisStatus` types |
 | Linear algebra & calculus | `cds.math_utils`, `cds.interpolate` | SVD, QR, Cholesky, LU, power iteration, derivatives, integrals |
 | ODE / PDE | `cds.diffeq`, `cds.pde` | Euler, RK4, adaptive RK45, implicit stiff methods, symplectic integrators; 1-D heat & wave equations |
 | Quadrature | `cds.numerical_integration` | Trapezoid, Simpson 1/3 & 3/8, Romberg, Gauss-Legendre, adaptive Simpson, 2-D tensor rules |
-| Optimization | `cds.optimization` | Gradient descent, Newton, Adam, Nelder-Mead, simulated annealing, constrained search |
-| Statistics | `cds.stats`, `cds.probability` | Descriptive stats, regression, t/chi-square/ANOVA, effect sizes, nonparametric ranks, time series (ACF/PACF, KPSS, Ljung-Box, decomposition), multiple testing |
-| Bayesian | `cds.bayes` | Conjugate updates, credible intervals, Bayes factors |
+| Optimization | `cds.optimization` | Gradient descent, Newton, Adam, Nelder-Mead, annealing, constrained search |
+| Statistics | `cds.stats`, `cds.probability`, `cds.bayes` | Descriptive stats, regression, t/chi-square/ANOVA, effect sizes, nonparametric ranks, time series, multiple testing, Bayesian conjugate updates |
 | Monte Carlo | `cds.montecarlo` | π estimation, Monte-Carlo integration, random walks |
-| Machine learning | `cds.ml` | MLP, k-NN, k-means, CART trees, random forest, boosting, PCA, scalers (educational, not production) |
+| Machine learning | `cds.ml` | MLP, k-NN, k-means, CART, random forest, boosting, PCA (educational, not production) |
 | Signal processing | `cds.signals`, `cds.wavelets` | DFT/FFT/IFFT, convolution, Butterworth design, STFT, Haar DWT |
 | Quantum | `cds.quantum` | Single & multi-qubit state-vector circuits, Bell/GHZ states, entanglement |
-| Scientific domains | `cds.scientific`, `cds.genetics`, `cds.fractals`, `cds.infotheory` | Physical constants & formulas, DNA analysis, fractals, entropy/divergence |
+| Graphs | `cds.graph` | BFS, DFS, Dijkstra shortest paths, Kruskal MST, topological sort, cycle detection |
+| Scientific domains | `cds.scientific`, `cds.genetics`, `cds.fractals`, `cds.infotheory` | Physical constants & formulas, DNA analysis & alignment, fractal sets, entropy/divergence/mutual information |
 | Symbolic modeling | `cds.modeling` | Expression trees, symbolic differentiation, LaTeX export, `MathModel` systems, root finding, fitting |
 | Uncertainty & sensitivity | `cds.uncertainty`, `cds.sensitivity` | Analytic + correlated Monte-Carlo propagation, local & variance-based global sensitivity, identifiability |
 | Validation & causality | `cds.validation`, `cds.causal` | Cross-method checks, drift/OOD reports, assumption-gated causal estimators |
-| Units & dimensional analysis | `cds.units` | SI quantities, conversions, dimension compatibility checks |
+| Units | `cds.units` | SI quantities, conversions, dimensional compatibility checks |
 | Workflow & provenance | `cds.workflow`, `cds.provenance` | Approval-gated orchestration, run manifests, hashes, checkpoints |
 | Data | `cds.data_analysis`, `cds.data_io` | CSV/tabular analysis, streaming I/O, optional HDF5/NetCDF |
 | Knowledge & hypothesis | `cds.knowledge`, `cds.hypothesis` | Concept graphs, research notes, structured hypothesis generation & evaluation |
 | NLP (educational) | `cds.nlp` | BPE, embeddings, attention, autograd, MiniGPT |
 | Plotting | `cds.plot` | Optional matplotlib helpers (`[plot]` extra) |
 | Backend adapters | `cds.tools` | Lazy discovery for NumPy/SciPy/statsmodels/scikit-learn/SymPy/Z3 |
+
+The authoritative per-module list is the [API reference](https://furox-art.github.io/scientific-computing-system/api/).
+
+!!! note "`cds modules` is a curated subset"
+    `cds modules` prints 26 entries. It is **not** the full catalog: it omits
+    `bayes`, `causal`, `core`, `fractals`, `genetics`, `infotheory`, `interpolate`,
+    `pde`, and `wavelets`. Use the [API reference](https://furox-art.github.io/scientific-computing-system/api/)
+    or `src/cds/` for the complete set.
+
+### Runnable examples and the dashboard
+
+- **[`examples/`](examples/)** — 35 runnable scripts and notebooks (33 `.py`, 2
+  `.ipynb`), each self-contained and dependency-free unless noted. Every tutorial
+  page in the docs has a matching example.
+- **[`dashboard/app.py`](dashboard/app.py)** — a Streamlit dashboard:
+  `cds dashboard`, or `pip install "scientific-computing-system[dashboard]"`.
 
 ## Quick Start
 
@@ -124,16 +141,31 @@ final t = 50.0 | final y = [0.07638443, 0.0264785]
 slope = 1.9900 | intercept = 0.0500 | r^2 = 0.9973
 ```
 
-A CLI ships with the package:
+## CLI
+
+The package installs a `cds` command with 13 subcommands:
+
+| Command | Purpose |
+|---|---|
+| `cds --help` | Full command list |
+| `cds modules` | Curated module catalog (see the caveat above) |
+| `cds info` | Version, module status, health summary |
+| `cds constants` | Table of physical constants |
+| `cds calc <formula>` | Quick physics calculation (`ke`, `gravity`, `wave`, `gas`) |
+| `cds stats <numbers>` | Descriptive statistics for a comma-separated list |
+| `cds sample <dist>` | Draw samples from a probability distribution |
+| `cds integrate <fn>` | Integrate a built-in function over `[a, b]` |
+| `cds hypothesis <q>` | Generate scientific hypotheses for a question |
+| `cds prompt` | Prompt text for a custom hypothesis generator |
+| `cds benchmark` | Run the built-in benchmarks |
+| `cds plot <numbers>` | ASCII plot, or PNG with `--file` when `[plot]` is installed |
+| `cds dashboard` | Launch the Streamlit dashboard (needs `[dashboard]`) |
 
 ```console
 $ cds --version
 System version 2.2.0
-$ cds modules          # live module catalog
 $ cds constants        # physical constants table
 ```
-
-Full docs: [furox-art.github.io/scientific-computing-system](https://furox-art.github.io/scientific-computing-system/).
 
 ## Optional extras
 
@@ -143,55 +175,36 @@ The core is zero-dependency. Everything below is opt-in:
 pip install "scientific-computing-system[scientific]"  # NumPy, SciPy, statsmodels, scikit-learn, SymPy, Z3
 pip install "scientific-computing-system[io]"          # HDF5 + NetCDF
 pip install "scientific-computing-system[plot]"        # matplotlib
+pip install "scientific-computing-system[pandas]"      # DataFrame bridge: cds.data_analysis.pandas_io
 pip install "scientific-computing-system[dashboard]"   # Streamlit dashboard
 ```
 
-## Common use cases
-
-- Learn and inspect **numerical methods in pure Python** without compiled extensions.
-- Prototype **scientific computing** workflows with transparent implementations.
-- Explore **ODE/PDE solvers**, numerical integration, optimization, Monte Carlo, signal processing, and linear algebra.
-- Run **statistics, uncertainty quantification, sensitivity analysis, dimensional analysis, and reproducible research** workflows.
-- Teach or audit algorithms where readable source code matters more than raw NumPy/SciPy performance.
-
 ## The catch
 
-Pure Python is slower than NumPy on dense numerics. On this machine's benchmark run, 100×100 matrix multiplication took ~0.05 s versus ~0.0001 s for NumPy — roughly **580× slower**. That is the price of readable source. See [docs/benchmarks.md](https://github.com/Furox-Art/scientific-computing-system/blob/main/docs/benchmarks.md) for the full measurements, their provenance, and the hardware they came from.
+Pure Python is slower than NumPy on dense numerics: the committed benchmark
+artifact records 100×100 matrix multiplication at 0.0696 s against NumPy's
+0.000060 s, about **1155× slower**. Those numbers are from one CI run whose
+platform, CPU, and library versions were not recorded, so treat them as
+order-of-magnitude only — [docs/benchmarks.md](docs/benchmarks.md) states exactly
+what that artifact does and does not support, and
+[docs/why-pure-python.md](docs/why-pure-python.md) covers when to reach for
+NumPy or the 2.0 build instead.
 
-The trade-off buys you something real: you can read every algorithm, follow every step, and change anything without compiling C.
+## Contributing
 
-I use it for prototyping, for teaching, and for cases where I need to know exactly what the computer is doing. For production number crunching, I still reach for NumPy — or the companion project [`scientific-computing-system-2.0`](https://github.com/Furox-Art/scientific-computing-system-2.0), which takes the opposite trade-off on NumPy/SciPy.
+```bash
+pip install -e ".[dev]"
+pytest            # CI also enforces 100% blended coverage (statement + branch)
+mkdocs serve      # docs at http://127.0.0.1:8000/
+```
 
-## Supply-chain provenance
-
-The two registries are **not** equally verifiable, and the difference matters if
-you are installing this in anything security-sensitive.
-
-**PyPI 2.2.0 carries a real attestation.** The wheel and sdist were published
-through Trusted Publishing (OIDC) from the release workflow, and PyPI serves a
-PEP 740 provenance bundle for both files. You can check it yourself against the
-SHA-256 digests PyPI shows for each artifact.
-
-**npm 2.2.0 carries no attestation.** That release went out in *token mode*: the
-workflow publishes with `--provenance` on the OIDC path, but a long-lived
-registry token cannot mint a Sigstore identity, so the token fallback
-deliberately omits the flag and prints a notice saying so. Consequently:
-
-- `npm view scientific-computing-system` shows a legacy registry signature
-  (`dist.signatures`) — that is npm's own transport signing, **not** a build
-  provenance attestation.
-- There is no attestation bundle for it; the npm attestations endpoint returns
-  404 for this package@version.
-- The publish workflow supports OIDC trusted publishing with `--provenance`, and
-  uses it by default. It is not in effect for the currently published npm
-  2.2.0, because that dispatch ran with `use_token_fallback=true`.
-
-If you need attested provenance today, use the PyPI channel. The npm channel is
-a convenience shim, not a supply-chain-trust path. Full policy, threat model,
-and reporting instructions are in [SECURITY.md](SECURITY.md).
+Issues and PRs welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) and
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
 
-If you use this in published work, please cite it via [`CITATION.cff`](CITATION.cff).
+Cite via [`CITATION.cff`](CITATION.cff). [`codemeta.json`](codemeta.json) carries
+the same metadata in codemeta form, and [`paper.md`](paper.md) /
+[`paper.bib`](paper.bib) are the JOSS manuscript.
