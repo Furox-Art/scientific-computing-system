@@ -755,6 +755,230 @@ test('the redundant ./ bin prefix is intentional and must not be "fixed"', () =>
   );
 });
 
+/**
+ * Resolve a Python 3 interpreter for the registry-verification script.
+ *
+ * `python3` is not a command on Windows, so the plain name is tried first and
+ * the launcher-specific names second. Returns null when none exist; the tests
+ * that need it skip rather than fail on a machine without Python, matching how
+ * the rest of this suite treats optional interpreters.
+ */
+function pythonInterpreter() {
+  for (const candidate of ['python3', 'python']) {
+    const probe = spawnSync(candidate, ['--version'], { encoding: 'utf8' });
+    if (!probe.error && probe.status === 0) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+/**
+ * Start a stub npm registry on an ephemeral port.
+ *
+ * `handler(request, response, attemptNumber)` decides each reply, so a test can
+ * serve 404s for a while and then the real payload -- exactly the propagation
+ * lag that produced run 37136131220 -- without touching the network.
+ */
+async function startStubRegistry(handler) {
+  const http = require('node:http');
+  const state = { attempts: 0 };
+
+  const server = http.createServer((request, response) => {
+    state.attempts += 1;
+    handler(request, response, state.attempts);
+  });
+
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+
+  return {
+    registry: `http://127.0.0.1:${port}`,
+    attempts: () => state.attempts,
+    close: () => new Promise((resolve) => server.close(resolve)),
+  };
+}
+
+const VERIFY_SCRIPT = path.join(ROOT, 'scripts', 'verify_npm_publication.py');
+
+/**
+ * Run the verification script asynchronously.
+ *
+ * It must not be spawnSync: the stub registry lives in this process, and
+ * spawnSync blocks the event loop, so the server could never answer and every
+ * request would hang until the child timed out.
+ */
+function runVerify(args) {
+  const python = pythonInterpreter();
+  assert.ok(python, 'a python3 interpreter is required for this test');
+  return new Promise((resolve, reject) => {
+    const child = require('node:child_process').spawn(
+      python,
+      [VERIFY_SCRIPT, ...args],
+      { cwd: ROOT },
+    );
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk;
+    });
+    child.on('error', reject);
+    child.on('close', (status) => resolve({ status, stdout, stderr }));
+  });
+}
+
+test('post-publish verification tolerates registry propagation delay', async () => {
+  // The regression: run 37136131220 published 2.2.0 successfully, the
+  // registry recorded it ~90s later, and a single immediate probe returned
+  // E404 and failed the job. Here the stub answers 404 for the first two
+  // attempts and only then serves the version, so the probe must survive it.
+  const stub = await startStubRegistry((request, response, attempt) => {
+    if (attempt <= 2) {
+      response.writeHead(404, { 'content-type': 'application/json' });
+      response.end('{"error":"Not found"}');
+      return;
+    }
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ versions: { '1.0.0': {}, '2.2.0': {} } }));
+  });
+
+  try {
+    const result = await runVerify([
+      '--package', 'scientific-computing-system',
+      '--version', '2.2.0',
+      '--registry', stub.registry,
+      '--attempts', '6',
+      '--initial-delay', '0',
+      '--max-delay', '0',
+    ]);
+
+    assert.strictEqual(
+      result.status,
+      0,
+      `the probe must succeed once the version appears; got ${result.status}\n${result.stdout}\n${result.stderr}`,
+    );
+    assert.ok(
+      /PASS: the registry serves scientific-computing-system@2\.2\.0/.test(result.stdout),
+      `expected a PASS line, got: ${result.stdout}`,
+    );
+    assert.ok(
+      stub.attempts() >= 3,
+      `the probe must have retried through the 404s (saw ${stub.attempts()} requests)`,
+    );
+    assert.ok(
+      !/::error::/.test(result.stdout),
+      'a tolerated propagation delay must not be reported as an error',
+    );
+  } finally {
+    await stub.close();
+  }
+});
+
+test('post-publish verification still fails closed when the version never appears', async () => {
+  // The other direction: tolerance must not become permissiveness. If the
+  // version is genuinely absent at the deadline, this must exit non-zero.
+  const stub = await startStubRegistry((request, response) => {
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ versions: { '1.0.0': {} } }));
+  });
+
+  try {
+    const result = await runVerify([
+      '--package', 'scientific-computing-system',
+      '--version', '2.2.0',
+      '--registry', stub.registry,
+      '--attempts', '3',
+      '--initial-delay', '0',
+      '--max-delay', '0',
+    ]);
+
+    assert.strictEqual(
+      result.status,
+      1,
+      `a version that never appears must exit 1; got ${result.status}\n${result.stdout}`,
+    );
+    assert.ok(
+      /::warning::/.test(result.stdout),
+      `the deadline miss must emit a ::warning:: annotation, got: ${result.stdout}`,
+    );
+    assert.ok(
+      /never appeared/.test(result.stderr),
+      `the failure must state the version never appeared, got: ${result.stderr}`,
+    );
+    assert.ok(
+      stub.attempts() >= 3,
+      `the probe must exhaust its attempts before failing (saw ${stub.attempts()})`,
+    );
+  } finally {
+    await stub.close();
+  }
+});
+
+test('the workflow probes the registry with a generous, not shortened, budget', () => {
+  const workflow = workflowBody('npm-publish.yml');
+  const step = stepBlock(
+    workflow,
+    'Verify the published version (polling for registry propagation)',
+  );
+  assert.ok(step, 'the polling verification step must exist');
+  assert.ok(
+    /scripts\/verify_npm_publication\.py/.test(step),
+    'the step must delegate to scripts/verify_npm_publication.py',
+  );
+
+  // The budget must not be trimmed to make a test fast: that is precisely what
+  // produced the false failure being fixed.
+  const attempts = Number(/--attempts (\d+)/.exec(step)?.[1]);
+  assert.ok(
+    Number.isFinite(attempts) && attempts >= 10,
+    `the verification budget must be at least 10 attempts, got ${attempts}`,
+  );
+  const initialDelay = Number(/--initial-delay (\d+(?:\.\d+)?)/.exec(step)?.[1]);
+  assert.ok(
+    Number.isFinite(initialDelay) && initialDelay >= 3,
+    `the initial delay must be at least 3s, got ${initialDelay}`,
+  );
+  const maxDelay = Number(/--max-delay (\d+(?:\.\d+)?)/.exec(step)?.[1]);
+  assert.ok(
+    Number.isFinite(maxDelay) && maxDelay >= 15,
+    `the per-attempt cap must be at least 15s, got ${maxDelay}`,
+  );
+
+  // Query the registry directly rather than through the publishing client, which
+  // conflates "absent" with "denied" and touches write credentials to do it.
+  assert.ok(
+    /--registry https:\/\/registry\.npmjs\.org/.test(step),
+    'the step must address the registry explicitly',
+  );
+  assert.ok(
+    !/npm view/.test(step),
+    'the step must not use `npm view`: it conflates absent with denied and ' +
+      'resolves against the userconfig this job created for publishing',
+  );
+});
+
+test('the verification script documents and defaults to a multi-minute budget', () => {
+  const source = fs.readFileSync(VERIFY_SCRIPT, 'utf8');
+
+  const attempts = Number(/^DEFAULT_ATTEMPTS = (\d+)$/m.exec(source)?.[1]);
+  const initialDelay = Number(/^DEFAULT_INITIAL_DELAY = ([\d.]+)$/m.exec(source)?.[1]);
+  const maxDelay = Number(/^DEFAULT_MAX_DELAY = ([\d.]+)$/m.exec(source)?.[1]);
+
+  assert.ok(Number.isFinite(attempts) && attempts >= 10, `DEFAULT_ATTEMPTS is ${attempts}`);
+  assert.ok(Number.isFinite(initialDelay) && initialDelay >= 3, `initial delay is ${initialDelay}`);
+  assert.ok(Number.isFinite(maxDelay) && maxDelay >= 15, `max delay is ${maxDelay}`);
+
+  // Backoff must actually grow and be capped, not be a flat constant.
+  assert.ok(/^DEFAULT_GROWTH = ([\d.]+)$/m.test(source), 'a growth factor must be declared');
+  assert.ok(
+    /min\(delay, maximum\)/.test(source),
+    'the backoff must be capped',
+  );
+});
+
 test('npm version tracks the Python distribution version', () => {
   assert.strictEqual(pkg.version, pythonDistributionVersion());
 });
