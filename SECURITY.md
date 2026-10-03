@@ -43,9 +43,9 @@ It is also published to npm as `scientific-computing-system`, but that package i
 | | PyPI `scientific-computing-system` | npm `scientific-computing-system` |
 |---|---|---|
 | Contents | the library (wheel + sdist) | `index.js`, `bin/scs.js`, `LICENSE`, `README.md`, `CHANGELOG.md`, `SECURITY.md` — **no Python** |
-| Requires the other channel | no | yes; `scs` needs `cds` on PATH |
+| Requires the other channel | no | yes; `scs` needs the Python distribution installed so that `python -m cds` resolves — it does **not** look for a `cds` console script on `PATH` |
 | Publish authentication | Trusted Publishing (OIDC) | OIDC trusted publishing is implemented and is the default; a token fallback exists |
-| Attestation on the currently published release | **yes** — PEP 740 bundle served by PyPI | **no** — the published 2.2.0 went out in token mode, which cannot produce a Sigstore attestation |
+| Attestation on the currently published release | **not on 2.2.0** — that release predates Trusted Publishing on this path and PyPI serves zero PEP 740 bundles for it; **yes from 2.2.1**, published via Trusted Publishing | **no** — the published 2.2.0 went out in token mode, which cannot produce a Sigstore attestation |
 
 The npm release published as 2.2.0 was produced by a manual dispatch with
 `use_token_fallback=true`. A long-lived registry token has no build identity to
@@ -85,7 +85,7 @@ In particular, `sympy_verify_identity()` passes caller-provided symbolic strings
 
 ## Security Best Practices for Users
 
-1. **Pin the package version** in reproducible environments, for example `scientific-computing-system==2.2.0` rather than an unconstrained range.
+1. **Pin the package version** in reproducible environments, for example `pip install "scientific-computing-system==X.Y.Z"` with the exact release you have evaluated, rather than an unconstrained range. Deliberately no concrete version is written here: a pinned example goes stale at the next release and readers copy it regardless, so take the number from the [release notes](https://github.com/Furox-Art/scientific-computing-system/releases) for the release you are deploying, and record it in your own lockfile or constraints file.
 2. **Install only the optional extras you need.** Fewer third-party packages reduce supply-chain and compatibility surface.
 3. **Verify provenance for high-assurance use.** Compare the PyPI wheel/sdist SHA-256 digests with the subjects recorded by the GitHub release workflow's artifact attestation, or fetch the PEP 740 provenance bundle from PyPI. There is currently **no** equivalent attestation for the npm package — see [Distribution channels and provenance](#distribution-channels-and-provenance).
 4. **Treat optional backend inputs as backend inputs.** Do not pass hostile symbolic expressions or untrusted scientific files without the validation/sandboxing appropriate to SymPy, HDF5, NetCDF, or the relevant backend.
