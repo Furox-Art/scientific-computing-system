@@ -59,6 +59,47 @@ rather than by the tag push that future releases will use.
   package page and the README will contradict each other until its owner
   updates it.
 
+### Fixed
+
+- **The npm toolchain version floor rejected a compliant toolchain.** The first
+  real publish run failed on this gate:
+
+  ```
+  npm --version | grep -Eq '^11\.(5[1-9]|[6-9][0-9])\.|^1[2-9]\.'
+  ::error::npm 11.5.1+ is required for OIDC trusted publishing
+  ```
+
+  On Node 24, setup-node installs npm **11.19.0**. The `[6-9][0-9]` alternative
+  covers minors 60-99, so `19` never matched and the gate failed on a toolchain
+  that meets the floor. A regex cannot express "greater than or equal to" for a
+  dotted version without enumerating every minor, which is exactly the mistake
+  that shipped. The gate now parses the version, strips any leading `v` and
+  prerelease suffix, and compares major/minor/patch as integers against 11.5.1.
+- **The Node half of the same gate ignored the patch component.** It compared
+  only major and minor, so `22.9.0` was accepted even though the documented
+  floor is 22.14.0. Both halves now use the same integer comparison.
+
+### Changed
+
+- **Two supported npm publish modes**, selected by the `use_token_fallback`
+  dispatch input (boolean, default `false`):
+  - **OIDC trusted publishing** (preferred, default) — `id-token: write`,
+    `npm publish --provenance`. No registry secret involved.
+  - **Token mode** (`use_token_fallback=true`) — uses the repository's existing
+    `NPM_TOKEN` secret via `NODE_AUTH_TOKEN`. This is the mode in use while the
+    npmjs.com trusted-publisher registration is pending.
+
+  The token mode deliberately omits `--provenance`. Provenance is an OIDC-only
+  Sigstore attestation: a token cannot mint one, and npm rejects the
+  combination. The token mode prints a NOTICE that the release carries no
+  provenance rather than passing a flag that cannot work or implying an
+  attestation exists.
+
+  Both modes are fail-closed. A requested mode with no usable credential exits
+  non-zero with an actionable message, and token mode never runs automatically,
+  so a broken OIDC configuration cannot silently downgrade to the long-lived
+  credential.
+
 ## [v2.2.0]
 
 Security hardening of the provenance path surface: provenance manifest paths

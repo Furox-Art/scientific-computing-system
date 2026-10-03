@@ -13,37 +13,43 @@ name: npm Publish
 # no `cds` package is present. This is stated in package.json's description and
 # asserted by npm.test.js.
 #
-# ## Authentication: OIDC trusted publishing
+# ## Authentication: two supported modes
 #
-# npm receives this job's OIDC identity token (audience
-# `npm:registry.npmjs.org`) and exchanges it for a short-lived, single-use
-# publish credential scoped to this repository, this workflow file and this
-# environment. No long-lived registry secret is required for the primary path,
-# and there is deliberately no `NODE_AUTH_TOKEN` in this job: the npm CLI
-# detects the OIDC environment before it ever looks for a token.
+# OIDC trusted publishing (preferred, the default). npm receives this job's
+# OIDC identity token (audience `npm:registry.npmjs.org`) and exchanges it for a
+# short-lived, single-use publish credential scoped to this repository, this
+# workflow file and this environment. No long-lived registry secret is involved,
+# and no `NODE_AUTH_TOKEN` is set on that path: the npm CLI detects the OIDC
+# environment before it ever looks for a token. `--provenance` attaches a
+# Sigstore-signed attestation binding the tarball to this commit. One-time
+# npmjs.com setup: package `scientific-computing-system` -> Settings -> Trusted
+# Publisher -> GitHub Actions -> owner `Furox-Art`, repository
+# `scientific-computing-system`, workflow `npm-publish.yml`, environment `npm`.
 #
-# `--provenance` attaches a Sigstore-signed attestation to the published
-# tarball binding it to this commit. npm also generates one automatically for
-# trusted-publishing runs from a public repository; the explicit flag is kept
-# so the intent survives any future CLI behaviour change.
+# Token mode (explicit opt-in, `use_token_fallback=true`). Uses the repository's
+# NPM_TOKEN secret through NODE_AUTH_TOKEN. This is the mode in use while the
+# npmjs.com trusted-publisher registration is pending.
 #
-# Fallback: dispatching with `use_token_fallback=true` sets `NODE_AUTH_TOKEN`
-# from the `NPM_TOKEN` secret instead. That is an explicit, opt-in recovery path
-# for when trusted publishing is not yet configured on npmjs.com. It is off by
-# default and never runs automatically, so a broken OIDC configuration cannot
-# silently downgrade to the long-lived credential.
+# The token mode deliberately omits `--provenance`. Provenance is an OIDC-only
+# attestation: with a token there is no OIDC identity to attest to, so npm
+# rejects the combination outright. The token mode therefore publishes without
+# provenance and prints a NOTICE saying so, rather than passing a flag that
+# cannot work or pretending an attestation was produced.
 #
-# One-time npmjs.com setup is documented in the README of the PR that
-# introduced this workflow.
+# Both modes are fail-closed. A requested mode with no usable credential exits 1
+# with an actionable message. Token mode never runs automatically, so a broken
+# OIDC configuration cannot silently downgrade to the long-lived credential.
 
 on:
   workflow_dispatch:
     inputs:
       use_token_fallback:
         description: >-
-          Publish with the long-lived NPM_TOKEN secret instead of OIDC trusted
-          publishing. Only for bootstrapping before the trusted publisher is
-          configured on npmjs.com.
+          Publish mode. false (default) = OIDC trusted publishing, which mints a
+          Sigstore provenance attestation. true = token mode, using the
+          repository NPM_TOKEN secret; that mode publishes WITHOUT provenance,
+          because a token cannot mint an attestation. Use true while the
+          npmjs.com trusted publisher is not yet registered.
         type: boolean
         default: false
   push:
@@ -97,27 +103,77 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Assert npm supports OIDC trusted publishing
+      # Toolchain floor for trusted publishing: npm 11.5.1 and Node 22.14.0.
+      #
+      # The comparison is an integer semver compare, not a regex. The previous
+      # regex here was wrong and rejected the npm that setup-node actually
+      # installs:
+      #
+      #   npm --version | grep -Eq '^11\.(5[1-9]|[6-9][0-9])\.|^1[2-9]\.'
+      #
+      # `[6-9][0-9]` covers 60-99, so `11.19.0` (what Node 24 ships) never
+      # matched and the gate failed on a compliant toolchain. Regex cannot
+      # express "greater than or equal to" for a dotted version without
+      # enumerating every minor, which is exactly the class of bug that shipped
+      # here. Numeric major/minor/patch comparison is total and obvious.
+      #
+      # The Node check that preceded it had the matching defect: it compared
+      # only major and minor, so `22.14.0` and `22.9.0` were both accepted even
+      # though only the former meets the documented floor.
+      - name: Assert the toolchain supports OIDC trusted publishing
         shell: bash
         run: |
           set -euo pipefail
-          npm --version
-          node --version
-          # npm trusts the OIDC exchange rather than a token when the CLI is new
-          # enough; below 11.5.1 it would silently fall back to whatever token
-          # it finds, which is exactly the failure mode this workflow avoids.
+          npm_version="$(npm --version)"
+          node_version="$(node --version)"
+          echo "npm=$npm_version node=$node_version"
+
+          # `$npm_version` and `$node_version` are positional arguments, never
+          # interpolated into the JS source, so a malformed or hostile value
+          # cannot break out into code.
           node -e '
-            const [major, minor] = process.versions.node.split(".").map(Number);
-            if (major < 22 || (major === 22 && minor < 14)) {
-              console.error(`::error::Node 22.14.0+ is required for trusted publishing, got ${process.versions.node}`);
+            const REQUIRED_NPM = [11, 5, 1];
+            const REQUIRED_NODE = [22, 14, 0];
+
+            // Strip an optional leading "v" and any pre-release/build suffix,
+            // then take the numeric leading components.
+            function parse(raw, label) {
+              const match = /^[vV]?(\d+)(?:\.(\d+))?(?:\.(\d+))?/.exec(String(raw).trim());
+              if (!match) {
+                console.error(`::error::could not parse the ${label} version: ${JSON.stringify(raw)}`);
+                process.exit(1);
+              }
+              return [Number(match[1]), Number(match[2] || 0), Number(match[3] || 0)];
+            }
+
+            // Returns negative if a < b, 0 if equal, positive if a > b.
+            function compare(a, b) {
+              for (let i = 0; i < 3; i += 1) {
+                if (a[i] !== b[i]) return a[i] - b[i];
+              }
+              return 0;
+            }
+
+            const npmVersion = parse(process.argv[1], "npm");
+            const nodeVersion = parse(process.argv[2], "node");
+
+            if (compare(npmVersion, REQUIRED_NPM) < 0) {
+              console.error(
+                `::error::npm ${REQUIRED_NPM.join(".")}+ is required for OIDC trusted publishing, got ${npmVersion.join(".")}`,
+              );
               process.exit(1);
             }
-          '
-          npm --version | grep -Eq '^11\.(5[1-9]|[6-9][0-9])\.|^1[2-9]\.' \
-            || {
-              echo "::error::npm 11.5.1+ is required for OIDC trusted publishing"
-              exit 1
+            if (compare(nodeVersion, REQUIRED_NODE) < 0) {
+              console.error(
+                `::error::Node ${REQUIRED_NODE.join(".")}+ is required for trusted publishing, got ${nodeVersion.join(".")}`,
+              );
+              process.exit(1);
             }
+            console.log(
+              `PASS: npm ${npmVersion.join(".")} >= ${REQUIRED_NPM.join(".")}, ` +
+                `node ${nodeVersion.join(".")} >= ${REQUIRED_NODE.join(".")}`,
+            );
+          ' "$npm_version" "$node_version"
 
       # The launcher previously shipped unparseable and pointing at a
       # nonexistent module, and nothing in CI ever invoked Node.
@@ -193,30 +249,47 @@ jobs:
           fi
           echo "PASS: scientific-computing-system@${version} is unpublished"
 
-      # Primary path: no NODE_AUTH_TOKEN is set anywhere in this step. The npm
-      # CLI detects the OIDC environment (id-token: write above) and exchanges
-      # the runner's identity token for a single-use publish credential.
+      # Two supported modes, selected by the `use_token_fallback` dispatch input.
       #
-      # Fallback path: explicit opt-in only, never automatic, so a broken OIDC
-      # configuration fails loudly instead of silently reverting to the
-      # long-lived secret.
+      # OIDC (preferred, default): no NODE_AUTH_TOKEN is set. The npm CLI
+      # detects the OIDC environment (id-token: write above) and exchanges the
+      # runner's identity token for a short-lived publish credential scoped to
+      # this repository, workflow and environment. `--provenance` attaches a
+      # Sigstore-signed attestation to the tarball binding it to this commit.
       #
-      # Neither path tolerates a silent failure: there is no `continue-on-error`
-      # and no `|| true`.
-      - name: Publish to npm (OIDC trusted publishing + provenance)
+      # Token (explicit opt-in): uses the repository's existing NPM_TOKEN secret
+      # via NODE_AUTH_TOKEN. This is the mode the maintainer selected while the
+      # npmjs.com trusted-publisher registration is still pending.
+      #
+      # The token mode does NOT pass --provenance, and must not. Provenance is an
+      # OIDC-only attestation: without a trusted-publisher configuration npm has
+      # no OIDC identity to attest to, so `--provenance` would fail the publish
+      # outright. Passing it and catching the error would be worse -- it would
+      # print a failure and then publish anyway. The token mode therefore
+      # publishes without provenance, and says so, rather than pretending an
+      # attestation exists.
+      #
+      # Both modes are fail-closed: a requested mode with no usable credential
+      # exits 1 with an actionable message instead of silently falling through.
+      # There is no `continue-on-error` and no `|| true` anywhere in this job.
+      - name: Publish to npm (OIDC trusted publishing, with provenance)
         if: ${{ !inputs.use_token_fallback }}
         run: npm publish --provenance --access public
 
-      - name: Publish to npm (token fallback, explicit opt-in)
+      - name: Publish to npm (token mode, no provenance)
         if: ${{ inputs.use_token_fallback }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
           if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "::error::use_token_fallback was requested but the NPM_TOKEN secret is empty"
+            echo "::error::token mode was requested (use_token_fallback=true) but the NPM_TOKEN secret is empty or unset"
+            echo "::error::either configure the NPM_TOKEN secret or switch to OIDC trusted publishing"
             exit 1
           fi
+          # Deliberately no --provenance: a token-authenticated publish cannot
+          # produce a Sigstore attestation. npm will reject the combination.
+          echo "NOTICE: publishing with NPM_TOKEN; this release carries no provenance attestation"
           npm publish --access public
 
       - name: Verify the published version

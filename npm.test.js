@@ -74,6 +74,28 @@ function stripComments(source) {
   return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"\\])\/\/.*$/gm, '$1');
 }
 
+/**
+ * Strip whole-line YAML comments from a workflow.
+ *
+ * The assertions below are about what the workflow *executes*. The workflow
+ * deliberately quotes its own previous broken regex in a comment to explain why
+ * it was replaced; matching that documentation would fail the guard on the very
+ * explanation that prevents the bug from being reintroduced.
+ */
+function stripYamlComments(source) {
+  return source
+    .split('\n')
+    .filter((line) => !/^\s*#/.test(line))
+    .join('\n');
+}
+
+/** Read a workflow with comments removed. */
+function workflowBody(name) {
+  return stripYamlComments(
+    fs.readFileSync(path.join(ROOT, '.github', 'workflows', name), 'utf8'),
+  );
+}
+
 test('the launcher targets the real import module `cds`', () => {
   const args = buildPythonArgs(['--version']);
   assert.deepStrictEqual(args.slice(0, 2), ['-m', 'cds']);
@@ -165,10 +187,7 @@ test('the launcher description states the Python prerequisite', () => {
 });
 
 test('the npm publish path is armed', () => {
-  const workflow = fs.readFileSync(
-    path.join(ROOT, '.github', 'workflows', 'npm-publish.yml'),
-    'utf8',
-  );
+  const workflow = workflowBody('npm-publish.yml');
 
   // The publish step must be real. This assertion exists because the workflow
   // previously shipped a stub --
@@ -194,9 +213,17 @@ test('the npm publish path is armed', () => {
     /^\s*id-token:\s*write\s*$/m.test(workflow),
     'the publish job must grant id-token: write for OIDC trusted publishing',
   );
+  // The version-floor gate must compare versions numerically, not with a
+  // regex. The regex that shipped first rejected npm 11.19.0 -- the version
+  // setup-node actually installs on Node 24 -- and broke the first real publish
+  // run. See test_version_floor_gate_is_not_a_regex below.
   assert.ok(
-    /npm publish --provenance/.test(workflow),
-    'the publish step must pass --provenance',
+    /node -e/.test(workflow),
+    'the toolchain floor must be evaluated with node, not shell pattern matching',
+  );
+  assert.ok(
+    !/grep -Eq? ['"]\^/.test(workflow),
+    'the toolchain floor must not use a regex against a dotted version',
   );
 
   // The gates that make a publish safe must survive: the registry existence
@@ -214,6 +241,121 @@ test('the npm publish path is armed', () => {
   assert.ok(
     /npm \$\{pkg\.version\} != Python/.test(workflow),
     'the npm/Python version-lockstep gate must be present',
+  );
+});
+
+test('both publish modes exist and are selected by one input', () => {
+  const workflow = workflowBody('npm-publish.yml');
+
+  // The dispatch input is what selects the mode. It must be a boolean with a
+  // false default so OIDC stays the default and token mode is always opt-in.
+  assert.ok(
+    /use_token_fallback:/.test(workflow),
+    'npm-publish.yml must expose the use_token_fallback dispatch input',
+  );
+  assert.ok(
+    /type:\s*boolean/.test(workflow),
+    'use_token_fallback must be a boolean input',
+  );
+  assert.ok(
+    /default:\s*false/.test(workflow),
+    'use_token_fallback must default to false so OIDC remains the default mode',
+  );
+
+  // Both modes must be present and mutually exclusive.
+  const publishSteps = workflow.split('- name: ').filter((block) => /^Publish to npm/.test(block));
+  assert.strictEqual(publishSteps.length, 2, 'there must be exactly two publish steps');
+  // Exactly one step runs per mode. The token gate is matched with the `!`
+  // prefix excluded explicitly: `/inputs\.use_token_fallback/` on its own also
+  // matches the OIDC step's `!inputs.use_token_fallback`, which would let both
+  // modes pass a loose assertion while being mutually exclusive in reality.
+  const oidcStep = publishSteps.find((s) => /if:.*!inputs\.use_token_fallback/.test(s));
+  const tokenStep = publishSteps.find(
+    (s) => /if:.*inputs\.use_token_fallback/.test(s) && !/!inputs\.use_token_fallback/.test(s),
+  );
+  assert.ok(oidcStep, 'the OIDC publish step must be gated on !inputs.use_token_fallback');
+  assert.ok(tokenStep, 'the token publish step must be gated on inputs.use_token_fallback');
+  assert.notStrictEqual(oidcStep, tokenStep, 'the two modes must be distinct steps');
+
+  // The token step must read the repository's existing NPM_TOKEN secret.
+  assert.ok(
+    /NODE_AUTH_TOKEN:\s*\$\{\{\s*secrets\.NPM_TOKEN\s*\}\}/.test(workflow),
+    'the token mode must source NODE_AUTH_TOKEN from secrets.NPM_TOKEN',
+  );
+
+  // Fail-closed: a token request with an empty secret must exit non-zero rather
+  // than fall through to an unauthenticated publish attempt.
+  assert.ok(
+    /if \[ -z "\$\{NODE_AUTH_TOKEN:-\}" \]/.test(workflow),
+    'the token mode must check that the credential is non-empty',
+  );
+});
+
+test('the token mode does not request provenance', () => {
+  const workflow = workflowBody('npm-publish.yml');
+
+  const publishSteps = workflow
+    .split('- name: ')
+    .filter((block) => /^Publish to npm/.test(block));
+
+  const oidc = publishSteps.find((s) => /!inputs\.use_token_fallback/.test(s));
+  const token = publishSteps.find((s) => /inputs\.use_token_fallback/.test(s) && !/!inputs/.test(s));
+  assert.ok(oidc, 'OIDC publish step not found');
+  assert.ok(token, 'token publish step not found');
+
+  // Provenance is an OIDC-only Sigstore attestation. npm rejects
+  // `--provenance` on a token-authenticated publish, so passing it here would
+  // fail the release outright. This assertion exists so the flag cannot be
+  // "helpfully" added back.
+  assert.ok(
+    /npm publish --provenance/.test(oidc),
+    'the OIDC mode must pass --provenance',
+  );
+  assert.ok(
+    !/--provenance/.test(token),
+    'the token mode must NOT pass --provenance: a token cannot mint an attestation',
+  );
+
+  // And it must say so, rather than publishing silently without the attribute.
+  assert.ok(
+    /no provenance attestation/i.test(token),
+    'the token mode must print a NOTICE that the release carries no provenance',
+  );
+});
+
+test('the toolchain version floor is compared numerically, not by regex', () => {
+  const workflow = workflowBody('npm-publish.yml');
+
+  // Regression guard for the bug that broke the first real publish run
+  // (37075040029). The original gate was:
+  //     npm --version | grep -Eq '^11\.(5[1-9]|[6-9][0-9])\.|^1[2-9]\.'
+  // `[6-9][0-9]` covers 60-99, so npm 11.19.0 -- what Node 24 ships -- did not
+  // match and the gate failed on a compliant toolchain.
+  assert.ok(
+    !/grep -Eq? ['"]\^11/.test(workflow),
+    'the version floor must not use the regex that rejected npm 11.19.0',
+  );
+
+  // The replacement parses and compares as integers.
+  assert.ok(
+    /REQUIRED_NPM = \[11, 5, 1\]/.test(workflow),
+    'the floor must be declared as a numeric [major, minor, patch] triple',
+  );
+  assert.ok(/function compare\(/.test(workflow), 'the floor needs an integer compare');
+  assert.ok(
+    /compare\(npmVersion, REQUIRED_NPM\) < 0/.test(workflow),
+    'the npm floor must be applied via a numeric less-than comparison',
+  );
+
+  // Node's floor is 22.14.0 and includes a patch component; the original check
+  // compared only major and minor, so 22.9.0 was wrongly accepted.
+  assert.ok(
+    /REQUIRED_NODE = \[22, 14, 0\]/.test(workflow),
+    'the Node floor must include its patch component',
+  );
+  assert.ok(
+    /compare\(nodeVersion, REQUIRED_NODE\) < 0/.test(workflow),
+    'the Node floor must be applied via a numeric less-than comparison',
   );
 });
 
