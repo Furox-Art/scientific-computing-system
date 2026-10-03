@@ -590,6 +590,171 @@ test('a missing credential exits before any publish step can run', () => {
   }
 });
 
+/**
+ * A command name must be usable as a shell word: no separators, no spaces, no
+ * path fragments. This is what `bin` keys are turned into on PATH.
+ */
+const VALID_COMMAND_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
+
+test('the bin map is a valid command-name -> path mapping', () => {
+  assert.ok(pkg.bin && typeof pkg.bin === 'object', 'package.json must declare a `bin` map');
+  assert.ok(!Array.isArray(pkg.bin), '`bin` must be a name -> path map, not an array');
+
+  const entries = Object.entries(pkg.bin);
+  assert.ok(entries.length > 0, 'the `bin` map must not be empty');
+
+  for (const [command, target] of entries) {
+    assert.ok(
+      VALID_COMMAND_NAME.test(command),
+      `bin key ${JSON.stringify(command)} is not a valid command name; ` +
+        'it would become an unusable PATH entry',
+    );
+    assert.ok(
+      !command.includes('/') && !command.includes('\\'),
+      `bin key ${JSON.stringify(command)} must not contain a path separator`,
+    );
+
+    assert.ok(
+      typeof target === 'string' && target.length > 0,
+      `bin[${command}] must be a non-empty string path`,
+    );
+    assert.ok(
+      !target.startsWith('/') && !/^[a-zA-Z]:[\\/]/.test(target),
+      `bin[${command}] must be a relative path inside the package, got ${target}`,
+    );
+    assert.ok(
+      !target.includes('\\'),
+      `bin[${command}] must use forward slashes; npm does not normalise Windows ` +
+        `separators, so a backslash path ships broken (got ${target})`,
+    );
+    assert.ok(
+      !/^[a-z]+:\/\//i.test(target),
+      `bin[${command}] must not be a URL (got ${target})`,
+    );
+
+    // The single most dangerous shape: a bin path that does not exist. npm
+    // ships it with NO warning at all and the installed command is silently
+    // absent -- verified by packing and installing such a package locally.
+    const resolved = path.resolve(ROOT, target.replace(/^\.\//, ''));
+    assert.ok(
+      fs.existsSync(resolved),
+      `bin[${command}] points at ${target}, which does not exist; ` +
+        'npm would publish this silently and the command would never appear',
+    );
+    assert.ok(
+      fs.statSync(resolved).isFile(),
+      `bin[${command}] must point at a file, got ${target}`,
+    );
+  }
+});
+
+test('every bin target is shipped by the files allowlist', () => {
+  const allowlist = new Set(pkg.files || []);
+  const included = (relative) =>
+    [...allowlist].some(
+      (entry) =>
+        entry === relative ||
+        entry === relative.replace(/\/[^/]+$/, '') + '/' ||
+        (entry.endsWith('/') && relative.startsWith(entry)),
+    );
+
+  for (const [command, target] of Object.entries(pkg.bin || {})) {
+    const relative = String(target).replace(/^\.\//, '');
+    assert.ok(
+      included(relative),
+      `bin[${command}] -> ${target} is not covered by package.json "files" ` +
+        `(${allowlist.size} entries); npm would drop it from the tarball and ` +
+        'the published package would have no working command',
+    );
+  }
+});
+
+test('the launcher shim is executable as a node script', () => {
+  // npm's generated shim runs the target directly on POSIX, so the file needs
+  // a shebang. Without it `scs` fails with "cannot execute binary file".
+  const shim = path.resolve(ROOT, 'bin', 'scs.js');
+  assert.ok(fs.existsSync(shim), 'bin/scs.js must exist');
+  const firstLine = fs.readFileSync(shim, 'utf8').split('\n', 1)[0];
+  assert.ok(
+    firstLine.startsWith('#!'),
+    `bin/scs.js must start with a shebang, got ${JSON.stringify(firstLine)}`,
+  );
+  assert.ok(
+    /node/.test(firstLine),
+    `bin/scs.js shebang must invoke node, got ${JSON.stringify(firstLine)}`,
+  );
+});
+
+test('the tarball ships the launcher and keeps the bin map', () => {
+  // `npm pack --dry-run --json` reports the file list without writing anything,
+  // so this is the exact set of files that would be published.
+  const npmArgs = ['pack', '--dry-run', '--json'];
+  const result = spawnSync('npm', npmArgs, {
+    cwd: ROOT,
+    encoding: 'utf8',
+    // On Windows the npm entry point is npm.cmd, which spawnSync cannot execute
+    // directly; a shell is required. The arguments are static literals, so this
+    // introduces no injection surface.
+    shell: process.platform === 'win32',
+  });
+  assert.ok(
+    !result.error,
+    `could not run npm pack: ${result.error && result.error.message}`,
+  );
+  assert.strictEqual(
+    result.status,
+    0,
+    `npm pack --dry-run failed: ${result.stderr || result.stdout}`,
+  );
+
+  const payload = JSON.parse(result.stdout);
+  const files = payload[0].files.map((entry) => entry.path.replace(/\\/g, '/'));
+
+  for (const [command, target] of Object.entries(pkg.bin || {})) {
+    const relative = String(target).replace(/^\.\//, '');
+    assert.ok(
+      files.includes(relative),
+      `bin[${command}] -> ${target} is missing from the tarball; packed files: ${files.join(', ')}`,
+    );
+  }
+  assert.ok(
+    files.includes('index.js'),
+    'the tarball must ship index.js',
+  );
+  assert.ok(
+    files.includes('package.json'),
+    'the tarball must ship package.json',
+  );
+});
+
+test('the redundant ./ bin prefix is intentional and must not be "fixed"', () => {
+  // npm prints this on publish:
+  //   npm warn publish "bin[scs]" script name bin/scs.js was invalid and removed
+  // It reads like a removed bin. It is not. npm normalises the redundant "./"
+  // and ships the entry; the published tarball keeps
+  // `bin: { scs: "./bin/scs.js" }` and `npm install -g` creates a working `scs`.
+  //
+  // Verified three ways:
+  //   * this repo's packed tarball has bin scs -> ./bin/scs.js plus bin/scs.js
+  //   * axiomize@1.12.4 on npm, published from the identical shape
+  //     ("./bin/axiomize.js"), ships the same and is not deprecated; the registry
+  //     normalises it to `bin/axiomize.js`
+  //   * installing this repo's tarball into a scratch prefix created scs,
+  //     scs.cmd and scs.ps1, and `scs --version` exited 0
+  //
+  // So the warning is cosmetic. This test exists to stop a future maintainer
+  // from "fixing" it and breaking the mapping -- the shape assertions above
+  // catch genuinely broken shapes, which npm ships with no warning whatsoever.
+  const scs = pkg.bin.scs;
+  assert.ok(scs, 'the bin map must expose `scs`');
+  assert.ok(
+    String(scs).startsWith('./'),
+    'bin.scs is expected to keep its "./" prefix: npm normalises it on publish ' +
+      'and the published command works. Dropping it is harmless but so is ' +
+      'keeping it -- do not read the cosmetic npm warning as a defect.',
+  );
+});
+
 test('npm version tracks the Python distribution version', () => {
   assert.strictEqual(pkg.version, pythonDistributionVersion());
 });

@@ -59,9 +59,14 @@ rather than by the tag push that future releases will use.
   package page and the README will contradict each other until its owner
   updates it.
 - npm reports `"bin[scs]" script name bin/scs.js was invalid and removed` during
-  publish. npm wants the bin *name* without a path; this is cosmetic to npm but
-  means the published package carries no working `scs` command until it is
-  corrected in `package.json` (not changed here -- out of scope for this fix).
+  publish. **This is harmless, and the earlier note here claiming otherwise was
+  wrong.** npm normalises the redundant `./` prefix and ships the bin entry
+  regardless. Verified: this repo's packed tarball contains
+  `bin: { scs: "./bin/scs.js" }` together with `bin/scs.js`; installing that
+  tarball into a scratch prefix created `scs`, `scs.cmd` and `scs.ps1`, and
+  `scs --version` exited 0. `axiomize@1.12.4`, published from the identical
+  shape, ships the same and is not deprecated. No change to `bin` is required;
+  the shape is now pinned by tests so it cannot regress silently.
 
 ### Fixed
 
@@ -84,6 +89,26 @@ rather than by the tag push that future releases will use.
   floor is 22.14.0. Both halves now use the same integer comparison.
 
 ### Fixed
+
+- **The `bin` map is now pinned by tests, so a broken launcher command cannot
+  ship silently.** The `npm warn publish "bin[scs]" script name bin/scs.js was
+  invalid and removed` message had been reported as a defect that would leave
+  the published package with no working `scs` command. **That report was wrong.**
+  npm normalises the redundant `./` prefix and ships the entry either way; the
+  packed tarball keeps `bin: { scs: "./bin/scs.js" }` alongside `bin/scs.js`, and
+  installing it creates `scs`, `scs.cmd` and `scs.ps1` and `scs --version`
+  succeeds. `axiomize@1.12.4`, published from the identical shape, ships the
+  same and is not deprecated. No `package.json` change is required.
+
+  What *is* a real hazard is the opposite: npm ships a `bin` pointing at a
+  missing file, or one excluded by `files`, with **no warning at all** --
+  confirmed by packing and installing such a package into a scratch prefix,
+  where no command was created and nothing was printed. Five tests now assert
+  the bin map is a valid command-name to path mapping, that every target exists
+  and is covered by `files`, that the shim carries a `node` shebang, and that
+  the real tarball (`npm pack --dry-run --json`) still contains both the shim
+  and the bin entry. One further test documents that the `./` prefix is
+  intentional so the cosmetic warning is not "fixed" by a future maintainer.
 
 - **Token-mode npm publish failed with `ENEEDAUTH` while holding a valid
   secret.** The run reached `npm publish` with `NODE_AUTH_TOKEN` populated and
