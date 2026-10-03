@@ -91,9 +91,10 @@ research**.
 
 ## Overview of Modules
 
-`src/cds/` contains 34 subpackages. This table summarises them; the
-[API Reference](api.md) documents each one, and `cds modules` prints the same
-catalog from the installed package.
+`src/cds/` contains 34 subpackages plus `causal.py` and `sensitivity.py` — 36
+public feature modules. This table summarises them and the
+[API Reference](api.md) documents each one. (`cds modules` prints a curated
+26-entry subset, not the full catalog.)
 
 | Module | Description |
 |--------|-------------|

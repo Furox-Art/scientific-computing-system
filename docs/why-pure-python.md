@@ -26,11 +26,12 @@ real signatures.
 
 ## The honest tradeoff
 
-**It is slow, and the gap is large.** On one reference run, 100×100 matrix
-multiplication took ~0.05 s in CDS versus ~0.0001 s for NumPy — roughly
-580× slower. The exact numbers vary by machine; see
-[Benchmarks](benchmarks.md) for the full report, the hardware it ran on, and the
-raw JSON behind it.
+**It is slow, and the gap is large.** In the committed benchmark artifact,
+100×100 matrix multiplication took 0.0696 s in CDS versus 0.000060 s for NumPy —
+about **1155× slower**. That artifact does not record the platform, CPU, or
+library versions it ran on, so read it as an order of magnitude and not as a
+figure you can reproduce. [Benchmarks](benchmarks.md) states exactly what that
+run does and does not support, and how to regenerate a fully attributed one.
 
 The rule of thumb that matters: if your workload is dominated by dense linear
 algebra on large arrays, pure Python is the wrong tool and the slowdown is not

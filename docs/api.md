@@ -4,9 +4,12 @@ Every public CDS subpackage, rendered from the module's own docstrings by
 [mkdocstrings](https://mkdocstrings.github.io/). The distribution is
 `scientific-computing-system`; the import name is **`cds`**.
 
-`src/cds/` currently contains **34 subpackages**. Every one is listed below.
-`cds modules` prints the same catalog from the installed package, so it stays
-authoritative if this page ever drifts.
+`src/cds/` currently contains **34 subpackages plus `causal.py` and
+`sensitivity.py`** — 36 public feature modules, every one listed below.
+
+`cds modules` prints a **curated 26-entry subset**, not this full list: it omits
+`bayes`, `causal`, `core`, `fractals`, `genetics`, `infotheory`, `interpolate`,
+`pde`, and `wavelets`. This page is the authoritative catalog.
 
 Optional integrations (`cds.plot`, `cds.data_analysis.pandas_io`) need an extra;
 the zero-dependency core does not.
