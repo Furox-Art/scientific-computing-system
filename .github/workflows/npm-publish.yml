@@ -370,10 +370,34 @@ jobs:
           echo "NOTICE: publishing with NPM_TOKEN; this release carries no provenance attestation"
           npm publish --access public
 
-      - name: Verify the published version
+      # Post-publish confirmation that the version is actually readable.
+      #
+      # This was a single immediate `npm view`, and it produced a false failure
+      # on run 37136131220: the upload succeeded and the registry recorded 2.2.0
+      # ninety seconds later, but the probe ran within a second of `npm publish`
+      # returning and got E404, turning a successful release into a red job.
+      # Three sibling repositories hit the same thing.
+      #
+      # The probe now polls the registry's JSON API with backoff, over a budget
+      # of several minutes -- deliberately generous, because npm's propagation
+      # gap is not bounded and shortening it to make a test fast would recreate
+      # the original false failure. It succeeds on the first match and fails
+      # closed if the version never appears, emitting a `::warning::` first so a
+      # slow-but-successful publish is never read as a hard failure.
+      #
+      # `npm view` was dropped as the probe: it reports "absent" and "denied"
+      # with the same E404, and it resolves against the userconfig this job
+      # created for writing, so a read-only confirmation had no reason to touch
+      # publish credentials at all.
+      - name: Verify the published version (polling for registry propagation)
         run: |
           set -euo pipefail
           version="$(node -p 'require("./package.json").version')"
-          published="$(npm view "scientific-computing-system@${version}" version)"
-          echo "npm reports published version $published"
-          test "$published" = "$version"
+          python3 scripts/verify_npm_publication.py \
+            --package scientific-computing-system \
+            --version "$version" \
+            --registry https://registry.npmjs.org \
+            --attempts 12 \
+            --initial-delay 5 \
+            --growth 1.5 \
+            --max-delay 30

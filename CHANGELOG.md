@@ -48,6 +48,30 @@ rather than by the tag push that future releases will use.
 
 ### Fixed
 
+- **A successful publish is no longer reported as a failure while npm is still
+  propagating it.** `npm publish` returns as soon as the registry accepts the
+  upload, but the version becomes readable on the read path asynchronously. The
+  post-publish check read once, immediately, and on run `37136131220` got
+  `npm error 404 No match found for version 2.2.0` — while 2.2.0 was in fact
+  published and recorded by the registry ninety seconds later. A maintainer
+  reading that run had every reason to believe the release had broken. Three
+  sibling repositories hit the same false failure.
+
+  The check now polls the registry with backoff over a budget of several minutes,
+  succeeds on the first match, and still fails closed if the version genuinely
+  never appears, emitting a `::warning::` first so a slow-but-successful publish
+  is never read as a hard failure.
+
+  It queries the registry's JSON API instead of `npm view`, which was a poor fit:
+  it reports "absent" and "denied" with the same `E404`, and it resolves against
+  the userconfig the job had just created for *writing*, so a read-only
+  confirmation had no reason to touch publish credentials at all.
+
+  `tests/test_codemeta_version_lockstep.py`-style coverage now exercises both
+  directions against a stub registry — 404-then-success is tolerated, and a
+  version that never appears still fails — and asserts the retry budget is not
+  shortened, since trimming it to make a test fast is what caused the bug.
+
 - **The publish path is now guarded rather than merely enabled.**
   `tests/test_codemeta_version_lockstep.py`-style machine checks were extended to
   npm: the launcher contract test previously asserted that publishing stayed
