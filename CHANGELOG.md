@@ -58,6 +58,10 @@ rather than by the tag push that future releases will use.
   owned elsewhere and is shipped verbatim in the npm tarball, so the published
   package page and the README will contradict each other until its owner
   updates it.
+- npm reports `"bin[scs]" script name bin/scs.js was invalid and removed` during
+  publish. npm wants the bin *name* without a path; this is cosmetic to npm but
+  means the published package carries no working `scs` command until it is
+  corrected in `package.json` (not changed here -- out of scope for this fix).
 
 ### Fixed
 
@@ -78,6 +82,38 @@ rather than by the tag push that future releases will use.
 - **The Node half of the same gate ignored the patch component.** It compared
   only major and minor, so `22.9.0` was accepted even though the documented
   floor is 22.14.0. Both halves now use the same integer comparison.
+
+### Fixed
+
+- **Token-mode npm publish failed with `ENEEDAUTH` while holding a valid
+  secret.** The run reached `npm publish` with `NODE_AUTH_TOKEN` populated and
+  still got:
+  ```
+  npm error code ENEEDAUTH
+  npm error need auth This command requires you to be logged in to
+                        https://registry.npmjs.org/
+  ```
+  Root cause: `actions/setup-node` was configured without `registry-url`, so it
+  wrote no npm userconfig at all. `NODE_AUTH_TOKEN` on its own is inert -- npm
+  only substitutes it into a credential when some userconfig maps
+  `//registry.npmjs.org/` to `${NODE_AUTH_TOKEN}`. With no such entry npm never
+  attempts authentication, which is why the failure was `ENEEDAUTH` (no
+  authentication attempted) rather than `E401` (attempted and rejected) even
+  though the secret was present and correct. The fix is `registry-url:
+  "https://registry.npmjs.org"` on `setup-node`, which is what the working
+  `axiomize` publish workflow sets.
+
+  Verified locally against a deliberately fake token: with `NODE_AUTH_TOKEN`
+  exported but no registry auth entry, npm stops at `ENEEDAUTH`; with the
+  `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` entry present, npm
+  reaches the registry and fails `E401` instead -- i.e. it now actually
+  authenticates.
+- **The credential check could print an error and continue into npm.** It lived
+  inline inside the publish step, so its failure text appeared in the log while
+  `npm publish` was invoked anyway. The check is now its own step ahead of both
+  publish steps, so a non-zero exit ends the job before npm can run, and it
+  covers the OIDC mode too (verifying the runner actually granted
+  `id-token: write`, which the previous version never checked).
 
 ### Changed
 
