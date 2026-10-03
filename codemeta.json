@@ -2,7 +2,7 @@
   "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
   "@type": "SoftwareSourceCode",
   "name": "scientific-computing-system",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Pure-Python computational science platform for numerical methods, modeling, validation, uncertainty, and scientific workflows. Zero runtime dependencies. This is the front door; scientific-computing-system-2.0 is the NumPy build of the same work.",
   "license": "https://spdx.org/licenses/MIT",
   "codeRepository": "https://github.com/Furox-Art/scientific-computing-system",
@@ -17,7 +17,7 @@
       "name": "Furox-Art"
     }
   ],
-  "datePublished": "2026-10-02",
+  "datePublished": "2026-10-04",
   "keywords": [
     "scientific computing",
     "numerical methods",

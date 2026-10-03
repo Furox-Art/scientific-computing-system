@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.2.1] - 2026-10-04
+
+Documentation and release-surface corrections. **No library behaviour change**:
+nothing under `src/cds/` was modified except the `__version__` constant, so no
+numerical kernel, public API signature or CLI subcommand differs from 2.2.0.
+
+The reason this patch release exists: `README.md` is the `long_description`, and
+PyPI only re-reads it when a new release is uploaded. 2.2.0 shipped the README as
+it stood before the truthfulness work below, so the PyPI project page for 2.2.0
+still advertises claims the repository has since retracted. Publishing 2.2.1 is
+what makes the corrected README the one PyPI renders.
+
 ### Fixed
 
 - **README performance claim corrected to the committed artifact.** The "catch"
@@ -16,15 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   actually records 0.0696 s versus 0.000060 s (**1154.8x**) at commit `7213425`,
   and that same file records Platform / CPU / Python / NumPy as "not recorded"
   with an explicit "treat the absolute timings as unverified" warning. The line
-  added by the earlier truthfulness commit therefore contradicted the warnings
-  it shipped alongside. Both the README and `docs/why-pure-python.md` now quote
-  the artifact's own numbers and state that the environment was not recorded.
+  added by the earlier truthfulness commit therefore contradicted the warnings it
+  shipped alongside. Both the README and `docs/why-pure-python.md` now quote the
+  artifact's own numbers and state that the environment was not recorded.
 
-- **npm launcher prerequisite stated correctly.** README and `SECURITY.md`
-  said the `scs` shim works once `cds` is "on your PATH". `index.js` resolves an
+- **npm launcher prerequisite stated correctly.** README and `SECURITY.md` said
+  the `scs` shim works once `cds` is "on your PATH". `index.js` resolves an
   interpreter (`python`/`python3`/`py`) and runs `python -m cds`; it never looks
-  for a console script on `PATH`. Corrected to "requires the Python
-  distribution installed so that `python -m cds` resolves".
+  for a console script on `PATH`. Corrected to "requires the Python distribution
+  installed so that `python -m cds` resolves".
 
 - **Module-surface claims are now accurate.** "34 subpackages" silently omitted
   the two top-level public modules (`causal.py`, `sensitivity.py`), and
@@ -37,69 +49,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   README instead carries counts derived from the package itself (505 exports:
   342 functions, 163 classes across 35 feature modules).
 
-- **`tests/test_readme_surface.py`** derives the README's structural claims from
-  `src/cds/` and from the installed package: subpackage count, presence of both
-  top-level public modules, the export total, per-module table coverage, the
-  benchmark ratio against `benchmarks/results.json`, and a guard against
-  describing `cds modules` as exhaustive. This drift was previously invisible to
-  CI, which is how it survived several releases. Verified by mutation: five
-  separate re-introductions of the audited defects each turn the suite red.
-
-### Added
-
-- README coverage: `cds.core` and `cds.graph` rows, `examples/` (35 runnable
-  files) and `dashboard/app.py` entries, all 13 CLI subcommands, the `[pandas]`
-  extra, `paper.md`/`paper.bib` (JOSS) and `codemeta.json`, and a Contributing
-  section with the `pip install -e ".[dev]"` / `pytest` / `mkdocs serve` loop and
-  the 100% blended-coverage gate. Duplicated prose was removed (the
-  supply-chain section now defers to `SECURITY.md` instead of restating it, and
-  the generic "Common use cases" filler is gone).
-
-### Changed
-
-- README shortened from 197 to fewer lines with **higher** coverage: the
-  supply-chain section dropped from 209 to a 3-line summary plus a link, and
-  "The catch" reduced to a short paragraph. See the PR for the before/after
-  word count.
-
 - **Documentation no longer claims npm is unpublished.** npm 2.2.0 is live and
   npm is a supported channel, but `README.md` line 41 still said "npm is no
   longer published". Because `README.md` is listed in the npm `files` allowlist,
   that sentence shipped **verbatim inside the published 2.2.0 tarball**, so the
   npm package page contradicted its own README. `README.md`, `SECURITY.md` and
   `docs/related.md` now describe both channels accurately; the npm version badge
-  is restored now that the registry and PyPI agree at 2.2.0.
-
-### Re-enabled: npm publishing
-
-This reverses two earlier decisions. Both were deliberate at the time and are
-recorded here so the history is not silently erased.
-
-- **Reverted: the decision in `52717c5` ("docs: make this the front door and stop
-  npm publishing") to disable npm publishing.** That commit replaced the real
-  publish step with
-  `run: echo "npm publishing is disabled; PyPI is the install path" && exit 0`.
-  npm publishing is now real again, by explicit user decision to publish all six
-  repositories to npm.
-- **Reverted: `"private": true` in `package.json`**, added by the hardening work in
-  `#140` while publishing was disabled. `private: true` makes `npm publish`
-  refuse to run at all, so the flag had to go before the workflow could work. The
-  `files` allowlist is retained: it is what keeps the repository (tests, CI
-  workflows, 10k+ statements of Python, promo media) out of the published tarball.
-
-Authentication is **OIDC trusted publishing** (`id-token: write`,
-`npm publish --provenance`). No long-lived registry token is used on the primary
-path. A token fallback exists for bootstrapping only: dispatching with
-`use_token_fallback=true` sets `NODE_AUTH_TOKEN` from the `NPM_TOKEN` secret. It
-is off by default and never runs automatically, so a broken OIDC configuration
-fails loudly instead of silently reverting to the long-lived credential.
-
-npm 2.2.0 is a **new version for npm**: the registry currently holds only 1.0.0,
-which shipped an unparseable launcher. The PyPI release of 2.2.0 already
-happened, so npm 2.2.0 is published by manual dispatch of `npm-publish.yml`
-rather than by the tag push that future releases will use.
-
-### Fixed
+  is restored now that the registry and PyPI agree.
 
 - **A successful publish is no longer reported as a failure while npm is still
   propagating it.** `npm publish` returns as soon as the registry accepts the
@@ -117,45 +73,18 @@ rather than by the tag push that future releases will use.
 
   It queries the registry's JSON API instead of `npm view`, which was a poor fit:
   it reports "absent" and "denied" with the same `E404`, and it resolves against
-  the userconfig the job had just created for *writing*, so a read-only
-  confirmation had no reason to touch publish credentials at all.
+  the userconfig the job created for *writing*, so a read-only confirmation had no
+  reason to touch publish credentials at all. Both directions are exercised
+  against a stub registry, and the retry budget itself is asserted, since
+  shortening it to make a test fast is what caused the bug.
 
-  `tests/test_codemeta_version_lockstep.py`-style coverage now exercises both
-  directions against a stub registry — 404-then-success is tolerated, and a
-  version that never appears still fails — and asserts the retry budget is not
-  shortened, since trimming it to make a test fast is what caused the bug.
-
-- **The publish path is now guarded rather than merely enabled.**
-  `tests/test_codemeta_version_lockstep.py`-style machine checks were extended to
-  npm: the launcher contract test previously asserted that publishing stayed
-  disabled, which would have silently passed against a disabled workflow. It now
-  asserts a real `npm publish --provenance` invocation, `id-token: write`, the
-  absence of `private: true`, the absence of the disabled stub, and the presence
-  of every gate that makes a publish safe: the registry version-existence check,
-  the `npm pack --dry-run` tarball allowlist, and the npm/Python version lockstep.
-- **The package description states the Python prerequisite.** This npm package
-  is a launcher shim: it ships no Python and execs `python -m cds`. A user who
-  installs it without `pip install scientific-computing-system` gets a launcher
-  that cannot work, so the description (the only text npm renders on the package
-  page) now says so, and a test asserts it.
-
-### Known gap
-
-- `README.md` line 41 still states "npm is no longer published". That file is
-  owned elsewhere and is shipped verbatim in the npm tarball, so the published
-  package page and the README will contradict each other until its owner
-  updates it.
-- npm reports `"bin[scs]" script name bin/scs.js was invalid and removed` during
-  publish. **This is harmless, and the earlier note here claiming otherwise was
-  wrong.** npm normalises the redundant `./` prefix and ships the bin entry
-  regardless. Verified: this repo's packed tarball contains
-  `bin: { scs: "./bin/scs.js" }` together with `bin/scs.js`; installing that
-  tarball into a scratch prefix created `scs`, `scs.cmd` and `scs.ps1`, and
-  `scs --version` exited 0. `axiomize@1.12.4`, published from the identical
-  shape, ships the same and is not deprecated. No change to `bin` is required;
-  the shape is now pinned by tests so it cannot regress silently.
-
-### Fixed
+- **The publish path is now guarded rather than merely enabled.** The launcher
+  contract test previously asserted that publishing stayed disabled, which would
+  have silently passed against a disabled workflow. It now asserts a real
+  `npm publish --provenance` invocation, `id-token: write`, the absence of
+  `private: true`, the absence of the disabled stub, and the presence of every
+  gate that makes a publish safe: the registry version-existence check, the
+  `npm pack --dry-run` tarball allowlist, and the npm/Python version lockstep.
 
 - **The npm toolchain version floor rejected a compliant toolchain.** The first
   real publish run failed on this gate:
@@ -171,11 +100,34 @@ rather than by the tag push that future releases will use.
   dotted version without enumerating every minor, which is exactly the mistake
   that shipped. The gate now parses the version, strips any leading `v` and
   prerelease suffix, and compares major/minor/patch as integers against 11.5.1.
-- **The Node half of the same gate ignored the patch component.** It compared
-  only major and minor, so `22.9.0` was accepted even though the documented
-  floor is 22.14.0. Both halves now use the same integer comparison.
+  The Node half of the same gate ignored the patch component: it compared only
+  major and minor, so `22.9.0` was accepted even though the documented floor is
+  22.14.0. Both halves now use the same integer comparison.
 
-### Fixed
+- **Token-mode npm publish failed with `ENEEDAUTH` while holding a valid
+  secret.** The run reached `npm publish` with `NODE_AUTH_TOKEN` populated and
+  still got:
+
+  ```
+  npm error code ENEEDAUTH
+  npm error need auth This command requires you to be logged in to
+                        https://registry.npmjs.org/
+  ```
+
+  Root cause: `actions/setup-node` was configured without `registry-url`, so it
+  wrote no npm userconfig at all. `NODE_AUTH_TOKEN` on its own is inert — npm only
+  substitutes it into a credential when some userconfig maps
+  `//registry.npmjs.org/` to `${NODE_AUTH_TOKEN}`. With no such entry npm never
+  attempts authentication, which is why the failure was `ENEEDAUTH` (no
+  authentication attempted) rather than `E401` (attempted and rejected) even
+  though the secret was present and correct. The fix is
+  `registry-url: "https://registry.npmjs.org"` on `setup-node`.
+
+  Separately, the credential check lived inline inside the publish step, so its
+  failure text appeared in the log while `npm publish` was invoked anyway. It is
+  now its own step ahead of both publish steps, so a non-zero exit ends the job
+  before npm can run, and it covers the OIDC mode too (verifying the runner
+  actually granted `id-token: write`, which the previous version never checked).
 
 - **The `bin` map is now pinned by tests, so a broken launcher command cannot
   ship silently.** The `npm warn publish "bin[scs]" script name bin/scs.js was
@@ -184,50 +136,45 @@ rather than by the tag push that future releases will use.
   npm normalises the redundant `./` prefix and ships the entry either way; the
   packed tarball keeps `bin: { scs: "./bin/scs.js" }` alongside `bin/scs.js`, and
   installing it creates `scs`, `scs.cmd` and `scs.ps1` and `scs --version`
-  succeeds. `axiomize@1.12.4`, published from the identical shape, ships the
-  same and is not deprecated. No `package.json` change is required.
+  succeeds. `axiomize@1.12.4`, published from the identical shape, ships the same
+  and is not deprecated. No `package.json` change is required.
 
   What *is* a real hazard is the opposite: npm ships a `bin` pointing at a
-  missing file, or one excluded by `files`, with **no warning at all** --
-  confirmed by packing and installing such a package into a scratch prefix,
-  where no command was created and nothing was printed. Five tests now assert
-  the bin map is a valid command-name to path mapping, that every target exists
-  and is covered by `files`, that the shim carries a `node` shebang, and that
-  the real tarball (`npm pack --dry-run --json`) still contains both the shim
-  and the bin entry. One further test documents that the `./` prefix is
-  intentional so the cosmetic warning is not "fixed" by a future maintainer.
+  missing file, or one excluded by `files`, with **no warning at all**. Five
+  tests now assert the bin map is a valid command-name to path mapping, that
+  every target exists and is covered by `files`, that the shim carries a `node`
+  shebang, and that the real tarball (`npm pack --dry-run --json`) still contains
+  both the shim and the bin entry. One further test documents that the `./`
+  prefix is intentional so the cosmetic warning is not "fixed" by a future
+  maintainer.
 
-- **Token-mode npm publish failed with `ENEEDAUTH` while holding a valid
-  secret.** The run reached `npm publish` with `NODE_AUTH_TOKEN` populated and
-  still got:
-  ```
-  npm error code ENEEDAUTH
-  npm error need auth This command requires you to be logged in to
-                        https://registry.npmjs.org/
-  ```
-  Root cause: `actions/setup-node` was configured without `registry-url`, so it
-  wrote no npm userconfig at all. `NODE_AUTH_TOKEN` on its own is inert -- npm
-  only substitutes it into a credential when some userconfig maps
-  `//registry.npmjs.org/` to `${NODE_AUTH_TOKEN}`. With no such entry npm never
-  attempts authentication, which is why the failure was `ENEEDAUTH` (no
-  authentication attempted) rather than `E401` (attempted and rejected) even
-  though the secret was present and correct. The fix is `registry-url:
-  "https://registry.npmjs.org"` on `setup-node`, which is what the working
-  `axiomize` publish workflow sets.
+### Added
 
-  Verified locally against a deliberately fake token: with `NODE_AUTH_TOKEN`
-  exported but no registry auth entry, npm stops at `ENEEDAUTH`; with the
-  `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` entry present, npm
-  reaches the registry and fails `E401` instead -- i.e. it now actually
-  authenticates.
-- **The credential check could print an error and continue into npm.** It lived
-  inline inside the publish step, so its failure text appeared in the log while
-  `npm publish` was invoked anyway. The check is now its own step ahead of both
-  publish steps, so a non-zero exit ends the job before npm can run, and it
-  covers the OIDC mode too (verifying the runner actually granted
-  `id-token: write`, which the previous version never checked).
+- **`tests/test_readme_surface.py`** derives the README's structural claims from
+  `src/cds/` and from the installed package: subpackage count, presence of both
+  top-level public modules, the export total, per-module table coverage, the
+  benchmark ratio against `benchmarks/results.json`, and a guard against
+  describing `cds modules` as exhaustive. This drift was previously invisible to
+  CI, which is how it survived several releases. Verified by mutation: five
+  separate re-introductions of the audited defects each turn the suite red.
 
-### Changed
+- **`codemeta.json` is now a locked version surface.** It was left out of the
+  original five surfaces and drifted: it still declared `2.1.0` after the package
+  reached 2.2.0, while every other surface had moved. CodeMeta is a
+  machine-readable publication record, so a stale `version` there advertises the
+  previous release to every automated consumer while the installed package
+  reports a different one. `scripts/check_version_lockstep.py` now reads it and
+  `tests/test_codemeta_version_lockstep.py` fails CI on drift. It is also added
+  to the sdist allowlist, without which that suite failed with `FileNotFoundError`
+  when run from an unpacked sdist.
+
+- README coverage: `cds.core` and `cds.graph` rows, `examples/` (35 runnable
+  files) and `dashboard/app.py` entries, all 13 CLI subcommands, the `[pandas]`
+  extra, `paper.md`/`paper.bib` (JOSS) and `codemeta.json`, and a Contributing
+  section with the `pip install -e ".[dev]"` / `pytest` / `mkdocs serve` loop and
+  the 100% blended-coverage gate. Duplicated prose was removed (the supply-chain
+  section now defers to `SECURITY.md` instead of restating it, and the generic
+  "Common use cases" filler is gone).
 
 - **Two supported npm publish modes**, selected by the `use_token_fallback`
   dispatch input (boolean, default `false`):
@@ -241,12 +188,37 @@ rather than by the tag push that future releases will use.
   Sigstore attestation: a token cannot mint one, and npm rejects the
   combination. The token mode prints a NOTICE that the release carries no
   provenance rather than passing a flag that cannot work or implying an
-  attestation exists.
+  attestation exists. Both modes are fail-closed: a requested mode with no usable
+  credential exits non-zero with an actionable message, and token mode never runs
+  automatically, so a broken OIDC configuration cannot silently downgrade to the
+  long-lived credential.
 
-  Both modes are fail-closed. A requested mode with no usable credential exits
-  non-zero with an actionable message, and token mode never runs automatically,
-  so a broken OIDC configuration cannot silently downgrade to the long-lived
-  credential.
+### Changed
+
+- **npm publishing is real again.** This reverses two earlier decisions, both
+  deliberate at the time and recorded here so the history is not silently erased:
+  the decision in `52717c5` to disable npm publishing (which replaced the publish
+  step with `run: echo "npm publishing is disabled; PyPI is the install path" &&
+  exit 0`), and `"private": true` in `package.json`, added by `#140` while
+  publishing was disabled. `private: true` makes `npm publish` refuse to run at
+  all, so the flag had to go before the workflow could work. The `files` allowlist
+  is retained: it is what keeps the repository (tests, CI workflows, 10k+
+  statements of Python, promo media) out of the published tarball. The npm
+  channel is on OIDC trusted publishing (`id-token: write`,
+  `npm publish --provenance`); no long-lived registry token is used on the
+  primary path.
+
+- README shortened with **higher** coverage: the supply-chain section dropped from
+  209 lines to a 3-line summary plus a link, and "The catch" reduced to a short
+  paragraph.
+
+- **This release carries a PyPI attestation; 2.2.0 does not.** PyPI's JSON API
+  reports zero PEP 740 attestation bundles for 2.2.0, which went out in token
+  mode — a token cannot mint a Sigstore attestation. 2.2.1 is published by
+  `release.yml` through `pypa/gh-action-pypi-publish` with Trusted Publishing
+  (OIDC), so it will carry one, as long as the `pypi` environment's trusted
+  publisher is configured — a misconfiguration fails the publish loudly rather
+  than degrading silently.
 
 ## [v2.2.0]
 
