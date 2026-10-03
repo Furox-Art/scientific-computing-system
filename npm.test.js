@@ -96,6 +96,22 @@ function workflowBody(name) {
   );
 }
 
+/**
+ * Extract one step block from a workflow by its `- name: <heading>` marker.
+ *
+ * The block runs from the marker to the next `- name:` at the same indentation,
+ * so it contains that step's inputs and nothing else. A fixed character window
+ * would be wrong the moment a step grows or shrinks.
+ */
+function stepBlock(workflow, heading) {
+  const marker = `- name: ${heading}`;
+  const start = workflow.indexOf(marker);
+  if (start === -1) return null;
+  const rest = workflow.slice(start + marker.length);
+  const next = rest.search(/\n\s*- (?:name|uses|run|if|env|with):/);
+  return next === -1 ? workflow.slice(start) : workflow.slice(start, start + marker.length + next);
+}
+
 test('the launcher targets the real import module `cds`', () => {
   const args = buildPythonArgs(['--version']);
   assert.deepStrictEqual(args.slice(0, 2), ['-m', 'cds']);
@@ -283,11 +299,12 @@ test('both publish modes exist and are selected by one input', () => {
     'the token mode must source NODE_AUTH_TOKEN from secrets.NPM_TOKEN',
   );
 
-  // Fail-closed: a token request with an empty secret must exit non-zero rather
-  // than fall through to an unauthenticated publish attempt.
+  // Fail-closed, and in its own step: the credential preflight checks NPM_TOKEN
+  // and exits before any publish step can run. Asserted in detail by
+  // `a missing credential exits before any publish step can run` below.
   assert.ok(
-    /if \[ -z "\$\{NODE_AUTH_TOKEN:-\}" \]/.test(workflow),
-    'the token mode must check that the credential is non-empty',
+    /if \[ -z "\$\{NPM_TOKEN:-\}" \]; then/.test(workflow),
+    'the preflight must check that NPM_TOKEN is non-empty',
   );
 });
 
@@ -357,6 +374,220 @@ test('the toolchain version floor is compared numerically, not by regex', () => 
     /compare\(nodeVersion, REQUIRED_NODE\) < 0/.test(workflow),
     'the Node floor must be applied via a numeric less-than comparison',
   );
+});
+
+test('the token mode is given a real registry auth entry', () => {
+  const workflow = workflowBody('npm-publish.yml');
+
+  // Regression guard for run 37120531005, which failed with
+  //   npm error code ENEEDAUTH
+  //   npm error need auth This command requires you to be logged in to
+  //                         https://registry.npmjs.org/
+  // while NPM_TOKEN was present in the environment.
+  //
+  // NODE_AUTH_TOKEN on its own is inert. npm only substitutes it into a
+  // credential when some userconfig maps the registry to ${NODE_AUTH_TOKEN};
+  // that file is written by setup-node's `registry-url` input. Without
+  // registry-url, setup-node writes no .npmrc, npm finds no auth entry, and it
+  // refuses before ever contacting the registry -- ENEEDAUTH, not E401.
+  //
+  // axiomize's publish workflow succeeds with the same NPM_TOKEN approach and
+  // has exactly this input; the difference was the missing registry-url.
+  // Extract the step that *uses* actions/setup-node. Matching on
+  // `- uses: actions/setup-node@` would miss this file's form, where the step
+  // has a `- name:` line and a separate `uses:` line beneath it.
+  const setupNodeStep = stepBlock(workflow, 'Set up Node');
+  assert.ok(setupNodeStep, 'the Set up Node step must exist in npm-publish.yml');
+  assert.ok(
+    /uses:\s*actions\/setup-node@[0-9a-f]{40}/.test(setupNodeStep),
+    'the Set up Node step must invoke the SHA-pinned actions/setup-node',
+  );
+  const withBlock = setupNodeStep.slice(setupNodeStep.indexOf('with:') + 'with:'.length);
+
+  assert.ok(
+    /registry-url:\s*"?https:\/\/registry\.npmjs\.org/.test(withBlock),
+    'setup-node MUST set registry-url: without it no .npmrc is written and the token mode fails with ENEEDAUTH',
+  );
+
+  // The publish step must also export the token by the name npm substitutes.
+  const publishSteps = workflow
+    .split('- name: ')
+    .filter((block) => /^Publish to npm/.test(block));
+  const tokenStep = publishSteps.find(
+    (s) => /inputs\.use_token_fallback/.test(s) && !/!inputs\.use_token_fallback/.test(s),
+  );
+  assert.ok(tokenStep, 'token publish step not found');
+  assert.ok(
+    /NODE_AUTH_TOKEN:\s*\$\{\{\s*secrets\.NPM_TOKEN\s*\}\}/.test(tokenStep),
+    'the token publish step must export NODE_AUTH_TOKEN from secrets.NPM_TOKEN',
+  );
+
+  // A warm cache in a publish job is a way to publish bytes this checkout did
+  // not produce.
+  assert.ok(
+    /package-manager-cache:\s*false/.test(withBlock),
+    'setup-node must disable package-manager-cache in a publish job',
+  );
+});
+
+test('the registry auth entry is asserted before npm runs', () => {
+  const workflow = workflowBody('npm-publish.yml');
+
+  // Asserting the outcome, not just the configuration: a future edit that drops
+  // registry-url should fail with a clear cause rather than at `npm publish`
+  // with ENEEDAUTH.
+  assert.ok(
+    /npm config get userconfig/.test(workflow),
+    'the workflow must resolve the npm userconfig',
+  );
+  assert.ok(
+    /_authToken/.test(workflow),
+    'the auth-entry gate must check for an _authToken entry',
+  );
+  assert.ok(
+    /registry\.npmjs\.org/.test(workflow),
+    'the auth-entry gate must check the entry references registry.npmjs.org',
+  );
+
+  // It must exit non-zero when the entry is missing rather than warn and carry
+  // on into npm.
+  const gate = stepBlock(workflow, 'Assert the npm registry auth entry is configured');
+  assert.ok(gate, 'the registry auth gate step must exist');
+  assert.ok(
+    /::error::npm would fail with ENEEDAUTH/.test(gate),
+    'the auth-entry gate must explain the ENEEDAUTH failure it prevents',
+  );
+
+  // Each defect the gate exists to catch must terminate the gate. Bounding the
+  // block to the step matters: an assertion anywhere in the file could satisfy
+  // the checks above while the gate itself had been neutered.
+  const requiredChecks = [
+    'if [ ! -f "$userconfig" ]; then',
+    "if ! grep -q '_authToken' \"$userconfig\"; then",
+    "if ! grep -q 'registry.npmjs.org' \"$userconfig\"; then",
+  ];
+  requiredChecks.forEach((check, i) => {
+    assert.ok(
+      gate.includes(check),
+      `auth gate must retain check ${i + 1} of ${requiredChecks.length}: ${check}`,
+    );
+  });
+
+  // Three defective states, three terminations.
+  const gateExits = gate.match(/^\s*exit 1\s*$/gm) || [];
+  assert.strictEqual(
+    gateExits.length,
+    3,
+    `the auth gate must exit 1 once per defective state; found ${gateExits.length}`,
+  );
+
+  // It must resolve the userconfig rather than assume a path.
+  assert.ok(
+    /userconfig="\$\(npm config get userconfig\)"/.test(gate),
+    'the auth gate must read the resolved npm userconfig path',
+  );
+});
+
+test('a missing credential exits before any publish step can run', () => {
+  const workflow = workflowBody('npm-publish.yml');
+
+  // The credential preflight must be its own step. Inline inside the publish
+  // step, a check that prints an error but forgets to exit continues straight
+  // into `npm publish` -- which is exactly what the failed run did: the
+  // fail-closed branch's own source text appeared in the log and npm ran anyway.
+  const preflightIndex = workflow.indexOf(
+    'Assert the requested publish mode has a usable credential',
+  );
+  assert.ok(preflightIndex > -1, 'the credential preflight step must exist');
+
+  // Both publish steps must come after it.
+  const publishBlocks = [
+    stepBlock(workflow, 'Publish to npm (OIDC trusted publishing, with provenance)'),
+    stepBlock(workflow, 'Publish to npm (token mode, no provenance)'),
+  ];
+  publishBlocks.forEach((block, i) => {
+    assert.ok(block, `publish step ${i} must exist`);
+    const index = workflow.indexOf(block);
+    assert.ok(
+      index > preflightIndex,
+      'every publish step must run after the credential preflight',
+    );
+  });
+
+  // The preflight must cover both modes, and must exit 1 on each failure.
+  // Bound the block by the *step* rather than by the next publish step, so the
+  // auth-entry gate that follows is not folded in and counted here.
+  const authGateIndex = workflow.indexOf(
+    'Assert the npm registry auth entry is configured',
+  );
+  const preflightEnd = authGateIndex > preflightIndex ? authGateIndex : publishIndexes[0];
+  const preflightBlock = workflow.slice(preflightIndex, preflightEnd);
+
+  assert.ok(
+    /if \[ -z "\$\{NPM_TOKEN:-\}" \]; then/.test(preflightBlock),
+    'the preflight must check NPM_TOKEN for token mode',
+  );
+  assert.ok(
+    /ACTIONS_ID_TOKEN_REQUEST_URL/.test(preflightBlock),
+    'the preflight must check OIDC availability for OIDC mode',
+  );
+  assert.ok(
+    /if \[ "\$\{\{ inputs\.use_token_fallback \}\}" = "true" \]; then/.test(preflightBlock),
+    'the preflight must branch on the use_token_fallback input',
+  );
+
+  // Exactly two `exit 1`s: one per mode. Each failing branch must terminate
+  // the step, so the count is a precise proxy for "both modes are guarded".
+  const exits = preflightBlock.match(/^\s*exit 1\s*$/gm) || [];
+  assert.strictEqual(
+    exits.length,
+    2,
+    `the preflight must exit 1 exactly once per mode; found ${exits.length}`,
+  );
+
+  // Every failing branch must be preceded by an error annotation, so a failure
+  // is never silent. Bound to the preflight block so annotations elsewhere in
+  // the workflow cannot satisfy this.
+  const errorAnnotations = preflightBlock.match(/::error::/g) || [];
+  assert.ok(
+    errorAnnotations.length >= 4,
+    `the preflight must annotate each failure with ::error::; found ${errorAnnotations.length}`,
+  );
+
+  // Each mode's guard must actually contain an `exit 1`, not merely a test that
+  // prints. This is the print-and-continue bug in its most direct form: a
+  // branch that reports a missing credential but falls through.
+  const branches = preflightBlock.split(/if \[ -z "\$\{/).slice(1);
+  assert.strictEqual(
+    branches.length,
+    2,
+    `the preflight must guard both modes with a credential test; found ${branches.length}`,
+  );
+  branches.forEach((branch, i) => {
+    const mode = i === 0 ? 'NPM_TOKEN' : 'ACTIONS_ID_TOKEN_REQUEST_URL';
+    assert.ok(
+      branch.includes(mode),
+      `preflight branch ${i} must test ${mode}`,
+    );
+    assert.ok(
+      /^\s*exit 1\s*$/m.test(branch),
+      `preflight branch ${i} must terminate with exit 1 when ${mode} is missing; ` +
+        'printing an error and continuing into npm publish is the bug being guarded',
+    );
+  });
+
+  // And the publish steps themselves must contain no credential check at all:
+  // if a check survived in the publish step it could print-and-continue again.
+  for (const block of publishBlocks) {
+    assert.ok(
+      !/NPM_TOKEN:-\}|NODE_AUTH_TOKEN:-\}/.test(block),
+      'no publish step may re-check the credential inline; the preflight owns that',
+    );
+    assert.ok(
+      /npm publish\b/.test(block),
+      'each publish block must still invoke npm publish',
+    );
+  }
 });
 
 test('npm version tracks the Python distribution version', () => {

@@ -98,10 +98,35 @@ jobs:
           persist-credentials: false
 
       # Node 24 ships npm 11.5.1+, the floor for trusted publishing.
+      #
+      # `registry-url` is REQUIRED for the token mode and was its missing half.
+      # Without it setup-node writes no .npmrc at all, so npm never learns that
+      # registry.npmjs.org accepts a token, and NODE_AUTH_TOKEN is exported into
+      # the environment but read by nobody. The publish then fails with:
+      #
+      #   npm error code ENEEDAUTH
+      #   npm error need auth This command requires you to be logged in to
+      #                         https://registry.npmjs.org/
+      #
+      # ENEEDAUTH means npm did not attempt authentication at all -- as opposed to
+      # E401, which means it did and the credential was rejected. Seeing ENEEDAUTH
+      # with a populated secret is the signature of "no registry auth entry
+      # configured", not "bad token".
+      #
+      # With registry-url set, setup-node writes a userconfig containing
+      #   //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+      # which is what makes the env var meaningful. Verified locally: with only
+      # NODE_AUTH_TOKEN exported and no such entry, npm goes straight to
+      # ENEEDAUTH; with the entry present it reaches the registry and fails
+      # E401 on a deliberately fake token instead.
       - name: Set up Node
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          # Never cache in a publish job: a warm cache is a way to publish bytes
+          # this checkout did not produce.
+          package-manager-cache: false
 
       # Toolchain floor for trusted publishing: npm 11.5.1 and Node 22.14.0.
       #
@@ -272,6 +297,64 @@ jobs:
       # Both modes are fail-closed: a requested mode with no usable credential
       # exits 1 with an actionable message instead of silently falling through.
       # There is no `continue-on-error` and no `|| true` anywhere in this job.
+      #
+      # The credential preflight is a SEPARATE STEP, not an inline `if` inside
+      # the publish step. Inline, a credential check that prints an error but
+      # forgets to exit continues straight into `npm publish` -- which is
+      # precisely what the failed run did: the fail-closed branch's own source
+      # text appeared in the log and npm was invoked anyway. As its own step, a
+      # non-zero exit ends the job before any publish step can run.
+      - name: Assert the requested publish mode has a usable credential
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.use_token_fallback }}" = "true" ]; then
+            if [ -z "${NPM_TOKEN:-}" ]; then
+              echo "::error::token mode was requested (use_token_fallback=true) but the NPM_TOKEN secret is empty or unset"
+              echo "::error::add an npm automation token as the NPM_TOKEN secret, or re-run without use_token_fallback once the npmjs.com trusted publisher is registered"
+              exit 1
+            fi
+            echo "mode=token via NPM_TOKEN (no provenance: a long-lived token cannot mint a Sigstore attestation)"
+            echo "::warning::Publishing with NPM_TOKEN instead of OIDC. Register the npmjs.com trusted publisher and delete NPM_TOKEN once this release is out."
+          else
+            if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
+              echo "::error::OIDC mode was requested but this job cannot mint an OIDC token"
+              echo "::error::ACTIONS_ID_TOKEN_REQUEST_URL is unset, so the runner did not grant id-token: write"
+              echo "::error::either fix the id-token: write permission, or re-run with use_token_fallback=true to publish with NPM_TOKEN instead"
+              exit 1
+            fi
+            echo "mode=oidc (provenance attestation enabled)"
+          fi
+
+      # GATE: the registry auth entry must actually exist. setup-node's
+      # `registry-url` is what writes it; this asserts the outcome rather than
+      # trusting the configuration, so a future edit that drops registry-url
+      # fails here with a clear cause instead of at `npm publish` with ENEEDAUTH.
+      - name: Assert the npm registry auth entry is configured
+        shell: bash
+        run: |
+          set -euo pipefail
+          userconfig="$(npm config get userconfig)"
+          echo "npm userconfig=$userconfig"
+          if [ ! -f "$userconfig" ]; then
+            echo "::error::no npm userconfig at $userconfig"
+            echo "::error::setup-node writes this file from its registry-url input; without it npm has no registry auth entry"
+            exit 1
+          fi
+          if ! grep -q '_authToken' "$userconfig"; then
+            echo "::error::$userconfig has no _authToken entry"
+            echo "::error::npm would fail with ENEEDAUTH: NODE_AUTH_TOKEN alone is inert without a registry auth entry"
+            exit 1
+          fi
+          if ! grep -q 'registry.npmjs.org' "$userconfig"; then
+            echo "::error::$userconfig does not reference registry.npmjs.org"
+            exit 1
+          fi
+          # The token value itself must never be echoed.
+          echo "PASS: npm registry auth entry present (value not shown)"
+          echo "PASS: the entry references NODE_AUTH_TOKEN by name, not a literal secret"
+
       - name: Publish to npm (OIDC trusted publishing, with provenance)
         if: ${{ !inputs.use_token_fallback }}
         run: npm publish --provenance --access public
@@ -282,11 +365,6 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "::error::token mode was requested (use_token_fallback=true) but the NPM_TOKEN secret is empty or unset"
-            echo "::error::either configure the NPM_TOKEN secret or switch to OIDC trusted publishing"
-            exit 1
-          fi
           # Deliberately no --provenance: a token-authenticated publish cannot
           # produce a Sigstore attestation. npm will reject the combination.
           echo "NOTICE: publishing with NPM_TOKEN; this release carries no provenance attestation"
