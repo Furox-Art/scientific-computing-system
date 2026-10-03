@@ -38,6 +38,28 @@ what makes the corrected README the one PyPI renders.
   for a console script on `PATH`. Corrected to "requires the Python distribution
   installed so that `python -m cds` resolves".
 
+- **Stale version references left behind by the 2.2.1 bump.** The README's pasted
+  `cds --version` transcript still read `System version 2.2.0` after the version
+  moved, and `SECURITY.md` still recommended pinning `==2.2.0`. Since the README
+  is the `long_description`, that line would have shipped verbatim to the PyPI
+  project page. Both were re-derived from live commands at 2.2.1.
+
+  Every other pasted transcript was re-checked against the installed 2.2.1 wheel
+  and found current: the quickstart output (SVD singular values, damped-oscillator
+  final state, regression fit), `cds modules` printing 26 rows and omitting exactly
+  the nine documented modules, the structural claims (34 subpackages, 35 public
+  feature modules, 505 names / 342 functions / 163 classes), the benchmark ratio
+  against `benchmarks/results.json`, and all five documented extras.
+
+  Two further `SECURITY.md` claims were false and are corrected: `scs` was
+  documented as needing a `cds` console script on `PATH` when the launcher
+  resolves an interpreter and runs `python -m cds` (verified: the shim prints
+  `System version 2.2.1` with no `cds` on `PATH`), and the PyPI attestation cell
+  claimed a PEP 740 bundle for the published 2.2.0 when PyPI serves none.
+
+  The pin example is now version-agnostic by construction, so it cannot rot at
+  the next bump.
+
 - **Module-surface claims are now accurate.** "34 subpackages" silently omitted
   the two top-level public modules (`causal.py`, `sensitivity.py`), and
   "`cds modules` for the live list" was wrong twice over: that command prints a
