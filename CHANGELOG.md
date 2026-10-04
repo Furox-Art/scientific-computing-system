@@ -7,6 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.2.2] - 2026-10-05
+
+Clears the last 17 open CodeQL alerts in this repository. None of them was a
+security vulnerability, and **none was a logic defect** — no discarded result, no
+missing `return`. Nothing is suppressed: there is no `# nosec`, no path exclusion
+and no `codeql.config` entry.
+
+### Behaviour change
+
+**One, and it is a removal:** the private path `cds.cli._parser._build_parser` no
+longer resolves.
+
+`_build_parser` was an alias for `build_parser`, kept for backwards
+compatibility. It was defined in `cds.cli._parser` but imported and re-exported by
+`cds.cli.__init__`, so within its own module it was genuinely unreferenced —
+which is exactly what `py/unused-global-variable` reported. The assignment has
+moved to `cds.cli.__init__`, beside its only consumer and inside the `__all__`
+that already exports it.
+
+- `cds.cli._build_parser` is unchanged: still present, still in `__all__`, still
+  the same object as `cds.cli.build_parser`. This is the documented
+  backwards-compatibility surface and it keeps working.
+- `cds.cli._parser._build_parser` is gone. Nothing in this repository referenced
+  it and the name is underscore-private, but a downstream script that reached
+  into the private submodule would break.
+
+There is now a test pinning the alias, because the original defect was that
+nothing asserted it existed.
+
+### Fixed
+
+- **Protocol placeholders are docstrings, not bare `...`.** Nine
+  `py/ineffectual-statement` alerts across `src/cds/ml/model_selection.py`,
+  `src/cds/ml/voting.py` and `src/cds/tools/adapters.py` were the conventional
+  `...` terminating a `typing.Protocol` method. These are false positives in the
+  strict sense: `...` is the documented placeholder for a structurally-typed
+  method whose implementation lives in the real backend module, and no code path
+  executes it. `SoftVotingModel` is the only `@runtime_checkable` one, and
+  `isinstance` against a runtime protocol inspects attribute *presence* without
+  calling the body.
+
+  They became docstrings rather than `pass` because coverage.py excludes an
+  ellipsis-only body but counts `pass`; measured, swapping it in drops those
+  lines from 100% to 75% and breaks the coverage gate. `raise NotImplementedError`
+  has the same coverage problem and would additionally change behaviour if the
+  body were ever reached. `src/cds` already contained nine docstring-only bodies
+  with no alert on any of them.
+
+- **`src/cds/tools/registry.py` imports `importlib` one way.** Three spellings
+  were mixed: `import importlib`, `import importlib.util` and
+  `from importlib import metadata`. The first was fully subsumed by the second.
+  Now `import importlib.metadata` and `import importlib.util`, with call sites
+  fully qualified. Four monkeypatch targets in `tests/` were retargeted to match.
+
+- **Four `py/unnecessary-lambda` alerts in the test suite.** `lambda x: max(x)`
+  and `lambda values: sum(values)` are plain wrappers around a callable; the
+  callables are now passed directly.
+
+- **`tests/test_fitting_bootstrap.py` imports `cds.modeling.fitting` one way.**
+  A module-level `from ... import` coexisted with function-local
+  `import ... as fitting`. The single `import ... as fitting` form is used now and
+  the module-level names are qualified through it.
+
+### Added
+
+- **`tests/test_protocol_placeholders.py`** pins the protocol bodies on the AST,
+  because a docstring-only body and a docstring followed by `pass` compile to
+  almost identical instructions and only the syntax tree tells them apart. It also
+  asserts the placeholder semantics (`None` when called unbound), that
+  `SoftVotingModel` is still a working structural contract, and that every
+  declared signature and annotation still resolves. Negative-controlled against
+  four mutations, all caught: docstring-plus-`pass`, `...` reinstated, body
+  replaced by a real statement, and a statement appended after the docstring.
+
+### Changed
+
+- README's pasted `cds --version` transcript now reads `System version 2.2.2`.
+  Every provenance and attestation statement in `README.md` and `SECURITY.md`
+  still refers to **2.2.1** deliberately: those describe the published release,
+  including its digests, and remain true until a newer one ships.
+
+
 ### Fixed
 
 - **Provenance claims are now scoped, measured, and guarded.** A follow-up report
