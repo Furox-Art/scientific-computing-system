@@ -21,6 +21,7 @@ import sys
 import tempfile
 import urllib.error
 import zipfile
+from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
 from typing import NamedTuple
@@ -103,6 +104,56 @@ HASHED_TOOLCHAIN_INSTALL = (
 )
 
 
+def _rewrite_lock(root: Path, mutate: Callable[[str], str]) -> Path:
+    """Clone the sandbox and rewrite the lock through ``mutate``.
+
+    Structural rather than textual: a requirement may carry any number of digest
+    lines depending on how many artifacts its release published, so matching a
+    literal "pin + first hash" string breaks the moment a dependency gains a
+    platform wheel.
+    """
+    root = _clone(root)
+    lock = root / "requirements-build.lock"
+    lock.write_text(mutate(_text(lock)), encoding="utf-8")
+    return root
+
+
+def _drop_requirement(text: str, package: str) -> str:
+    """Remove ``package==...`` and every digest line that follows it."""
+    out: list[str] = []
+    dropping = False
+    for line in text.splitlines():
+        if line.strip().startswith("#") or not line.strip():
+            out.append(line)
+            continue
+        if line.startswith("--hash"):
+            if dropping:
+                continue
+            out.append(line)
+            continue
+        dropping = line.split("==", 1)[0].strip().lower() == package.lower()
+        if not dropping:
+            out.append(line)
+    return "\n".join(out) + "\n"
+
+
+def _repin(text: str, package: str, new_pin: str) -> str:
+    """Replace the pin line for ``package``, keeping its digest lines."""
+    out: list[str] = []
+    replacing = False
+    seen = False
+    for line in text.splitlines():
+        if line.strip() and not line.strip().startswith(("#", "--hash")):
+            replacing = line.split("==", 1)[0].strip().lower() == package.lower()
+            if replacing:
+                seen = True
+                out.append(new_pin)
+                continue
+        out.append(line)
+    assert seen, f"{package} is not pinned in the lock"
+    return "\n".join(out) + "\n"
+
+
 def _mutate(tmp_path: Path, relative: str, old: str, new: str) -> Path:
     """Clone the sandbox, assert the replacement text is present, apply it."""
     root = _clone(tmp_path / "repo")
@@ -129,18 +180,34 @@ def test_build_lock_pins_build_and_twine_exactly_with_hashes() -> None:
         assert entries[package]["hashes"], f"{package} has no --hash entry"
 
 
-def test_build_lock_gives_every_requirement_exactly_one_hash() -> None:
-    """`--require-hashes` needs a digest per requirement, or the install fails."""
-    text = _text(BUILD_LOCK)
+def test_build_lock_hashes_every_requirement() -> None:
+    """`--require-hashes` needs a digest per requirement, or the install fails.
+
+    Note this asserts *at least one* digest per requirement, not exactly one. An
+    earlier version of this test demanded `count(--hash) == count(requirements)`,
+    which is wrong and was itself the bug: a requirement with per-platform wheels
+    needs every platform's digest, because `--require-hashes` compares whichever
+    artifact pip actually downloads. charset-normalizer alone ships 171 wheels, so
+    a one-hash-per-requirement lock installs on the authoring platform and fails
+    everywhere else with "THESE PACKAGES DO NOT MATCH THE HASHES FROM THE
+    REQUIREMENTS FILE". That is not hypothetical -- it is how CI first caught
+    this file.
+    """
+    entries = guard.parse_lock(BUILD_LOCK)
+    assert entries
+    for name, entry in entries.items():
+        assert entry["hashes"], f"{name}=={entry['version']} has no --hash entry"
+
     pins = [
         line.strip()
-        for line in text.splitlines()
-        if line.strip()
-        and not line.lstrip().startswith("#")
-        and not line.lstrip().startswith("--hash")
+        for line in _text(BUILD_LOCK).splitlines()
+        if line.strip() and not line.lstrip().startswith(("#", "--hash"))
     ]
     assert pins
-    assert text.count("--hash=sha256:") == len(pins)
+    assert len(pins) == len(entries), (
+        "every non-comment line in the lock must be an exact pin; a malformed line "
+        "would be silently ignored by pip and drop a requirement from the install"
+    )
     assert guard.check_lock(guard.parse_lock(BUILD_LOCK)) == []
 
 
@@ -164,6 +231,30 @@ def test_twine_is_not_installed_on_the_command_line() -> None:
                                 f"{path.name}:{job} pins {package} on the command line: "
                                 f"{stripped!r}. It must come from the hash-locked file."
                             )
+
+
+def test_a_single_hash_for_a_multi_wheel_requirement_is_detectable() -> None:
+    """A platform-specific requirement must not be pinned to one platform's file.
+
+    Negative control for the invariant above: reducing charset-normalizer to the
+    single digest pip happened to pick on this machine must make the guard notice
+    that the lock can no longer install everywhere.
+    """
+    text = _text(BUILD_LOCK)
+    parsed = guard.parse_lock(BUILD_LOCK)
+    assert len(parsed["charset-normalizer"]["hashes"]) > 1, (
+        "charset-normalizer publishes per-platform wheels and must carry more than "
+        "one digest, or the lock only installs on the platform that was recorded"
+    )
+    digests = parsed["charset-normalizer"]["hashes"]
+    assert len(digests) == len(set(digests)), "duplicate digests in the lock"
+    # One digest per *published file*, so the count tracks the release. A single
+    # digest here would mean the lock only installs where that file is selected.
+    assert len(digests) > 50, (
+        "charset-normalizer ships many platform wheels; a small digest list means "
+        "the lock only covers some of them"
+    )
+    assert all(d in text for d in digests)
 
 
 def test_release_workflow_validates_metadata_with_strict_twine_check() -> None:
@@ -257,12 +348,7 @@ def test_guard_passes_on_the_repository_as_committed(tmp_path: Path) -> None:
 
 def test_unpinned_twine_is_a_failure_not_a_warning(tmp_path: Path) -> None:
     """Dropping the pin must fail the guard, whatever the network says."""
-    root = _mutate(
-        tmp_path,
-        "requirements-build.lock",
-        "twine==7.0.0 \\\n    --hash=sha256:b854164df26db268af05f49aa5c0344b10e27a494343ff05b1e0bad3b135f5a7\n",
-        "",
-    )
+    root = _rewrite_lock(tmp_path / "repo", lambda t: _drop_requirement(t, "twine"))
     result = _run_guard(root, "--skip-network")
     assert result.returncode == 1, f"an unpinned twine must fail:\n{result.stdout}"
     assert "twine NOT PINNED" in result.stdout
@@ -271,12 +357,7 @@ def test_unpinned_twine_is_a_failure_not_a_warning(tmp_path: Path) -> None:
 
 def test_a_range_instead_of_an_exact_pin_is_a_failure(tmp_path: Path) -> None:
     """`twine>=7` is not a pin; it re-opens the exact hole being closed."""
-    root = _mutate(
-        tmp_path,
-        "requirements-build.lock",
-        "twine==7.0.0 \\\n    --hash=sha256:b854164df26db268af05f49aa5c0344b10e27a494343ff05b1e0bad3b135f5a7",
-        "twine>=7.0.0",
-    )
+    root = _rewrite_lock(tmp_path / "repo", lambda t: _repin(t, "twine", "twine>=7.0.0 \\"))
     result = _run_guard(root, "--skip-network")
     assert result.returncode == 1, f"a version range must fail:\n{result.stdout}"
     assert "not an exact '==' pin" in result.stderr
@@ -288,12 +369,7 @@ def test_a_pin_too_old_for_the_metadata_version_is_a_failure(tmp_path: Path) -> 
     twine 6.2.0 accepts at most Metadata-Version 2.4. Declaring 2.5 must be fatal
     rather than a note, because that combination fails the release.
     """
-    root = _clone(tmp_path / "repo")
-    lock = root / "requirements-build.lock"
-    lock.write_text(
-        _text(lock).replace("twine==7.0.0", "twine==6.2.0"),
-        encoding="utf-8",
-    )
+    root = _rewrite_lock(tmp_path / "repo", lambda t: _repin(t, "twine", "twine==6.2.0 \\"))
     result = _run_guard(root, "--skip-network", "--metadata-version", "2.5")
     assert result.returncode == 1, f"a too-old pin must fail:\n{result.stdout}"
     assert "cannot validate" in result.stderr

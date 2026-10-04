@@ -91,7 +91,10 @@ TWINE_OVERRIDE_MAX_METADATA = (2, 4)
 TOOLCHAIN_PACKAGES = ("build", "twine")
 
 LOCK_PIN = re.compile(r"^(?P<name>[A-Za-z0-9._-]+)==(?P<version>[^\s\\]+)\s*\\?\s*$")
-HASH_LINE = re.compile(r"^--hash=sha256:(?P<digest>[0-9a-f]{64})\s*$")
+# A digest line may end with a line-continuation backslash when the requirement
+# has several artifacts recorded (charset-normalizer publishes 171 wheels), so
+# the trailing `\ ` is part of the format rather than something to reject.
+HASH_LINE = re.compile(r"^--hash=sha256:(?P<digest>[0-9a-f]{64})\s*\\?\s*$")
 JOB_HEADER = re.compile(r"^  (?P<name>[A-Za-z0-9_-]+):\s*$")
 RUN_START = re.compile(r"^(?P<indent>\s*)run:\s*(?P<inline>.*)$")
 ACTION_REF = re.compile(r"uses:\s*(?P<ref>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)@(?P<sha>[0-9a-f]{40})")

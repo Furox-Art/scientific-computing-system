@@ -79,7 +79,23 @@ def test_release_build_toolchain_is_hash_locked_and_non_isolated() -> None:
     ]
     assert package_lines
     assert all("==" in line for line in package_lines)
-    assert lock.count("--hash=sha256:") == len(package_lines)
+    # At least one digest per requirement, not exactly one. `--require-hashes`
+    # compares whichever artifact pip actually downloads, and a requirement with
+    # per-platform wheels (charset-normalizer publishes 171 of them) needs every
+    # platform's digest. This assertion used to demand equality, which is what
+    # produced a lock that installed on Windows and failed on Linux and macOS
+    # with "THESE PACKAGES DO NOT MATCH THE HASHES FROM THE REQUIREMENTS FILE".
+    assert lock.count("--hash=sha256:") >= len(package_lines)
+    # A digest must not be orphaned: pip ignores a `--hash` line that follows no
+    # requirement, so it would verify nothing while appearing to be locked.
+    first_pin = next(
+        index
+        for index, line in enumerate(lock.splitlines())
+        if line.strip() and not line.lstrip().startswith(("#", "--hash"))
+    )
+    assert not any(line.strip().startswith("--hash") for line in lock.splitlines()[:first_pin]), (
+        "a --hash line precedes every requirement"
+    )
 
 
 def test_release_workflow_rechecks_version_discipline_before_build() -> None:
