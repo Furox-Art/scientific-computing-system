@@ -359,7 +359,11 @@ def check_compatibility(
             return problems, notes
 
     for name, metadata_version in sorted(versions.items()):
-        verdict = "can validate" if twine_can_validate(twine_version, metadata_version) else "CANNOT validate"
+        verdict = (
+            "can validate"
+            if twine_can_validate(twine_version, metadata_version)
+            else "CANNOT validate"
+        )
         notes.append(
             f"twine {twine_version} {verdict} {name} (Metadata-Version {metadata_version})"
         )
@@ -418,7 +422,9 @@ def verify_pins_upstream(lock: dict[str, dict[str, object]]) -> list[str]:
             )
             continue
         requires = payload.get("info", {}).get("requires_dist") or []
-        notes.append(f"confirmed {package}=={version} exists on PyPI ({len(requires)} requirements)")
+        notes.append(
+            f"confirmed {package}=={version} exists on PyPI ({len(requires)} requirements)"
+        )
     return notes
 
 

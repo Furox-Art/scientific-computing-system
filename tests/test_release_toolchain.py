@@ -41,10 +41,7 @@ def _text(path: Path) -> str:
 
 
 def _lock_pins() -> dict[str, str]:
-    return {
-        name: str(entry["version"])
-        for name, entry in guard.parse_lock(BUILD_LOCK).items()
-    }
+    return {name: str(entry["version"]) for name, entry in guard.parse_lock(BUILD_LOCK).items()}
 
 
 def _clone(destination: Path) -> Path:
@@ -227,7 +224,9 @@ def test_twine_metadata_compatibility_boundary(
 def test_guard_passes_on_the_repository_as_committed(tmp_path: Path) -> None:
     """The green baseline every mutation below is measured against."""
     result = _run_guard(_clone(tmp_path / "repo"), "--skip-network")
-    assert result.returncode == 0, f"guard failed on a clean tree:\n{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, (
+        f"guard failed on a clean tree:\n{result.stdout}\n{result.stderr}"
+    )
     assert "Release toolchain verified." in result.stdout
 
 
@@ -295,8 +294,7 @@ def test_adhoc_twine_install_is_a_failure(tmp_path: Path) -> None:
         tmp_path,
         ".github/workflows/release.yml",
         HASHED_TOOLCHAIN_INSTALL,
-        "          python -m pip install --upgrade pip\n"
-        "          pip install twine",
+        "          python -m pip install --upgrade pip\n          pip install twine",
     )
     result = _run_guard(root, "--skip-network")
     assert result.returncode == 1, f"an ad hoc twine install must fail:\n{result.stdout}"
@@ -457,9 +455,9 @@ def test_license_file_is_declared_and_present() -> None:
     declared = headers.get("License-File", [])
     assert declared, "expected at least one License-File"
     for name in declared:
-        assert f"{{dist_info}}/{name}" in files or any(
-            key.endswith(f"/{name}") for key in files
-        ), f"License-File {name!r} is declared but not shipped in the wheel"
+        assert f"{{dist_info}}/{name}" in files or any(key.endswith(f"/{name}") for key in files), (
+            f"License-File {name!r} is declared but not shipped in the wheel"
+        )
 
 
 def test_requires_python_is_present_and_sane() -> None:
