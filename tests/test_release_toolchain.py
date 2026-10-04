@@ -379,10 +379,14 @@ def test_pinned_twine_can_validate_the_emitted_metadata_version() -> None:
 
 
 def _emitted_metadata_version() -> str:
-    """Build the artifacts and read ``Metadata-Version`` back out of them."""
-    import tempfile
-    import zipfile
+    """Build the artifacts and read ``Metadata-Version`` back out of them.
 
+    ``tempfile`` and ``zipfile`` are used from the module-level imports rather than
+    re-imported here: a local ``import`` would rebind the same ``sys.modules``
+    object, so removing the redundant pair changes nothing about which module is
+    used, and it silences the review bot's "module is imported more than once"
+    finding at the source instead of dismissing the thread.
+    """
     with tempfile.TemporaryDirectory() as tmp:
         build = subprocess.run(
             [sys.executable, "-m", "build", "--no-isolation", "--wheel", "--outdir", tmp],
