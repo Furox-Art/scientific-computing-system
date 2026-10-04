@@ -40,23 +40,35 @@ class _OptimizeModule(Protocol):
         *,
         method: str | None = None,
         options: dict[str, object] | None = None,
-    ) -> object: ...
+    ) -> object:
+        """Signature of ``scipy.optimize.minimize`` as used by :func:`scipy_minimize`.
+
+        The body is a docstring placeholder rather than a bare ``...``: these
+        protocols are satisfied structurally by the real backend module, the body
+        never executes, and a docstring leaves no statement for static analysis
+        to report as ineffectual.
+        """
 
 
 class _SympyModule(Protocol):
-    def sympify(self, expression: str) -> object: ...
+    def sympify(self, expression: str) -> object:
+        """Signature of ``sympy.sympify``; see :meth:`_OptimizeModule.minimize`."""
 
-    def simplify(self, expression: object) -> object: ...
+    def simplify(self, expression: object) -> object:
+        """Signature of ``sympy.simplify``; see :meth:`_OptimizeModule.minimize`."""
 
 
 class _Subtractable(Protocol):
-    def __sub__(self, other: object) -> object: ...
+    def __sub__(self, other: object) -> object:
+        """Structural subtraction, satisfied by SymPy expressions."""
 
 
 class _Solver(Protocol):
-    def add(self, *constraints: object) -> object: ...
+    def add(self, *constraints: object) -> object:
+        """Add a constraint to a Z3 solver."""
 
-    def check(self) -> object: ...
+    def check(self) -> object:
+        """Return the satisfiability outcome for the accumulated constraints."""
 
 
 _SAFE_SYMPY_FUNCTIONS = frozenset(

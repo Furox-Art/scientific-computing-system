@@ -19,12 +19,20 @@ class SupervisedModel(Protocol):
     """Structural interface shared by cds.ml estimators used in CV."""
 
     def fit(self, X: list[list[float]], y: Sequence[Label]) -> object:
-        """Fit on ``(X, y)`` and return ``self``."""
-        ...
+        """Fit on ``(X, y)`` and return ``self``.
+
+        Structural signature only. The body is a docstring placeholder rather
+        than a bare ``...`` because a statement-less placeholder reads as an
+        ineffectual statement to static analysis, while a docstring body is
+        documentation *and* carries no executable statement to flag.
+        """
 
     def predict(self, x: list[float]) -> Label:
-        """Predict a single row."""
-        ...
+        """Predict a single row.
+
+        Structural signature only; see :meth:`fit` for why the body is a
+        docstring placeholder.
+        """
 
 
 ModelFactory = Callable[[], SupervisedModel]

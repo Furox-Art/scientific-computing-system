@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import importlib
+import importlib.metadata
 import importlib.util
 from dataclasses import dataclass
 from enum import Enum
-from importlib import metadata
 from types import ModuleType
 
 
@@ -85,8 +84,8 @@ class ToolRegistry:
         if not available:
             return ToolStatus(spec=spec, available=False, version=None)
         try:
-            version = metadata.version(spec.distribution)
-        except metadata.PackageNotFoundError:
+            version = importlib.metadata.version(spec.distribution)
+        except importlib.metadata.PackageNotFoundError:
             version = None
         return ToolStatus(spec=spec, available=True, version=version)
 

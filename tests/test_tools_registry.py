@@ -58,7 +58,7 @@ def test_status_available_unavailable_and_missing_distribution(
         return "1.2.3"
 
     monkeypatch.setattr("cds.tools.registry.importlib.util.find_spec", fake_find_spec)
-    monkeypatch.setattr("cds.tools.registry.metadata.version", fake_version)
+    monkeypatch.setattr("cds.tools.registry.importlib.metadata.version", fake_version)
 
     missing = registry.status("missing")
     assert not missing.available
@@ -86,7 +86,7 @@ def test_recommend_filters_and_orders_backends(monkeypatch: pytest.MonkeyPatch) 
         "cds.tools.registry.importlib.util.find_spec",
         lambda module: object() if module == "b_module" else None,
     )
-    monkeypatch.setattr("cds.tools.registry.metadata.version", lambda _distribution: "1")
+    monkeypatch.setattr("cds.tools.registry.importlib.metadata.version", lambda _distribution: "1")
 
     installed = registry.recommend("fit")
     assert tuple(status.spec.name for status in installed) == ("b",)
@@ -109,7 +109,9 @@ def test_load_requires_installation_and_imports_on_explicit_request(
 
     module = ModuleType("backend_module")
     monkeypatch.setattr("cds.tools.registry.importlib.util.find_spec", lambda _module: object())
-    monkeypatch.setattr("cds.tools.registry.metadata.version", lambda _distribution: "2.0")
+    monkeypatch.setattr(
+        "cds.tools.registry.importlib.metadata.version", lambda _distribution: "2.0"
+    )
     monkeypatch.setattr("cds.tools.registry.importlib.import_module", lambda _module: module)
     assert registry.load("backend") is module
 

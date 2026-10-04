@@ -149,7 +149,3 @@ def build_parser() -> argparse.ArgumentParser:
     ).set_defaults(func=_cmd_modules)
 
     return parser
-
-
-# Historical private name kept as an alias for backwards compatibility.
-_build_parser = build_parser

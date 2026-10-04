@@ -45,7 +45,7 @@ def test_bootstrap_ci_median_statistic_on_binary_data() -> None:
 
 def test_custom_statistic_is_respected() -> None:
     data = [3.0, 1.0, 4.0, 1.5, 5.0, 9.0, 2.0, 6.0]
-    res = bootstrap_ci(data, lambda x: max(x), n_resamples=100, seed=11)
+    res = bootstrap_ci(data, max, n_resamples=100, seed=11)
     assert res.estimate == pytest.approx(max(data))
     assert res.lower >= min(data)
 
@@ -131,5 +131,5 @@ def test_bootstrap_diff_ci_identical_groups_include_zero() -> None:
 def test_bootstrap_diff_ci_custom_statistic_is_respected() -> None:
     a = [5.0, 6.0, 7.0, 8.0, 9.0]
     b = [1.0, 2.0, 3.0, 4.0, 5.0]
-    res = bootstrap_diff_ci(a, b, lambda x: max(x), n_resamples=150, seed=8)
+    res = bootstrap_diff_ci(a, b, max, n_resamples=150, seed=8)
     assert res.estimate == pytest.approx(max(a) - max(b))

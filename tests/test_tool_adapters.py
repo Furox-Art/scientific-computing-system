@@ -80,9 +80,7 @@ def test_scipy_minimize_normalizes_backend_result(monkeypatch: pytest.MonkeyPatc
     )
     assert result == OptimizationResult((1.0, 2.0), 10.0, True, "{'maxiter': 10}", 4)
 
-    bool_nit = scipy_minimize(
-        lambda values: sum(values), [2.0], method="boolnit", registry=registry
-    )
+    bool_nit = scipy_minimize(sum, [2.0], method="boolnit", registry=registry)
     assert bool_nit.iterations is None
 
 
@@ -98,7 +96,7 @@ def test_scipy_minimize_validation_and_nonfinite_backend(monkeypatch: pytest.Mon
     with pytest.raises(ValueError, match="method must not be empty"):
         scipy_minimize(lambda _values: 0.0, [1.0], method=" ", registry=registry)
     with pytest.raises(ValueError, match="non-finite"):
-        scipy_minimize(lambda values: sum(values), [1.0], method="nonfinite", registry=registry)
+        scipy_minimize(sum, [1.0], method="nonfinite", registry=registry)
 
 
 class _Expr:

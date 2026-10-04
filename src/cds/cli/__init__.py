@@ -36,7 +36,7 @@ from cds.cli._handlers import (
     _cmd_stats,
     _cmd_version,
 )
-from cds.cli._parser import _build_parser, build_parser
+from cds.cli._parser import build_parser
 from cds.cli._style import (
     _format_table,
     _print,
@@ -45,6 +45,16 @@ from cds.cli._style import (
     _wrap,
 )
 from cds.cli._system_info import _cmd_info, _cmd_modules
+
+# Historical private name kept as an alias for backwards compatibility.
+#
+# This lives here rather than in `cds.cli._parser` because that is the module
+# that exports it: `cds.cli._build_parser` is in `__all__` below and is part of
+# the CLI's published surface. An alias defined in `_parser` was never referenced
+# from that module, which static analysis correctly reports as an unused global.
+# Defining it beside its only consumer keeps the back-compat name working while
+# giving the assignment an actual purpose in its own module.
+_build_parser = build_parser
 
 __all__ = [
     "main",
