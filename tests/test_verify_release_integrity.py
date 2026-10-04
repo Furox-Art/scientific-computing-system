@@ -25,6 +25,21 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "verify_release_integrity.py"
 _MODULE_NAME = "_verify_release_integrity"
 
+# `scripts/verify_release_integrity.py` imports `tomllib`, which is stdlib from
+# Python 3.11. The script is a release gate that only ever runs on the release
+# interpreter, so the suite skips it below that rather than the script growing a
+# 3.10 compatibility shim. Same guard, and same reason, as
+# `tests/test_codemeta_version_lockstep.py`.
+SCRIPT_MIN_PYTHON = (3, 11)
+
+needs_python_311 = pytest.mark.skipif(
+    sys.version_info < SCRIPT_MIN_PYTHON,
+    reason=(
+        "scripts/verify_release_integrity.py imports tomllib, added in Python 3.11; "
+        "the release-integrity job runs on a newer interpreter"
+    ),
+)
+
 
 def _load() -> ModuleType:
     """Import the script by path.
@@ -93,18 +108,21 @@ REJECTED = (
 )
 
 
+@needs_python_311
 def test_accepts_only_the_exact_github_api_host() -> None:
     check = _is_github_api()
     for url in EXACT_HOST:
         assert check(url) is True, f"should be recognised as the GitHub API: {url}"
 
 
+@needs_python_311
 def test_rejects_lookalike_hosts_and_non_absolute_urls() -> None:
     check = _is_github_api()
     for url in REJECTED:
         assert check(url) is False, f"must not be treated as the GitHub API: {url}"
 
 
+@needs_python_311
 def test_the_substring_form_would_have_been_wrong() -> None:
     """Pin *why* this exists: show the old comparison failing on both sides.
 
@@ -124,6 +142,7 @@ def test_the_substring_form_would_have_been_wrong() -> None:
     assert check(uppercase) is True, "the hostname test must not"
 
 
+@needs_python_311
 def test_read_json_selects_the_accept_header_by_host(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
