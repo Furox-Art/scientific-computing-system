@@ -15,6 +15,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import tomllib
 
@@ -43,9 +44,36 @@ def project_version() -> str:
     return version
 
 
+def _is_github_api(url: str) -> bool:
+    """Is this URL served by the GitHub REST API?
+
+    Compares the parsed hostname, never a substring. The substring form this
+    replaces was wrong in *both* directions:
+
+    * too permissive -- ``"api.github.com" in url`` is true for
+      ``https://evil.example/?api.github.com`` and for
+      ``https://api.github.com.evil.example/x``, so the GitHub ``Accept``
+      header could be sent to a host that merely contains the string;
+    * too strict -- the substring is case-sensitive, so the legitimate
+      ``https://API.GITHUB.COM/...`` was treated as *not* GitHub. Hostnames are
+      case-insensitive and ``urlsplit`` normalises them, which is why an
+      uppercase host is accepted here.
+
+    A trailing dot (``https://api.github.com./x``) is rejected: it resolves to the
+    same host, but nothing this script builds produces one, so refusing it keeps
+    the comparison exact and fails closed.
+
+    Userinfo is handled correctly by the parser rather than by a string test:
+    ``https://api.github.com@evil.example/x`` has the hostname ``evil.example``
+    and is rejected, while ``https://user:token@api.github.com/x`` has the
+    hostname ``api.github.com`` and is accepted.
+    """
+    return urlsplit(url).hostname == "api.github.com"
+
+
 def _read_json(url: str, *, token: str | None = None) -> dict[str, object]:
     headers = {
-        "Accept": "application/vnd.github+json" if "api.github.com" in url else "application/json",
+        "Accept": "application/vnd.github+json" if _is_github_api(url) else "application/json",
         "User-Agent": "scientific-computing-system-release-integrity",
     }
     if token:
