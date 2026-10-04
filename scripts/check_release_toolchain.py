@@ -76,6 +76,7 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOWS = ROOT / ".github" / "workflows"
@@ -386,10 +387,22 @@ def check_compatibility(
 # --------------------------------------------------------------------------
 
 
+def _is_github_api(url: str) -> bool:
+    """Is this URL served by the GitHub REST API?
+
+    Compares the parsed hostname, never a substring. ``"api.github.com" in url``
+    also matches ``https://evil.example/?api.github.com`` and
+    ``https://api.github.com.evil.test/x``, and here that comparison decides
+    whether a ``GITHUB_TOKEN`` is attached to the request -- so a loose match
+    would send the credential somewhere it does not belong.
+    """
+    return urlsplit(url).hostname == "api.github.com"
+
+
 def _get_json(url: str, headers: dict[str, str] | None = None, timeout: int = 30):
     request = urllib.request.Request(url, headers=headers or {"accept": "application/json"})
     token = os.environ.get("GITHUB_TOKEN")
-    if token and "api.github.com" in url:
+    if token and _is_github_api(url):
         request.add_header("authorization", f"Bearer {token}")
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8", errors="replace"))

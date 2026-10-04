@@ -13,11 +13,13 @@ assertion nobody checked the teeth of is not a guard.
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import urllib.error
 import zipfile
@@ -255,6 +257,95 @@ def test_a_single_hash_for_a_multi_wheel_requirement_is_detectable() -> None:
         "the lock only covers some of them"
     )
     assert all(d in text for d in digests)
+
+
+def _write_fake_dist(directory: Path, metadata_version: str) -> Path:
+    """Build a minimal wheel + sdist carrying ``metadata_version``.
+
+    Real `python -m build` is slow and this only needs the two files the guard
+    opens, so the archive formats are written directly. That keeps the
+    `--dist-dir` code path -- zipfile *and* tarfile -- under test in every run.
+    """
+    directory.mkdir(parents=True, exist_ok=True)
+    dist_info = "fake_pkg-1.0.0.dist-info"
+    metadata = (
+        f"Metadata-Version: {metadata_version}\nName: fake-pkg\nVersion: 1.0.0\n"
+        "Requires-Python: >=3.10\nLicense-Expression: MIT\n\nbody\n"
+    )
+
+    wheel = directory / "fake_pkg-1.0.0-py3-none-any.whl"
+    with zipfile.ZipFile(wheel, "w") as archive:
+        archive.writestr(f"{dist_info}/METADATA", metadata)
+        archive.writestr(f"{dist_info}/WHEEL", "Wheel-Version: 1.0\n")
+
+    sdist = directory / "fake_pkg-1.0.0.tar.gz"
+    with tarfile.open(sdist, "w:gz") as archive:
+        payload = metadata.encode()
+        info = tarfile.TarInfo("fake_pkg-1.0.0/PKG-INFO")
+        info.size = len(payload)
+        archive.addfile(info, io.BytesIO(payload))
+    return directory
+
+
+def test_guard_reads_metadata_version_from_real_archives(tmp_path: Path) -> None:
+    """The `--dist-dir` path must actually open the artifacts.
+
+    Written because it did not: `zipfile` went missing from the guard's imports
+    while every other test still passed, since none of them passed `--dist-dir`.
+    The authoritative CI step does, so the crash would only ever have appeared in
+    the packaging job.
+    """
+    dist = _write_fake_dist(tmp_path / "dist", "2.4")
+    result = _run_guard(_clone(tmp_path / "repo"), "--skip-network", "--dist-dir", str(dist))
+    assert result.returncode == 0, (
+        f"guard failed on readable artifacts:\n{result.stdout}\n{result.stderr}"
+    )
+    assert "Metadata-Version 2.4" in result.stdout, result.stdout
+    assert "can validate" in result.stdout, result.stdout
+
+
+def test_guard_rejects_an_unreadable_dist_dir(tmp_path: Path) -> None:
+    """A dist dir with no artifacts is a defect, not a silent pass."""
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    result = _run_guard(_clone(tmp_path / "repo"), "--skip-network", "--dist-dir", str(empty))
+    assert result.returncode == 1, result.stdout
+    assert "no wheel or sdist" in result.stderr, result.stderr
+
+
+def test_guard_rejects_an_incompatible_metadata_version_in_archives(tmp_path: Path) -> None:
+    """End-to-end: a 2.5 artifact plus a too-old pin must fail the guard."""
+    dist = _write_fake_dist(tmp_path / "dist", "2.5")
+    root = _rewrite_lock(tmp_path / "repo", lambda t: _repin(t, "twine", "twine==6.2.0 \\"))
+    result = _run_guard(root, "--skip-network", "--dist-dir", str(dist))
+    assert result.returncode == 1, f"a 2.5 artifact with twine 6.2.0 must fail:\n{result.stdout}"
+    assert "cannot validate" in result.stderr, result.stderr
+
+
+def test_github_api_host_check_rejects_lookalikes() -> None:
+    """The Bearer token must only ever be sent to the real GitHub API.
+
+    `_get_json` attaches `GITHUB_TOKEN` when this returns True, so a loose
+    comparison would hand the credential to whatever host matched. The
+    substring form `"api.github.com" in url` matched the first two rejected
+    cases below.
+    """
+    check = getattr(guard, "_is_github_api")
+    for url in (
+        "https://api.github.com/repos/Furox-Art/scientific-computing-system",
+        "http://api.github.com/repos/x/y",
+    ):
+        assert check(url) is True, url
+    for url in (
+        "https://api.github.com.evil.test/repos/x/y",
+        "https://evil.test/?api.github.com",
+        "https://evil.test/api.github.com",
+        "https://api.github.com@evil.test/repos/x/y",
+        "https://notapi.github.com/repos/x/y",
+        "https://pypi.org/pypi/scientific-computing-system/json",
+        "not-a-url",
+    ):
+        assert check(url) is False, url
 
 
 def test_release_workflow_validates_metadata_with_strict_twine_check() -> None:
