@@ -179,6 +179,20 @@ jobs:
       - name: Build sdist + wheel without dependency isolation
         run: python -m build --no-isolation
 
+      # Validate the core metadata *rendered* from the artifacts, before anything
+      # is uploaded. `check_version_lockstep.py` proves the version and name are
+      # right; it does not prove the artifact is renderable at all. This is the
+      # step that catches an unusable artifact while it is still local.
+      #
+      # The pin matters and is not cosmetic. twine <= 6.2.0 replaces
+      # `packaging.metadata._VALID_METADATA_VERSIONS` at import time with a list
+      # ending at 2.4, so it rejects a valid artifact with
+      # `InvalidDistribution: '2.5' is not a valid metadata version` -- a release
+      # failure with nothing wrong with the package. twine 7.0.0 (pinned in
+      # requirements-build.lock) removed the override.
+      - name: Validate artifact metadata renders
+        run: python -m twine check --strict dist/*
+
       # Assert the *contents* of both artifacts before anything is published.
       # The version/name verification below proves the metadata says 2.1.0; this
       # proves the wheel actually ships `cds` with its `py.typed` marker and the

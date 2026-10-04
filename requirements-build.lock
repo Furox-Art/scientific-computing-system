@@ -1,6 +1,24 @@
-# Hash-locked Python 3.12 release-build environment.
+# Hash-locked Python 3.12 release-build and artifact-validation environment.
 # Regenerate deliberately; release.yml installs this file with --require-hashes
-# and --only-binary=:all:, then runs `python -m build --no-isolation`.
+# and --only-binary=:all:, then runs `python -m build --no-isolation` and
+# `python -m twine check --strict`.
+#
+# `twine` is pinned here, not on the command line, for a concrete reason:
+# `--require-hashes` refuses any requirement that is not itself hash-pinned, so
+# `pip install --require-hashes -r requirements-build.lock twine==7.0.0` fails
+# with "Hashes are required in --require-hashes mode". The pin has to live in
+# this file to be hash-verified at all.
+#
+# Why twine is pinned to exactly 7.0.0 rather than left floating: twine <= 6.2.0
+# replaces `packaging.metadata._VALID_METADATA_VERSIONS` at import time with a
+# hardcoded list ending at 2.4, discarding packaging's own knowledge of 2.5+.
+# `twine check --strict` then rejects a perfectly valid artifact with
+# `InvalidDistribution: '2.5' is not a valid metadata version`. twine 7.0.0
+# removed the override and defers to packaging. Verified here:
+#   twine 6.2.0 + Metadata-Version 2.5 -> ERROR InvalidDistribution
+#   twine 7.0.0 + Metadata-Version 2.5 -> PASSED
+# scripts/check_release_toolchain.py enforces the pin/metadata-version
+# relationship so this cannot silently regress.
 build==1.5.0 \
     --hash=sha256:13f3eecb844759ab66efec90ca17639bbf14dc06cb2fdf37a9010322d9c50a6f
 hatchling==1.31.0 \
@@ -15,3 +33,55 @@ pyproject-hooks==1.2.0 \
     --hash=sha256:9e5c6bfa8dcc30091c74b0cf803c81fdd29d94f01992a7707bc97babb1141913
 trove-classifiers==2026.6.1.19 \
     --hash=sha256:ab4c4ec93cc4a4e7815fa759906e05e6bb3f2fbd92ea0f897288c6a43efd15b3
+# twine 7.0.0 and its transitive closure, for `twine check --strict`.
+twine==7.0.0 \
+    --hash=sha256:b854164df26db268af05f49aa5c0344b10e27a494343ff05b1e0bad3b135f5a7
+Pygments==2.21.0 \
+    --hash=sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9
+certifi==2026.7.22 \
+    --hash=sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775
+charset-normalizer==3.5.2 \
+    --hash=sha256:780fbe7cab297b81dad9fb8dc5eb003c0468ffb0d9e5f65068c53a34661a96bc
+docutils==0.23 \
+    --hash=sha256:25d013af9bf23bc1c7b2b093dff4208166c53a94786c9e447808335ef1185fea
+id==1.6.1 \
+    --hash=sha256:f5ec41ed2629a508f5d0988eda142e190c9c6da971100612c4de9ad9f9b237ca
+idna==3.20 \
+    --hash=sha256:ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c
+jaraco.classes==3.4.0 \
+    --hash=sha256:f662826b6bed8cace05e7ff873ce0f9283b5c924470fe664fff1c2f00f581790
+jaraco.context==6.1.2 \
+    --hash=sha256:bf8150b79a2d5d91ae48629d8b427a8f7ba0e1097dd6202a9059f29a36379535
+jaraco.functools==4.6.0 \
+    --hash=sha256:99e3dc0060c5cbe8fcd1cdb36258e2a65ca40f1566b2033b12abb1bb44dd3c30
+keyring==25.7.0 \
+    --hash=sha256:be4a0b195f149690c166e850609a477c532ddbfbaed96a404d4e43f8d5e2689f
+markdown-it-py==4.2.0 \
+    --hash=sha256:9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a
+mdurl==0.1.2 \
+    --hash=sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8
+more-itertools==11.1.0 \
+    --hash=sha256:4b65538ae22f6fed0ce4874efd317463a7489796a0939fa66824dd542125a192
+nh3==0.3.7 \
+    --hash=sha256:618e3059caf41ccdf5dcccb3fa9df4cf6e4efe23d1382a8bbfca272a8a4f8bfc
+pywin32-ctypes==0.2.3 \
+    --hash=sha256:8a1513379d709975552d202d942d9837758905c8d01eb82b8bcc30918929e7b8
+readme-renderer==46.0 \
+    --hash=sha256:d0dae1f74bb273b534770cb4cccb6bb78735540afdb03c2146f4e19dcd412560
+requests==2.34.2 \
+    --hash=sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0
+requests-toolbelt==1.0.0 \
+    --hash=sha256:cccfdd665f0a24fcf4726e690f65639d272bb0637b9b92dfd91a5568ccf6bd06
+rfc3986==2.0.0 \
+    --hash=sha256:50b1502b60e289cb37883f3dfd34532b8873c7de9f49bb546641ce9cbd256ebd
+rich==15.0.0 \
+    --hash=sha256:33bd4ef74232fb73fe9279a257718407f169c09b78a87ad3d296f548e27de0bb
+urllib3==2.8.0 \
+    --hash=sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3
+# Windows-only transitive dependency of `build` and `requests`. Absent from this
+# file before, which made `--require-hashes -r requirements-build.lock` fail on
+# Windows with "all requirements must have their versions pinned with ==": pip
+# resolves colorama on win32, and it was not in the lock. CI is Linux so it never
+# showed up there; it breaks any local release dry-run.
+colorama==0.4.6 \
+    --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6
