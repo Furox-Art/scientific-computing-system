@@ -27,6 +27,7 @@ from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
 from typing import NamedTuple
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -576,7 +577,15 @@ def test_authenticated_action_pin_verification_confirms_the_real_pins(
     notes = guard.verify_action_pins()
     assert notes, "expected one note per distinct action pin"
     assert all("resolves upstream" in note for note in notes), notes
-    assert all("api.github.com/repos/" in url for url in calls), calls
+    # Assert on the parsed hostname, never on whether the host text appears
+    # somewhere in the URL. Containment over a URL is the pattern CodeQL calls
+    # py/incomplete-url-substring-sanitization -- the very thing
+    # scripts/check_release_toolchain.py exists to avoid -- and using it here
+    # would put the same defect inside the test that guards against it. Parsed
+    # independently of the guard's own helper, so the check is not circular.
+    assert calls, "expected the guard to have called the GitHub API"
+    for url in calls:
+        assert urlsplit(url).hostname == "api.github.com", url
 
 
 def test_unresolvable_action_pin_is_reported(monkeypatch: pytest.MonkeyPatch) -> None:
