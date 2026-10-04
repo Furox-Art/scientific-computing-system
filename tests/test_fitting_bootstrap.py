@@ -7,8 +7,11 @@ from typing import Any
 
 import pytest
 
+# One import form for the module: mixing import x.y as z with rom x.y import w is
+# reported as py/import-and-import-from. The two tests below need the module object
+# itself because they monkeypatch attributes on it.
+import cds.modeling.fitting as fitting
 from cds.modeling import MathModel, Variable, fit_parameters_advanced
-from cds.modeling.fitting import AdvancedFitResult, _percentile
 
 
 def _model() -> MathModel:
@@ -24,7 +27,7 @@ def _observations() -> list[tuple[dict[str, float], float]]:
     ]
 
 
-def _seeded_bootstrap_fit() -> AdvancedFitResult:
+def _seeded_bootstrap_fit() -> fitting.AdvancedFitResult:
     return fit_parameters_advanced(
         _model(),
         _observations(),
@@ -132,21 +135,19 @@ def test_uncertainty_configuration_validation() -> None:
 
 
 def test_percentile_interpolates_and_validates() -> None:
-    assert _percentile([0.0, 10.0], 0.25) == pytest.approx(2.5)
-    assert _percentile([3.0], 0.5) == 3.0
+    assert fitting._percentile([0.0, 10.0], 0.25) == pytest.approx(2.5)
+    assert fitting._percentile([3.0], 0.5) == 3.0
     with pytest.raises(ValueError, match="at least one"):
-        _percentile([], 0.5)
+        fitting._percentile([], 0.5)
     with pytest.raises(ValueError, match="probability"):
-        _percentile([1.0], -0.1)
+        fitting._percentile([1.0], -0.1)
 
 
 def test_bootstrap_failure_is_reported_not_fabricated(monkeypatch: pytest.MonkeyPatch) -> None:
-    import cds.modeling.fitting as fitting
-
     original = fitting.fit_parameters_advanced
     calls = 0
 
-    def flaky(*args: Any, **kwargs: Any) -> AdvancedFitResult:
+    def flaky(*args: Any, **kwargs: Any) -> fitting.AdvancedFitResult:
         nonlocal calls
         if kwargs.get("uncertainty") == "none":
             calls += 1
@@ -175,8 +176,6 @@ def test_bootstrap_failure_is_reported_not_fabricated(monkeypatch: pytest.Monkey
 def test_bootstrap_ignores_nonfinite_parameter_replications(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import cds.modeling.fitting as fitting
-
     class FakeResult:
         parameters = {"a": math.inf, "b": 0.0}
 

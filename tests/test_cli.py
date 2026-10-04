@@ -49,3 +49,23 @@ def test_version_command(capsys: pytest.CaptureFixture[str]) -> None:
     out = capsys.readouterr().out
     assert rc == 0
     assert "version" in out.lower()
+
+
+def test_build_parser_back_compat_alias_is_exported() -> None:
+    """`_build_parser` is a historical alias kept for backwards compatibility.
+
+    It used to be defined in ``cds.cli._parser``, where nothing referenced it --
+    static analysis correctly reported it as an unused global. It now lives in
+    ``cds.cli``, the module that actually exports it, so the back-compat name
+    keeps working from the only path callers use. Nothing asserted that before,
+    which is how the alias drifted into a module that had no use for it.
+    """
+    import cds.cli
+    from cds.cli import _build_parser, build_parser
+
+    assert _build_parser is build_parser
+    assert "_build_parser" in cds.cli.__all__
+    assert cds.cli._build_parser is cds.cli.build_parser
+    # The alias must be a working entry point, not just an equal object.
+    assert type(_build_parser()).__name__ == type(build_parser()).__name__
+    assert _build_parser().format_help() == build_parser().format_help()

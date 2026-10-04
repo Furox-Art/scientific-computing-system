@@ -28,8 +28,14 @@ class SoftVotingModel(SupervisedModel, Protocol):
     """
 
     def predict_proba(self, x: list[float]) -> dict[Label, float]:
-        """Return class-membership probabilities for a single row."""
-        ...
+        """Return class-membership probabilities for a single row.
+
+        Structural signature only. ``runtime_checkable`` below makes this
+        protocol usable with :func:`isinstance`, which inspects attribute
+        presence and never calls this body, so a docstring placeholder is
+        equivalent to a bare ``...`` here while carrying no statement that
+        static analysis can flag as ineffectual.
+        """
 
 
 class VotingClassifier:

@@ -48,8 +48,13 @@ def _tool_registry(
     def fake_import(module: str) -> ModuleType:
         return ModuleType(module)
 
+    # `cds.tools.registry` imports its stdlib dependencies as
+    # `import importlib.metadata` / `import importlib.util` rather than mixing
+    # `import x` with `from x import y`, so the patch targets below follow that
+    # spelling. Patching `cds.tools.registry.metadata.version` no longer resolves
+    # because there is no bare `metadata` name in that module.
     monkeypatch.setattr("cds.tools.registry.importlib.util.find_spec", fake_find_spec)
-    monkeypatch.setattr("cds.tools.registry.metadata.version", fake_version)
+    monkeypatch.setattr("cds.tools.registry.importlib.metadata.version", fake_version)
     monkeypatch.setattr("cds.tools.registry.importlib.import_module", fake_import)
     return registry
 
