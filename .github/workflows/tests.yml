@@ -322,6 +322,38 @@ jobs:
       # artifacts to read the emitted Metadata-Version from.
       - name: Reject unpinned release toolchain
         run: python scripts/check_release_toolchain.py --skip-network
+      # The provenance prose asserts, per registry, whether the published
+      # release carries a build attestation. That claim was originally written
+      # from memory and nothing checked it, so it could have kept being
+      # asserted after a release changed the answer. This runs the committed
+      # guard (`docs/checks/verify_provenance_claims.py`) against the live
+      # registries and fails if the prose contradicts them.
+      #
+      # Placed here rather than in a new job on purpose: this job already owns
+      # release-metadata verification and already sits in the required `CI`
+      # aggregate, so this strengthens an existing gate instead of adding a
+      # required check that would need a ruleset change. `permissions:
+      # contents: read` above is sufficient -- the guard only reads PyPI and npm,
+      # never the GitHub API, so no token is needed.
+      #
+      # `--strict-network` is deliberately NOT set: a registry outage is
+      # reported as UNKNOWN and the run passes with a NOTICE, because a required
+      # gate that fails on a DNS blip teaches people to re-run it rather than
+      # read it. A false claim still fails. The unit test
+      # (`tests/test_provenance_claims.py`) is the deterministic gate and needs
+      # no network at all.
+      #
+      # The version is read from `pyproject.toml` rather than hardcoded: a
+      # literal here would go stale at the next release, which is the same class
+      # of stale-constant bug this step exists to catch. A version that has not
+      # shipped yet is reported as unverifiable rather than "unattested", so a
+      # bump PR is not blocked by asking about a release that does not exist.
+      - name: Reject provenance claims that contradict the live registries
+        run: >-
+          python docs/checks/verify_provenance_claims.py
+          --version "$(python -c 'import tomllib, pathlib;
+          print(tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))
+          ["project"]["version"])')"
 
   packaging:
     name: built wheel and sdist contents on Linux with Python 3.12
