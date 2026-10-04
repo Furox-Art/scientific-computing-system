@@ -50,10 +50,20 @@ The import name is **`cds`** (the distribution is `scientific-computing-system`)
 | **npm** (a launcher shim) | `npm i -g scientific-computing-system` | A thin Node wrapper that runs `python -m cds`. It ships no Python and needs the Python distribution installed so that `python -m cds` resolves. |
 
 Both channels are published at the same version. They are **not** equally
-verifiable: the PyPI release carries a PEP 740 provenance attestation, while the
-currently published npm release does not. Prefer PyPI for anything
-security-sensitive — [SECURITY.md](SECURITY.md#distribution-channels-and-provenance)
-has the per-channel comparison.
+verifiable:
+
+- **PyPI** — carries a **PEP 740 provenance attestation** (Sigstore-signed,
+  binding the file digest to the publishing workflow). Verified on 2.2.1.
+- **npm** — carries **no** attestation; the npmjs.com trusted publisher is not
+  registered yet, so its publish path cannot mint one. npm does expose
+  `dist.integrity` (sha512), which is a content pin, not proof of origin, and
+  `dist.signatures`, which is npm's registry transport signature, not build
+  provenance.
+
+Prefer PyPI for anything security-sensitive.
+[SECURITY.md](SECURITY.md#distribution-channels-and-provenance) has the
+per-channel table, the published digests to pin, the commands to verify them,
+and what to register to close the npm gap.
 
 ## What's inside
 
