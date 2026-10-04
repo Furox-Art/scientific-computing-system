@@ -33,6 +33,11 @@ jobs:
         with:
           python-version: "3.12"
       - name: Build wheel
+        # bash, not the Windows default PowerShell: `set -euo pipefail` is bash
+        # syntax and pwsh rejects it with "A parameter cannot be found that
+        # matches parameter name 'euo'". The other steps in this job pin the
+        # shell for the same reason.
+        shell: bash
         run: |
           set -euo pipefail
           python -m pip install --require-hashes --only-binary=:all: -r requirements-build.lock
