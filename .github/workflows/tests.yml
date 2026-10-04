@@ -307,6 +307,21 @@ jobs:
         run: python scripts/check_version_discipline.py --base-ref "${{ steps.base.outputs.ref }}"
       - name: Reject version metadata lockstep drift
         run: python scripts/check_version_lockstep.py
+      # The release toolchain must stay pinned, and the twine pin must stay able
+      # to validate the Metadata-Version the build backend actually emits --
+      # twine<=6.2.0 overrides packaging's list at import time and rejects valid
+      # artifacts with `'2.5' is not a valid metadata version`.
+      #
+      # GITHUB_TOKEN is passed so the advisory upstream checks authenticate.
+      # Unauthenticated GitHub API calls are capped at 60/hour, which is easy to
+      # exceed and fails in a way that looks like success: a sibling guard
+      # "verified" pins under rate limiting and silently verified nothing.
+      # Fast, offline, workflow-shape gate: pins and `twine check --strict` usage.
+      # The authoritative run, including the twine/Metadata-Version compatibility
+      # check, is in the `packaging` job below -- the only job that has built
+      # artifacts to read the emitted Metadata-Version from.
+      - name: Reject unpinned release toolchain
+        run: python scripts/check_release_toolchain.py --skip-network
 
   packaging:
     name: built wheel and sdist contents on Linux with Python 3.12
@@ -332,6 +347,19 @@ jobs:
         run: python scripts/check_version_lockstep.py --dist-dir dist
       - name: Assert wheel and sdist contents
         run: python scripts/check_distribution_contents.py dist
+      # Read the Metadata-Version out of the artifacts just built and prove the
+      # pinned twine can validate it. twine<=6.2.0 overrides packaging's
+      # metadata-version list at import time and rejects a valid artifact with
+      # `'2.5' is not a valid metadata version`; a sibling release failed that
+      # way with nothing wrong with the package.
+      #
+      # GITHUB_TOKEN is passed so the advisory upstream checks authenticate.
+      # Unauthenticated GitHub API calls are capped at 60/hour, and under rate
+      # limiting a pin check can silently verify nothing while reporting success.
+      - name: Assert the pinned twine can validate the built metadata
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/check_release_toolchain.py --dist-dir dist
       # A source distribution whose own test suite cannot pass is not a source
       # distribution. 13 release-contract tests used to fail here because
       # `.github/workflows` was missing from the sdist; this step is what keeps

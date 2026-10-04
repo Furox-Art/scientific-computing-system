@@ -184,6 +184,10 @@ only-include = [
   "scripts/verify_cookbook.py",
   "scripts/check_version_discipline.py",
   "scripts/check_version_lockstep.py",
+  # tests/test_release_toolchain.py loads this by path at import time. Without it
+  # in the sdist the suite fails to *collect* when run from an unpacked sdist,
+  # which is the same class of failure codemeta.json above was added for.
+  "scripts/check_release_toolchain.py",
   # tests/test_release_contract.py asserts the release/CI workflow contracts
   # and tests/test_hardening_privacy_provenance.py hashes the lock files. Both
   # used to fail with FileNotFoundError when the suite ran from an unpacked sdist
