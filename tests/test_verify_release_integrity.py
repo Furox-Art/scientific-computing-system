@@ -2,13 +2,20 @@
 
 CodeQL flagged ``scripts/verify_release_integrity.py`` with
 ``py/incomplete-url-substring-sanitization`` (high): the code decided whether a
-URL was the GitHub API with ``"api.github.com" in url``. A substring test on a URL
-is the wrong comparison, and this file pins the corrected behaviour in both
-directions -- the hosts it used to wave through, and the legitimate hosts it used
-to reject.
+URL was the GitHub API by testing whether the host text occurred *anywhere* in
+the URL. A containment test on a URL is the wrong comparison, and this file pins
+the corrected behaviour in both directions -- the hosts it used to wave through,
+and the legitimate hosts it used to reject.
 
-The alert is recorded against ``main``, so it will only clear once this fix
-reaches the default branch.
+This file contains no containment test of its own. An earlier version asserted
+the old behaviour by performing the old containment check in the test body, which
+made the test that defends the fix an instance of the defect it defends against
+(alert #97, same rule, on this file). The reasoning is recorded as prose and the
+verdicts are asserted against the shipped function; see
+``DIVERGENT_CASES`` below.
+
+The alert on ``scripts/verify_release_integrity.py`` is recorded against
+``main``, so it clears only once that fix reached the default branch.
 """
 
 from __future__ import annotations
@@ -108,6 +115,37 @@ REJECTED = (
 )
 
 
+# --- the inputs where a containment check and a hostname check disagree ------
+#
+# These are the only two inputs in the tables above where the two approaches
+# reach opposite conclusions, and they are what a future reader needs in order to
+# understand why the comparison is a hostname comparison. The third element is
+# prose, used only to explain a failure.
+#
+# The expected verdicts are asserted against the real predicate. This file
+# deliberately contains **no** containment test over a URL: the previous version
+# asserted the old behaviour by writing the old expression, which is the very
+# pattern CodeQL's py/incomplete-url-substring-sanitization flags -- so the test
+# defending the fix became an instance of the defect. The reasoning belongs in
+# prose; the verdicts belong in assertions on the shipped function.
+
+DIVERGENT_CASES = (
+    (
+        "https://evil.example/?api.github.com",
+        False,
+        "a containment check would match the host text in the query string and "
+        "wrongly treat this as the GitHub API -- the too-permissive direction",
+    ),
+    (
+        "https://API.GITHUB.COM/repos/x/y",
+        True,
+        "hostnames are case-insensitive, so this is the GitHub API; a containment "
+        "check would miss it and wrongly treat it as some other host -- the "
+        "too-strict direction",
+    ),
+)
+
+
 @needs_python_311
 def test_accepts_only_the_exact_github_api_host() -> None:
     check = _is_github_api()
@@ -123,23 +161,25 @@ def test_rejects_lookalike_hosts_and_non_absolute_urls() -> None:
 
 
 @needs_python_311
-def test_the_substring_form_would_have_been_wrong() -> None:
-    """Pin *why* this exists: show the old comparison failing on both sides.
+def test_the_two_directions_a_containment_check_gets_wrong() -> None:
+    """Pin *why* this exists, by asserting the shipped function on both.
 
-    Without this, the exactness of the hostname comparison looks like pedantry
-    and a future edit back to `"api.github.com" in url` would pass review.
+    Each case below is one where checking whether the host text merely appears
+    somewhere in the URL disagrees with checking the URL's hostname. Asserting the
+    correct verdict on the real predicate catches a regression in either
+    direction: an edit back to a containment test flips the first case to True and
+    the second to False, and this test fails on both.
+
+    The previous version of this test asserted the *premise* -- that a
+    containment check would have decided differently -- by performing that
+    containment check in the test body. That is the pattern this whole change
+    exists to remove, so asserting it here reintroduced the defect inside the file
+    meant to be free of it. The premise is now recorded in the prose above and in
+    each case's explanation, which a reader can check by inspection.
     """
     check = _is_github_api()
-
-    # Too permissive: the string is present, the host is not GitHub.
-    lookalike = "https://evil.example/?api.github.com"
-    assert "api.github.com" in lookalike, "premise: the substring test matches"
-    assert check(lookalike) is False, "the hostname test must not"
-
-    # Too strict: a legitimate GitHub URL the substring test rejected.
-    uppercase = "https://API.GITHUB.COM/repos/x/y"
-    assert "api.github.com" not in uppercase, "premise: the substring test misses"
-    assert check(uppercase) is True, "the hostname test must not"
+    for url, expected, why in DIVERGENT_CASES:
+        assert check(url) is expected, f"{url}: {why}"
 
 
 @needs_python_311
