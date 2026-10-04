@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Provenance claims are now scoped, measured, and guarded.** A follow-up report
+  asserted that PyPI had no PEP 740 attestation either. Re-measured directly, that
+  is **not** the case, so the previous text was left standing and made precise
+  rather than weakened:
+
+  - PyPI **2.2.1** serves a PEP 740 provenance bundle for **both** the wheel and
+    the sdist (HTTP 200 on the per-file `/integrity/.../provenance` endpoint),
+    and each bundle's `subject` digest equals the `sha256` PyPI publishes for
+    that file. The 404 in the report came from requesting
+    `https://pypi.org/integrity/scientific-computing-system/2.2.1/`, which is a
+    directory, not the per-file endpoint.
+  - npm **2.2.1** has **no** attestation: the attestations endpoint returns 404.
+    This part of the report was correct.
+
+  The security posture is therefore unchanged and more precisely stated. What
+  changed: `SECURITY.md` now separates the three things that were being conflated
+  — a **PEP 740 attestation** (Sigstore-signed, attests *who built this*),
+  **npm `dist.signatures`** (registry transport signing, attests nothing about
+  the build), and a **content digest** (`sha256` on PyPI, `dist.integrity` on
+  npm; pins *which bytes*, not *where they came from*). It lists the published
+  digests to pin, gives the commands that verify them, and states the exact
+  trusted-publisher coordinates still to be registered for npm.
+
+- **Reproducible-build claim scoped to what was actually measured.** Two
+  consecutive builds of the same commit with the same pinned backend produced
+  byte-identical wheel and sdist. Those digests do **not** match the published
+  ones (the release runs a hash-locked Linux toolchain; the check ran elsewhere),
+  so the documentation now claims determinism for a fixed toolchain and
+  explicitly declines to claim the published artifacts are bit-for-bit
+  reproducible from source.
+
+- **npm launcher prerequisite re-verified.** With `cds` absent from `PATH`, the
+  shim proceeds straight to interpreter resolution (`python`/`python3`/`py`) and
+  runs `python -m cds`; it never looks for a `cds` console script. README,
+  `SECURITY.md` and the docs already agreed on this wording, and it is now
+  backed by an explicit check rather than by reading the source.
+
+### Added
+
+- `docs/checks/verify_provenance_claims.py` — a guard that parses the attestation
+  claims out of `README.md` and `SECURITY.md` and compares them against the live
+  registries, failing if the prose asserts something the registries contradict.
+  It also rejects prose that overstates `dist.integrity` as provenance or allows
+  the attested subject to differ from the published digest. Negative-controlled:
+  three false claims (PyPI not attested, npm attested, digest mismatch acceptable)
+  each turn it red. Wiring it into CI is left to the workflow owner; this change
+  is docs-only by scope.
+
 ## [v2.2.1] - 2026-10-04
 
 Documentation and release-surface corrections. **No library behaviour change**:
