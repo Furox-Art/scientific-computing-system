@@ -60,12 +60,20 @@ def test_build_parser_back_compat_alias_is_exported() -> None:
     keeps working from the only path callers use. Nothing asserted that before,
     which is how the alias drifted into a module that had no use for it.
     """
-    import cds.cli
-    from cds.cli import _build_parser, build_parser
+    from cds.cli import __all__ as cli_exports
+    from cds.cli import _build_parser, _parser, build_parser
 
+    # `from cds.cli import _build_parser` binds the module attribute itself, so
+    # this identity check *is* the assertion that
+    # `cds.cli._build_parser is cds.cli.build_parser`.
     assert _build_parser is build_parser
-    assert "_build_parser" in cds.cli.__all__
-    assert cds.cli._build_parser is cds.cli.build_parser
+    assert "_build_parser" in cli_exports
     # The alias must be a working entry point, not just an equal object.
     assert type(_build_parser()).__name__ == type(build_parser()).__name__
     assert _build_parser().format_help() == build_parser().format_help()
+
+    # The one behaviour change in this release, pinned: the alias lives in
+    # `cds.cli` beside its only consumer, so the deeper private path
+    # `cds.cli._parser._build_parser` no longer resolves. `cds.cli._build_parser`
+    # above is the supported back-compat name and must keep working.
+    assert not hasattr(_parser, "_build_parser")
