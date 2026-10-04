@@ -12,12 +12,18 @@ assertion nobody checked the teeth of is not a guard.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
+import urllib.error
+import zipfile
 from pathlib import Path
+from types import ModuleType
+from typing import NamedTuple
 
 import pytest
 
@@ -32,8 +38,27 @@ SANDBOX_FILES = (
     ".github/workflows",
 )
 
-sys.path.insert(0, str(ROOT / "scripts"))
-import check_release_toolchain as guard  # noqa: E402
+
+def _load_guard() -> ModuleType:
+    """Import the guard by path.
+
+    ``scripts/`` is not a package and is deliberately absent from the mypy
+    search path, so a plain ``import check_release_toolchain`` is an
+    ``import-not-found`` under ``mypy tests/``. Other suites in this repo drive
+    ``scripts/`` through a subprocess; this one also needs the functions directly
+    to test the compatibility boundary, so the module is loaded explicitly and
+    typed as ``ModuleType``.
+    """
+    location = ROOT / "scripts" / SCRIPT.name
+    spec = importlib.util.spec_from_file_location("_check_release_toolchain", location)
+    assert spec is not None, f"cannot build an import spec for {location}"
+    assert spec.loader is not None, f"no loader for {location}"
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+guard: ModuleType = _load_guard()
 
 
 def _text(path: Path) -> str:
@@ -327,7 +352,9 @@ def test_no_twine_check_at_all_is_a_failure(tmp_path: Path) -> None:
     assert "No workflow runs `twine check`" in result.stderr
 
 
-def test_network_failure_is_a_warning_not_a_failure(tmp_path: Path, monkeypatch) -> None:
+def test_network_failure_is_a_warning_not_a_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """An unreachable index must not be reported as a repository defect.
 
     This is the sibling's second lesson: a guard that verifies pins over the
@@ -336,7 +363,7 @@ def test_network_failure_is_a_warning_not_a_failure(tmp_path: Path, monkeypatch)
     """
     root = _clone(tmp_path / "repo")
 
-    def explode(*args, **kwargs):
+    def explode() -> list[str]:
         raise OSError("simulated network outage")
 
     monkeypatch.setattr(guard, "verify_pins_upstream", explode)
@@ -350,7 +377,7 @@ def test_network_failure_is_a_warning_not_a_failure(tmp_path: Path, monkeypatch)
 
 
 def test_missing_github_token_warns_instead_of_claiming_verification(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Unauthenticated GitHub calls are capped at 60/hour.
 
@@ -364,15 +391,18 @@ def test_missing_github_token_warns_instead_of_claiming_verification(
 
 
 def test_authenticated_action_pin_verification_confirms_the_real_pins(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """With a token, every committed action pin must resolve upstream."""
     monkeypatch.setenv("GITHUB_TOKEN", "not-a-real-token-but-present")
     calls: list[str] = []
 
-    def fake_get_json(url: str, headers=None, timeout: int = 30):
+    def fake_get_json(
+        url: str,
+        headers: dict[str, str] | None = None,
+        timeout: int = 30,
+    ) -> dict[str, str]:
         calls.append(url)
-        assert url
         return {"sha": "x"}
 
     monkeypatch.setattr(guard, "_get_json", fake_get_json)
@@ -382,14 +412,18 @@ def test_authenticated_action_pin_verification_confirms_the_real_pins(
     assert all("api.github.com/repos/" in url for url in calls), calls
 
 
-def test_unresolvable_action_pin_is_reported(monkeypatch) -> None:
+def test_unresolvable_action_pin_is_reported(monkeypatch: pytest.MonkeyPatch) -> None:
     """A dead SHA must be named, not swallowed."""
-    import urllib.error
+    from email.message import Message
 
     monkeypatch.setenv("GITHUB_TOKEN", "present")
 
-    def fake_get_json(url: str, headers=None, timeout: int = 30):
-        raise urllib.error.HTTPError(url, 422, "No commit found for SHA", None, None)
+    def fake_get_json(
+        url: str,
+        headers: dict[str, str] | None = None,
+        timeout: int = 30,
+    ) -> dict[str, str]:
+        raise urllib.error.HTTPError(url, 422, "No commit found for SHA", Message(), None)
 
     monkeypatch.setattr(guard, "_get_json", fake_get_json)
     notes = guard.verify_action_pins()
@@ -402,89 +436,98 @@ def test_unresolvable_action_pin_is_reported(monkeypatch) -> None:
 # --------------------------------------------------------------------------
 
 
-def _wheel_metadata() -> dict[str, list[str]]:
-    """Build once and return the wheel's raw metadata headers, grouped."""
-    import tempfile
-    import zipfile
+class _WheelMetadata(NamedTuple):
+    """The wheel's core metadata, split into headers and shipped dist-info files."""
 
+    headers: dict[str, list[str]]
+    files: dict[str, str]
+
+    def one(self, key: str) -> str:
+        """Return the single value of a header, failing loudly if not exactly one."""
+        values = self.headers.get(key, [])
+        assert len(values) == 1, f"expected exactly one {key}, found {values!r}"
+        return values[0]
+
+
+def _build_wheel(directory: str) -> Path:
+    """Build a wheel with the ambient toolchain and return its path."""
+    build = subprocess.run(
+        [sys.executable, "-m", "build", "--no-isolation", "--wheel", "--outdir", directory],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if build.returncode != 0:
+        pytest.skip(f"cannot build in this environment: {build.stderr[-400:]}")
+    wheels = list(Path(directory).glob("*.whl"))
+    assert len(wheels) == 1, f"expected one wheel, found {len(wheels)}"
+    return wheels[0]
+
+
+def _wheel_metadata() -> _WheelMetadata:
+    """Build the wheel and return its core metadata headers plus dist-info files."""
     with tempfile.TemporaryDirectory() as tmp:
-        build = subprocess.run(
-            [sys.executable, "-m", "build", "--no-isolation", "--wheel", "--outdir", tmp],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if build.returncode != 0:
-            pytest.skip(f"cannot build in this environment: {build.stderr[-400:]}")
-        wheels = list(Path(tmp).glob("*.whl"))
-        assert len(wheels) == 1
-        with zipfile.ZipFile(wheels[0]) as archive:
+        wheel = _build_wheel(tmp)
+        with zipfile.ZipFile(wheel) as archive:
             names = [n for n in archive.namelist() if n.endswith(".dist-info/METADATA")]
+            assert len(names) == 1, f"expected one METADATA, found {len(names)}"
             raw = archive.read(names[0]).decode("utf-8", errors="replace")
             dist_info = names[0].split("/")[0]
-            payload = {
-                n: archive.read(n).decode("utf-8", errors="replace")
-                for n in archive.namelist()
-                if n.startswith(dist_info)
+            files = {
+                name: archive.read(name).decode("utf-8", errors="replace")
+                for name in archive.namelist()
+                if name.startswith(dist_info)
             }
     headers: dict[str, list[str]] = {}
     for line in raw.splitlines():
         if not line.strip():
-            break
+            break  # headers end at the first blank line; the rest is the description
         key, separator, value = line.partition(":")
         if separator:
             headers.setdefault(key.strip(), []).append(value.strip())
-    return {"headers": headers, "files": payload}  # type: ignore[return-value]
+    return _WheelMetadata(headers=headers, files=files)
 
 
 def test_license_uses_pep639_expression_and_not_legacy_classifiers() -> None:
     """PEP 639 supersedes `License ::` classifiers; both together is a contradiction."""
     metadata = _wheel_metadata()
-    headers = metadata["headers"]  # type: ignore[index]
-    assert headers.get("License-Expression"), "expected a PEP 639 License-Expression"
-    classifiers = headers.get("Classifier", [])
+    assert metadata.headers.get("License-Expression"), "expected a PEP 639 License-Expression"
+    classifiers = metadata.headers.get("Classifier", [])
     legacy = [c for c in classifiers if c.startswith("License ::")]
     assert not legacy, f"PEP 639 License-Expression must not be mixed with {legacy}"
 
 
 def test_license_file_is_declared_and_present() -> None:
     metadata = _wheel_metadata()
-    headers = metadata["headers"]  # type: ignore[index]
-    files = metadata["files"]  # type: ignore[index]
-    declared = headers.get("License-File", [])
+    declared = metadata.headers.get("License-File", [])
     assert declared, "expected at least one License-File"
     for name in declared:
-        assert f"{{dist_info}}/{name}" in files or any(key.endswith(f"/{name}") for key in files), (
-            f"License-File {name!r} is declared but not shipped in the wheel"
-        )
+        shipped = any(key.endswith(f"/{name}") for key in metadata.files)
+        assert shipped, f"License-File {name!r} is declared but not shipped in the wheel"
 
 
 def test_requires_python_is_present_and_sane() -> None:
     metadata = _wheel_metadata()
-    headers = metadata["headers"]  # type: ignore[index]
-    requires_python = headers.get("Requires-Python")
-    assert requires_python, "Requires-Python must be declared"
-    assert re.match(r"^>=\d+\.\d+", requires_python[0]), requires_python
+    requires_python = metadata.one("Requires-Python")
+    assert re.match(r"^>=\d+\.\d+", requires_python), requires_python
 
 
 def test_metadata_declares_no_hardcoded_dependencies() -> None:
     """This package is zero-runtime-dependency by design."""
     metadata = _wheel_metadata()
-    headers = metadata["headers"]  # type: ignore[index]
-    requires_dist = [v for v in headers.get("Requires-Dist", []) if "extra ==" not in v]
-    assert requires_dist == [], f"unexpected runtime dependencies: {requires_dist}"
+    runtime = [v for v in metadata.headers.get("Requires-Dist", []) if "extra ==" not in v]
+    assert runtime == [], f"unexpected runtime dependencies: {runtime}"
 
 
 def test_packaging_metadata_is_json_serialisable_and_stable() -> None:
     """Guard against the lockstep-style drift this repo keeps getting bitten by."""
     metadata = _wheel_metadata()
-    headers = metadata["headers"]  # type: ignore[index]
     payload = {
-        "Metadata-Version": headers["Metadata-Version"][0],
-        "Name": headers["Name"][0],
-        "Version": headers["Version"][0],
-        "Requires-Python": headers["Requires-Python"][0],
-        "License-Expression": headers["License-Expression"][0],
+        "Metadata-Version": metadata.one("Metadata-Version"),
+        "Name": metadata.one("Name"),
+        "Version": metadata.one("Version"),
+        "Requires-Python": metadata.one("Requires-Python"),
+        "License-Expression": metadata.one("License-Expression"),
     }
     assert json.loads(json.dumps(payload)) == payload
