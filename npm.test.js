@@ -210,8 +210,26 @@ test('the npm publish path is armed', () => {
   //   run: echo "npm publishing is disabled; PyPI is the install path" && exit 0
   // -- which reported success while publishing nothing, and whose
   // `continue`-style exit 0 was indistinguishable from a real publish.
+  //
+  // `npm publish` legitimately appears in two shapes now: inline
+  // (`run: npm publish ...`) and inside a `run: |` block, which the OIDC step
+  // needs so it can capture npm's exit code and explain a 404 instead of
+  // relaying npm's ambiguous one-liner. Both are real invocations, so accept
+  // either.
+  //
+  // What must NOT satisfy this is a line that only mentions the command. Both
+  // YAML comments and shell comments are filtered out first, so a prose
+  // reference -- in the header, or in a comment explaining why token mode must
+  // not pass -- cannot re-open the door the stub came through.
+  const executedLines = workflow
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith('#'));
+
   assert.ok(
-    /^\s*run:\s*npm publish\b/m.test(workflow),
+    executedLines.some(
+      (line) => /^run:\s*npm publish\b/.test(line) || /^npm publish\b/.test(line),
+    ),
     'npm-publish.yml must invoke a real `npm publish`',
   );
 

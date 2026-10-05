@@ -130,6 +130,26 @@ attestation yet:
   identity — is the only working mode. That is why the published npm artifacts
   have no attestation.
 
+  Register it under **Settings → Trusted Publisher → GitHub Actions** and enable
+  the **`npm publish`** allowed action. That last field is not optional here: npm's
+  current UI allows `npm stage publish` by default on new configurations and makes
+  direct `npm publish` opt-in, while this repository's workflow publishes
+  directly. A publisher registered without it still fails, with a permission error
+  rather than a 404.
+
+  **A missing registration looks like a missing version.** npm will not disclose
+  whether a package exists to an unauthenticated caller, so an unrecognised
+  trusted publisher produces the same `E404` as an unpublished version:
+
+  ```
+  npm error 404 The requested resource 'scientific-computing-system@2.2.2' could
+  not be found or you do not have permission to access it.
+  ```
+
+  Do not bump the version in response to that line. A bad or missing *token* fails
+  differently — `401`, or `ENEEDAUTH` — so `E404` on a PUT for a package that is
+  known to exist means the registration, not the version.
+
 **Practical consequence:** for anything security-sensitive, install from PyPI and
 check the PEP 740 bundle against the digests PyPI publishes. Do not rely on the
 npm channel for supply-chain assurance today; treat its `dist.integrity` as an
