@@ -104,6 +104,15 @@ tarball built, provenance was signed and submitted to the Sigstore transparency
 log, and only the `PUT` failed. So both runs did prove the authentication failure,
 and the fix is the registration above — not a version bump.
 
+## [v2.2.3] - 2026-10-05
+
+This release exists to exercise the OIDC trusted-publish path, now that the
+npmjs.com trusted publisher for `scientific-computing-system` is registered.
+
+The previous npm 2.2.2 was published in token mode and therefore carries no
+attestation. Nothing about the launcher changed: `src/` is untouched since
+2.2.2, and the only source change in this release is the version string itself.
+
 ## [v2.2.2] - 2026-10-05
 
 Clears the last 17 open CodeQL alerts in this repository. None of them was a
