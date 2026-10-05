@@ -29,8 +29,8 @@ It is also published to npm as `scientific-computing-system`, but that package i
 
 | Threat | Mitigation |
 |---|---|
-| **Supply chain: malicious or substituted PyPI artifact** | The release workflow is the sole PyPI publish authority. It builds wheel + sdist on a GitHub-hosted runner from a hash-pinned toolchain, verifies package metadata/version, installs the built wheel, smoke-tests the installed CLI, and publishes through PyPI Trusted Publishing (OIDC). PyPI serves a PEP 740 provenance bundle for 2.2.1 whose subject digest matches the published `sha256`. |
-| **Supply chain: malicious or substituted npm artifact** | The npm workflow is the sole npm publish authority and gates on the registry version-existence check, a `npm pack --dry-run` tarball allowlist, and npm/Python version lockstep. **No attestation is possible yet:** the npmjs.com trusted publisher is not registered, so the token fallback is the working mode and npm's `--provenance` cannot be honoured. Consumers can only pin `dist.integrity` until that is registered. See below. |
+| **Supply chain: malicious or substituted PyPI artifact** | The release workflow is the sole PyPI publish authority. It builds wheel + sdist on a GitHub-hosted runner from a hash-pinned toolchain, verifies package metadata/version, installs the built wheel, smoke-tests the installed CLI, and publishes through PyPI Trusted Publishing (OIDC). PyPI serves a PEP 740 provenance bundle for 2.2.3 whose subject digest matches the published `sha256`. |
+| **Supply chain: malicious or substituted npm artifact** | The npm workflow is the sole npm publish authority and gates on the registry version-existence check, a `npm pack --dry-run` tarball allowlist, and npm/Python version lockstep. **2.2.3 onward is attested:** the npmjs.com trusted publisher is registered, the workflow publishes in `mode=oidc`, and npm's `--provenance` is honoured, so the registry serves an npm publish attestation plus a SLSA provenance v1 bundle for the released tarball. **1.0.0–2.2.2 are not:** they were published through the token fallback, which cannot mint an attestation, so for those versions the only consumer-side control is `dist.integrity`, which is a content pin rather than proof of origin. See below. |
 | **Registry drift** | Public PyPI is treated as the distribution registry for the library. The release integrity check requires exactly one wheel and one sdist on PyPI and requires the matching GitHub Release to contain no wheel/sdist assets. A registry-policy workflow rechecks the public PyPI package and removes accidental distribution assets from GitHub Releases. |
 | **Dependency vulnerabilities** | The core has no required runtime dependencies. Development/test/docs lock files are audited in CI with `pip-audit`; optional backends are isolated behind extras and lazy loading. |
 | **Code execution from package install** | The build backend is `hatchling`; there is no `setup.py` execution and package versioning is static in `pyproject.toml` plus `src/cds/_version.py`. |
@@ -48,8 +48,8 @@ version-specific; re-check it rather than trusting it indefinitely.
 |---|---|---|
 | Contents | the library (wheel + sdist) | `index.js`, `bin/scs.js`, `LICENSE`, `README.md`, `CHANGELOG.md`, `SECURITY.md` — **no Python** |
 | Requires the other channel | no | yes; `scs` runs `python -m cds`, so the Python distribution must be installed. It resolves `python`/`python3`/`py` and does **not** look for a `cds` console script on `PATH` |
-| Publish authentication | Trusted Publishing (OIDC) | OIDC trusted publishing implemented and default; token fallback exists |
-| **PEP 740 provenance attestation** | **yes on 2.2.1** (verified; see below) | **none** — attestations endpoint returns 404 |
+| Publish authentication | Trusted Publishing (OIDC) | Trusted Publishing (OIDC) since 2.2.3; token fallback still exists in the workflow |
+| **PEP 740 provenance attestation** | **yes on 2.2.3** (verified; see below) | **yes on 2.2.3** (verified; see below) |
 | **npm `dist.signatures`** | n/a | present — registry transport signature, **not** build provenance |
 | **Content digest a consumer can pin** | `sha256` per file on the PyPI file page | `dist.integrity` (sha512) and `dist.shasum` (sha1) |
 
@@ -69,34 +69,40 @@ version-specific; re-check it rather than trusting it indefinitely.
 
 #### What is published today, and how to check it
 
-Verified against the live registries for **PyPI 2.2.1**:
+Verified against the live registries for **2.2.3** on 2026-10-05:
 
 ```bash
 # PEP 740 attestation exists (HTTP 200). Note the per-FILE path; a bare
 # /integrity/<project>/<version>/ directory is not an endpoint and 404s.
 curl -sS -H "Accept: application/vnd.pypi.integrity.v1+json" \
-  https://pypi.org/integrity/scientific-computing-system/2.2.1/scientific_computing_system-2.2.1-py3-none-any.whl/provenance
+  https://pypi.org/integrity/scientific-computing-system/2.2.3/scientific_computing_system-2.2.3-py3-none-any.whl/provenance
 
 # The digest PyPI publishes for that file, to compare against the attestation
 # subject (predicateType https://docs.pypi.org/attestations/publish/v1):
-curl -sS https://pypi.org/pypi/scientific-computing-system/2.2.1/json | python -c \
+curl -sS https://pypi.org/pypi/scientific-computing-system/2.2.3/json | python -c \
   "import json,sys; [print(f['filename'], f['digests']['sha256']) for f in json.load(sys.stdin)['urls']]"
 
-# npm: no attestation; there IS a transport signature and an integrity digest.
+# npm: attested from 2.2.3 onward (HTTP 200, two bundles: the npm publish
+# attestation and a SLSA provenance v1 one). Earlier versions 404 -- 1.0.0,
+# 2.2.0, 2.2.1 and 2.2.2 were published through the token fallback, which
+# cannot mint an attestation.
 curl -sS -o /dev/null -w '%{http_code}\n' \
-  https://registry.npmjs.org/-/npm/v1/attestations/scientific-computing-system@2.2.1   # -> 404
-npm view scientific-computing-system@2.2.1 dist.integrity dist.shasum
+  https://registry.npmjs.org/-/npm/v1/attestations/scientific-computing-system@2.2.3   # -> 200
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  https://registry.npmjs.org/-/npm/v1/attestations/scientific-computing-system@2.2.2   # -> 404
+npm view scientific-computing-system@2.2.3 dist.integrity dist.shasum
 ```
 
-The published PyPI 2.2.1 digests, useful for pinning:
+The published PyPI 2.2.3 digests, useful for pinning:
 
 | File | sha256 |
 |---|---|
-| `scientific_computing_system-2.2.1-py3-none-any.whl` | `b14b89478fdc8b11482ffd556bb6eb59c6b21887f2a09418edec7029d4569bb9` |
-| `scientific_computing_system-2.2.1.tar.gz` | `6ba4ad4c2ebb6bef86356bcbcd251e12978737945e58d9e75b9c68860efa77f6` |
+| `scientific_computing_system-2.2.3-py3-none-any.whl` | `57408c812ac153e6f2dca6345d715084032fc67c5a8d9df127f257c6bfe31a3c` |
+| `scientific_computing_system-2.2.3.tar.gz` | `86af9fa7295d7c026f1b417a48eda4b6a696e9e9605ca459e48ad125a1ab962b` |
 
 Both were confirmed to equal the `subject` digest inside their attestation
 bundles, so the attested bytes and the published bytes are the same bytes.
+The 2.2.1 digests remain pinned in the release notes for that version.
 
 #### Reproducible builds: what is and is not claimed
 
@@ -114,28 +120,29 @@ deterministic for a fixed toolchain, and this repository does not currently
 claim that the published artifacts are bit-for-bit reproducible from source.*
 Treat the published digests above as the pin to use, not a rebuild target.
 
-#### When provenance will appear
+#### How the npm attestation was enabled
 
-The OIDC plumbing is implemented on both sides; the registries-side trusted
-publisher records are **not yet in place**, so an npm release cannot carry an
-attestation yet:
+Both registries now have their trusted-publisher record, so a release from this
+repository's publish workflows mints an attestation on each channel:
 
 - **PyPI** — Trusted Publisher: owner `Furox-Art`, repository
   `scientific-computing-system`, workflow `release.yml`, environment `pypi`.
-  Already exercised: 2.2.1 was published through it and is attested.
+  Exercised since 2.2.1; every release since is attested.
 - **npm** — Trusted Publisher: owner `Furox-Art`, repository
   `scientific-computing-system`, workflow `npm-publish.yml`, environment `npm`.
-  **Pending registration.** Until it exists, the default OIDC path cannot
-  complete a publish, and the token fallback — which cannot mint a Sigstore
-  identity — is the only working mode. That is why the published npm artifacts
-  have no attestation.
+  Registered before 2.2.3, which is the first npm release published through it
+  with `--provenance`. Before that registration the default OIDC path could not
+  complete a publish, so 1.0.0–2.2.2 went out through the token fallback — a
+  long-lived token has no OIDC identity to attest, and those versions carry no
+  attestation. They stay in the registry as-is; the fix for a consumer is to
+  move to 2.2.3 or newer.
 
-  Register it under **Settings → Trusted Publisher → GitHub Actions** and enable
-  the **`npm publish`** allowed action. That last field is not optional here: npm's
-  current UI allows `npm stage publish` by default on new configurations and makes
-  direct `npm publish` opt-in, while this repository's workflow publishes
-  directly. A publisher registered without it still fails, with a permission error
-  rather than a 404.
+  The registration step that is easy to miss: under **Settings → Trusted
+  Publisher → GitHub Actions**, the **`npm publish`** allowed action must be
+  enabled. npm's UI allows `npm stage publish` by default on new configurations
+  and makes direct `npm publish` opt-in, while this repository's workflow
+  publishes directly. A publisher registered without it still fails, with a
+  permission error rather than a 404.
 
   **A missing registration looks like a missing version.** npm will not disclose
   whether a package exists to an unauthenticated caller, so an unrecognised
@@ -150,10 +157,11 @@ attestation yet:
   differently — `401`, or `ENEEDAUTH` — so `E404` on a PUT for a package that is
   known to exist means the registration, not the version.
 
-**Practical consequence:** for anything security-sensitive, install from PyPI and
-check the PEP 740 bundle against the digests PyPI publishes. Do not rely on the
-npm channel for supply-chain assurance today; treat its `dist.integrity` as an
-integrity pin only.
+**Practical consequence:** install 2.2.3 or newer from either channel and verify
+its attestation bundle — PEP 740 on PyPI (per-file endpoint), the npm publish and
+SLSA provenance bundles on npm. For a pinned older version the npm channel only
+offers `dist.integrity`, which is an integrity pin and not proof of origin; use
+PyPI's PEP 740 bundle there instead.
 
 ### Optional Backend Boundary
 
