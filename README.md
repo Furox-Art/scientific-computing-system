@@ -53,14 +53,17 @@ Both channels are published at the same version. They are **not** equally
 verifiable:
 
 - **PyPI** — carries a **PEP 740 provenance attestation** (Sigstore-signed,
-  binding the file digest to the publishing workflow). Verified on 2.2.1.
-- **npm** — carries **no** attestation; the npmjs.com trusted publisher is not
-  registered yet, so its publish path cannot mint one. npm does expose
-  `dist.integrity` (sha512), which is a content pin, not proof of origin, and
-  `dist.signatures`, which is npm's registry transport signature, not build
-  provenance.
+  binding the file digest to the publishing workflow). Verified on 2.2.3, and
+  on every release since attestations were enabled.
+- **npm** — carries a **Sigstore attestation as of 2.2.3**, minted by npm's
+  OIDC trusted publisher (the registry serves both an npm publish attestation
+  and a SLSA provenance v1 bundle for that tarball). 1.0.0 through 2.2.2
+  predate the publisher registration and have none, so pin 2.2.3 or newer. npm
+  also exposes `dist.integrity` (sha512), which is a content pin, not proof of
+  origin, and `dist.signatures`, which is npm's registry transport signature,
+  not build provenance.
 
-Prefer PyPI for anything security-sensitive.
+Prefer PyPI if you need an attestation for a version older than 2.2.3.
 [SECURITY.md](SECURITY.md#distribution-channels-and-provenance) has the
 per-channel table, the published digests to pin, the commands to verify them,
 and what to register to close the npm gap.

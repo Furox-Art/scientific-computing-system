@@ -289,19 +289,19 @@ def test_npm_dist_handles_failure(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_security_table_row_parses_to_the_measured_verdict() -> None:
-    """SECURITY.md's real row must parse to (True, False) today."""
+    """SECURITY.md's real row must parse to (True, True) today."""
     pypi_claim, npm_claim, row = guard.read_attestation_row()
 
     assert row, "the attestation row disappeared from SECURITY.md"
     assert pypi_claim is True
-    assert npm_claim is False
+    assert npm_claim is True
 
 
-def test_readme_npm_bullet_parses_to_no_attestation() -> None:
+def test_readme_npm_bullet_parses_to_an_attestation() -> None:
     readme_claim, line = guard.read_readme_npm_claim()
 
     assert line, "the README npm bullet disappeared"
-    assert readme_claim is False
+    assert readme_claim is True
 
 
 @pytest.mark.parametrize(
@@ -332,7 +332,9 @@ def test_prose_claims_scan_finds_the_expected_signals() -> None:
     assert claims["mentions_npm_attestation_status"]
     assert claims["distinguishes_npm_transport_sig"]
     assert claims["distinguishes_digest_from_provenance"]
-    assert claims["states_registration_pending"]
+    # Both trusted publishers are registered and 2.2.3 is attested on npm, so the
+    # prose must no longer claim a pending registration.
+    assert not claims["states_registration_pending"]
 
 
 def test_scan_notes_find_claims_in_the_tree() -> None:
@@ -361,12 +363,14 @@ def test_main_fails_when_no_claim_is_present(
 def test_strict_network_escalates_outage(monkeypatch: pytest.MonkeyPatch) -> None:
     """`--strict-network` turns an unreadable registry into a failure."""
     monkeypatch.setattr(guard, "pypi_attested", lambda *a: (guard.UNKNOWN, "unreachable"))
-    monkeypatch.setattr(guard, "npm_attested", lambda *a: (guard.NO, "404"))
+    # npm answers normally: the outage under test is PyPI's, and a contradictory
+    # npm answer would fail for the wrong reason (the docs claim npm is attested).
+    monkeypatch.setattr(guard, "npm_attested", lambda *a: (guard.YES, "200"))
     monkeypatch.setattr(guard, "npm_dist", lambda *a: (True, "dist.integrity=True"))
     monkeypatch.setattr(guard, "pypi_published_digest", lambda *a: None)
 
-    assert guard.main(["--version", "2.2.1", "--strict-network"]) == 1
-    assert guard.main(["--version", "2.2.1"]) == 0
+    assert guard.main(["--version", "2.2.3", "--strict-network"]) == 1
+    assert guard.main(["--version", "2.2.3"]) == 0
 
 
 def test_decoding_rejects_a_bundle_without_a_subject() -> None:
