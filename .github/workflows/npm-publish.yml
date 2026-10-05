@@ -270,9 +270,25 @@ jobs:
           if npm view "scientific-computing-system@${version}" version >/dev/null 2>&1; then
             echo "::error::scientific-computing-system@${version} is already on npm"
             echo "::error::nothing to do; bump package.json (and the locked version surfaces) to publish again"
+            echo "::error::: read this BEFORE bumping anything ---"
+            echo "::error::npm uses the SAME 404 to mean two different things: a version that is not"
+            echo "::error::published yet, and a caller whose credential is not authorized to see it. An"
+            echo "::error::unregistered trusted publisher is a 404, not a 401/403, because npm will not"
+            echo "::error::tell an unauthenticated caller whether a package exists."
+            echo "::error::A red publish step therefore does NOT by itself mean 'already published'. Do not"
+            echo "::error::burn a release number bumping the version to 'fix' a 404: if the trusted publisher"
+            echo "::error::is unregistered the next version will fail identically, and you will have consumed"
+            echo "::error::a version on both registries for nothing."
             exit 1
           fi
           echo "PASS: scientific-computing-system@${version} is unpublished"
+          # This gate only proves absence. Say so, so its PASS cannot be read as
+          # "and we are authorized to publish it" -- the two are independent and
+          # only the first is tested here.
+          echo "NOTE: absence is all this gate proves. It says nothing about whether this job is"
+          echo "NOTE: authorized to publish: an unregistered trusted publisher also reads as 404. If"
+          echo "NOTE: 'npm publish' below fails with E404, the cause is the publisher registration,"
+          echo "NOTE: not the version."
 
       # Two supported modes, selected by the `use_token_fallback` dispatch input.
       #
@@ -355,9 +371,65 @@ jobs:
           echo "PASS: npm registry auth entry present (value not shown)"
           echo "PASS: the entry references NODE_AUTH_TOKEN by name, not a literal secret"
 
+      # The publish command is unchanged and the step is still fail-closed: a
+      # non-zero npm exit still ends the job with that same exit code. All that is
+      # added is the diagnosis, because npm's bare E404 was ambiguous enough to be
+      # read as a version problem:
+      #
+      #   npm error 404 The requested resource 'scientific-computing-system@2.2.2'
+      #   could not be found or you do not have permission to access it.
+      #
+      # Nothing in that line says which half is true. Observed on runs 37268729425
+      # and 37269325567: the version was genuinely unpublished (the gate above
+      # passed), the tarball built, provenance was signed and submitted to the
+      # Sigstore transparency log, and only then did the PUT 404. An unregistered
+      # trusted publisher is the cause, and "bump the version" would not have
+      # helped.
       - name: Publish to npm (OIDC trusted publishing, with provenance)
         if: ${{ !inputs.use_token_fallback }}
-        run: npm publish --provenance --access public
+        run: |
+          # `-e` is on by default in this shell, so it is explicitly suspended
+          # around npm to capture the exit code instead of aborting before the
+          # log can be inspected.
+          set +e
+          log="${RUNNER_TEMP}/npm-publish.log"
+          npm publish --provenance --access public >"$log" 2>&1
+          status=$?
+          set -e
+          cat "$log"
+
+          if [ "$status" -ne 0 ]; then
+            echo "::error::npm publish failed (exit $status)"
+            if grep -qE 'E404|404 Not Found' "$log"; then
+              echo "::error::: this 404 is NOT a missing package and NOT a wrong version number ---"
+              echo "::error::scientific-computing-system exists on npm, and the gate above just proved"
+              echo "::error::this exact version is absent from it. npm reports an UNAUTHORIZED caller with"
+              echo "::error::the same 404 it uses for 'no such version', so the message cannot tell you"
+              echo "::error::which one you hit. Reading it as a version problem sends you to bump a version"
+              echo "::error::that still cannot publish."
+              echo "::error::If npm signed and submitted provenance above, the OIDC identity was accepted and"
+              echo "::error::the registry rejected the PUT for want of a matching trusted publisher."
+              echo "::error::A rejected or absent TOKEN looks different: 401, or ENEEDAUTH."
+              echo "::error::One-time maintainer fix, not automatable from CI:"
+              echo "::error::  npmjs.com -> package 'scientific-computing-system' -> Settings -> Trusted Publisher"
+              echo "::error::    Organization or user : Furox-Art"
+              echo "::error::    Package             : scientific-computing-system"
+              echo "::error::    Workflow filename   : npm-publish.yml"
+              echo "::error::    Environment name    : npm"
+              echo "::error::    Allowed actions     : npm publish   <-- must be enabled, see below"
+              echo "::error::npm's current UI allows 'npm stage publish' by default for newly created"
+              echo "::error::configurations and makes direct 'npm publish' opt-in. This workflow calls"
+              echo "::error::'npm publish' directly, so registering the publisher WITHOUT also allowing"
+              echo "::error::'npm publish' will still fail -- with a permission error rather than a 404."
+              echo "::error::CLI equivalent, using your own npm login and 2FA:"
+              echo "::error::  npm trust github --file npm-publish.yml \\"
+              echo "::error::    --repo Furox-Art/scientific-computing-system --env npm --allow-publish"
+            else
+              echo "::error::not a 404; see the npm output above for the real cause"
+            fi
+            exit "$status"
+          fi
+          echo "PASS: npm publish returned 0"
 
       - name: Publish to npm (token mode, no provenance)
         if: ${{ inputs.use_token_fallback }}

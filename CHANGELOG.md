@@ -7,6 +7,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Distribution status of 2.2.2 — read this before assuming npm has it
+
+The two registries are **not** in the same state for 2.2.2.
+
+| Registry | `2.2.2` | Build attestation |
+|---|---|---|
+| **PyPI** `scientific-computing-system` | **published** | **PEP 740 provenance present** |
+| **npm** `scientific-computing-system` | **NOT published** | none — the version does not exist on npm |
+
+PyPI 2.2.2 is live and carries a PEP 740 attestation. Verified against the live
+registries on 2026-10-05: the PEP 740 per-file provenance endpoint returns
+**HTTP 200** for both files.
+
+```
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  https://pypi.org/integrity/scientific-computing-system/2.2.2/scientific_computing_system-2.2.2-py3-none-any.whl/provenance   # 200
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  https://pypi.org/integrity/scientific-computing-system/2.2.2/scientific_computing_system-2.2.2.tar.gz/provenance               # 200
+```
+
+npm 2.2.2 does not exist. The published npm versions remain `1.0.0`, `2.2.0` and
+`2.2.1`. Nothing about the npm launcher is broken — the publish is blocked on a
+one-time npmjs.com registration, described next.
+
+### Pending: register the npm trusted publisher (one-time, maintainer, in a browser)
+
+npmjs.com has **no trusted publisher** configured for the package
+`scientific-computing-system`. Until one exists, the OIDC path cannot complete a
+publish, and npm publishes no provenance for this package.
+
+The coordinates to enter on npmjs.com → package `scientific-computing-system` →
+**Settings → Trusted Publisher → GitHub Actions**:
+
+| Field | Value |
+|---|---|
+| Organization or user | `Furox-Art` |
+| Package | `scientific-computing-system` |
+| Workflow filename | `npm-publish.yml` |
+| Environment name | `npm` |
+| Allowed actions | **`npm publish`** — must be enabled, see the warning below |
+
+**The allowed-actions field is not optional in practice.** npm's current UI grants
+`npm stage publish` by default on newly created configurations and makes direct
+`npm publish` **opt-in**. This repository's workflow calls `npm publish` directly,
+so registering the publisher *without* also allowing `npm publish` will leave the
+publish failing — with a permission error this time rather than a 404.
+
+The same registration from the CLI, using the maintainer's own npm login and 2FA:
+
+```
+npm trust github --file npm-publish.yml \
+  --repo Furox-Art/scientific-computing-system --env npm --allow-publish
+```
+
+### The publish mode default is unchanged, and was never set to token
+
+The mode is the `workflow_dispatch` input `use_token_fallback`, whose default is
+`false` — that is **OIDC**. There is no `npm_publish_mode` variable; the repository
+has **no Actions variables at all** (none at repository or organization scope), and
+`npm_publish_mode` appears nowhere in the tree. Nothing needs to be switched back:
+OIDC is already the default, and token mode remains an explicit per-run opt-in.
+
+`NPM_TOKEN` does still exist as a repository secret. It is what token mode would
+use, and it should be deleted once the trusted publisher is registered and the
+first OIDC publish has succeeded.
+
+### Fixed: a 404 from npm no longer reads as "already published"
+
+`npm publish` answered
+
+```
+npm error 404 The requested resource 'scientific-computing-system@2.2.2' could not
+be found or you do not have permission to access it.
+```
+
+on runs 37268729425 and 37269325567, and that single line cannot distinguish the
+two real causes. npm deliberately does not tell an unauthenticated caller whether a
+package exists, so **an unregistered trusted publisher is reported as 404, not as
+401 or 403.**
+
+Two failure surfaces were making that expensive to diagnose, and both now say so
+out loud. Neither changes what the workflow does; both only change what it prints.
+
+- **The publish step** now names the real cause when npm returns 404, states that
+  the package exists and the version is absent, prints the npmjs.com fields above,
+  and calls out the `npm publish` allowed-action requirement. A rejected or absent
+  token looks different (401, or `ENEEDAUTH`), and the step says that too.
+- **The version-existence gate** now warns, at the point where it would otherwise
+  tell someone to bump the version, that a 404 also means "unauthorized". Bumping
+  to escape a 404 consumes a release number on both registries and still will not
+  publish while the publisher is unregistered.
+
+Worth recording precisely: in **both** runs the version gate **passed**. The
+tarball built, provenance was signed and submitted to the Sigstore transparency
+log, and only the `PUT` failed. So both runs did prove the authentication failure,
+and the fix is the registration above — not a version bump.
+
 ## [v2.2.2] - 2026-10-05
 
 Clears the last 17 open CodeQL alerts in this repository. None of them was a
