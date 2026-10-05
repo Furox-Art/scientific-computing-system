@@ -153,7 +153,7 @@ Issues = "https://github.com/Furox-Art/scientific-computing-system/issues"
 Changelog = "https://github.com/Furox-Art/scientific-computing-system/releases"
 
 [build-system]
-requires = ["hatchling==1.31.0"]
+requires = ["hatchling==1.32.4"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
