@@ -37,8 +37,10 @@ name: npm Publish
 # cannot work or pretending an attestation was produced.
 #
 # Both modes are fail-closed. A requested mode with no usable credential exits 1
-# with an actionable message. Token mode never runs automatically, so a broken
-# OIDC configuration cannot silently downgrade to the long-lived credential.
+# with an actionable message. The automatic release-tag path deliberately uses
+# the repository's verified NPM_TOKEN until npm Trusted Publishing is registered.
+# Manual workflow_dispatch runs still default to OIDC so that path can be tested
+# and adopted later without changing the release topology.
 
 on:
   workflow_dispatch:
@@ -53,21 +55,11 @@ on:
         type: boolean
         default: false
   push:
-    # `branches` and `tags` in one `push` mapping are OR'd by GitHub.
-    #
-    # The `v*` tag is the release path: release.yml creates the tag only after
-    # the PyPI publish has succeeded, so a single version bump reaches PyPI
-    # first and npm second. `paths` narrows *branch* pushes so unrelated merges
-    # do not run this job; GitHub does not evaluate `paths` against tag pushes.
-    branches: [main]
+    # release.yml creates the version tag only after the PyPI release succeeds.
+    # Publishing npm from that tag gives one version bump exactly one automatic
+    # npm run, avoiding the previous branch-push + tag-push duplicate race.
     tags:
       - "v*"
-    paths:
-      - "package.json"
-      - "index.js"
-      - "bin/**"
-      - "npm.test.js"
-      - ".github/workflows/npm-publish.yml"
 
 concurrency:
   group: npm-publish
@@ -325,14 +317,20 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
-          if [ "${{ inputs.use_token_fallback }}" = "true" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            requested_token="${{ inputs.use_token_fallback }}"
+          else
+            requested_token="true"
+          fi
+
+          if [ "$requested_token" = "true" ]; then
             if [ -z "${NPM_TOKEN:-}" ]; then
-              echo "::error::token mode was requested (use_token_fallback=true) but the NPM_TOKEN secret is empty or unset"
-              echo "::error::add an npm automation token as the NPM_TOKEN secret, or re-run without use_token_fallback once the npmjs.com trusted publisher is registered"
+              echo "::error::token mode was requested but the NPM_TOKEN secret is empty or unset"
+              echo "::error::add an npm automation token as the NPM_TOKEN secret, or use a manual OIDC dispatch after registering the npm trusted publisher"
               exit 1
             fi
             echo "mode=token via NPM_TOKEN (no provenance: a long-lived token cannot mint a Sigstore attestation)"
-            echo "::warning::Publishing with NPM_TOKEN instead of OIDC. Register the npmjs.com trusted publisher and delete NPM_TOKEN once this release is out."
+            echo "::warning::Automatic release-tag publishing uses NPM_TOKEN until npm Trusted Publishing is registered."
           else
             if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
               echo "::error::OIDC mode was requested but this job cannot mint an OIDC token"
@@ -386,7 +384,7 @@ jobs:
       # trusted publisher is the cause, and "bump the version" would not have
       # helped.
       - name: Publish to npm (OIDC trusted publishing, with provenance)
-        if: ${{ !inputs.use_token_fallback }}
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.use_token_fallback }}
         run: |
           # `-e` is on by default in this shell, so it is explicitly suspended
           # around npm to capture the exit code instead of aborting before the
@@ -432,7 +430,7 @@ jobs:
           echo "PASS: npm publish returned 0"
 
       - name: Publish to npm (token mode, no provenance)
-        if: ${{ inputs.use_token_fallback }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.use_token_fallback }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
