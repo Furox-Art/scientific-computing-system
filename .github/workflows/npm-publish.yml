@@ -53,21 +53,11 @@ on:
         type: boolean
         default: false
   push:
-    # `branches` and `tags` in one `push` mapping are OR'd by GitHub.
-    #
-    # The `v*` tag is the release path: release.yml creates the tag only after
-    # the PyPI publish has succeeded, so a single version bump reaches PyPI
-    # first and npm second. `paths` narrows *branch* pushes so unrelated merges
-    # do not run this job; GitHub does not evaluate `paths` against tag pushes.
-    branches: [main]
+    # release.yml creates v* only after PyPI succeeds. Publishing npm from that
+    # tag gives one automatic npm attempt per release and prevents the earlier
+    # duplicate main-push + tag-push race against the same immutable version.
     tags:
       - "v*"
-    paths:
-      - "package.json"
-      - "index.js"
-      - "bin/**"
-      - "npm.test.js"
-      - ".github/workflows/npm-publish.yml"
 
 concurrency:
   group: npm-publish
