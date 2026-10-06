@@ -563,8 +563,10 @@ test('a missing credential exits before any publish step can run', () => {
     'the preflight must check OIDC availability for OIDC mode',
   );
   assert.ok(
-    /if \[ "\$\{\{ inputs\.use_token_fallback \}\}" = "true" \]; then/.test(preflightBlock),
-    'the preflight must branch on the use_token_fallback input',
+    /github\.event_name/.test(preflightBlock) &&
+      /requested_token/.test(preflightBlock) &&
+      /inputs\.use_token_fallback/.test(preflightBlock),
+    'the preflight must select token mode automatically for tag pushes and honor the manual input',
   );
 
   // Exactly two `exit 1`s: one per mode. Each failing branch must terminate
