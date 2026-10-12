@@ -104,6 +104,14 @@ tarball built, provenance was signed and submitted to the Sigstore transparency
 log, and only the `PUT` failed. So both runs did prove the authentication failure,
 and the fix is the registration above — not a version bump.
 
+## [v2.2.4] - 2026-10-12
+
+### Housekeeping — release alignment
+
+- Publishes the post-2.2.3 repository state (single-shot automatic npm
+  publishing, #165) to PyPI and npm: the 2.2.3 upload predates that commit, so
+  both registries were one commit behind `main`. No behavioural change.
+
 ## [v2.2.3] - 2026-10-05
 
 This release exists to exercise the OIDC trusted-publish path, now that the
