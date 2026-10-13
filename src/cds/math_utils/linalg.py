@@ -99,10 +99,17 @@ def mat_mul(a: Matrix, b: Matrix) -> Matrix:
 
 
 def transpose(m: Matrix) -> Matrix:
-    """Return the transpose of a 2-D matrix (rows <-> columns)."""
+    """Return the transpose of a 2-D matrix (rows <-> columns).
+
+    Ragged input used to be silently flattened to the leading row's width
+    (``[[1.0],[2.0,3.0]]`` became ``[[1.0, 2.0]]``): row 1's second entry
+    vanished and the result described a matrix nobody supplied. The shape
+    check is the same one mat_mul and Cholesky use.
+    """
     if not m:
         return []
-    return [[m[i][j] for i in range(len(m))] for j in range(len(m[0]))]
+    rows, cols = _require_rectangular(m, "matrix")
+    return [[m[i][j] for i in range(rows)] for j in range(cols)]
 
 
 def determinant(m: Matrix) -> float:

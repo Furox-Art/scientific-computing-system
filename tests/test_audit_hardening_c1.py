@@ -12,6 +12,7 @@ import math
 import pytest
 
 from cds.math_utils.linalg import Matrix, mat_mul, transpose
+from cds.probability.distributions import geometric_pmf
 
 
 def _reference_product(a: Matrix, b: Matrix) -> Matrix:
@@ -160,3 +161,40 @@ class TestMatMulTransposedProducts:
         assert mat_mul(a, eye) == a
         assert mat_mul(eye, a) == a
         assert mat_mul(transpose(a), a) == _reference_product(transpose(a), a)
+
+
+# --- second-round sweep: neighbouring shapes of the same defect class --------
+#
+# mat_mul and Cholesky reject ragged input since 2.2.5. transpose did not: it
+# indexed only the leading row's width, so a short row lost entries without a
+# sound. This pins the same contract for the remaining matrix entry point,
+# and for the geometric PMF's k=0 boundary.
+
+
+def test_transpose_rejects_ragged_matrix() -> None:
+    with pytest.raises(ValueError, match="ragged"):
+        transpose([[1.0], [2.0, 3.0]])
+
+
+def test_transpose_empty_matrix_returns_empty() -> None:
+    assert transpose([]) == []
+
+
+def test_transpose_rectangular_matrix() -> None:
+    assert transpose([[1.0, 2.0, 3.0]]) == [[1.0], [2.0], [3.0]]
+
+
+def test_transpose_preserves_all_entries() -> None:
+    matrix = [[1.0, 2.0], [3.0, 4.0]]
+    assert transpose(matrix) == [[1.0, 3.0], [2.0, 4.0]]
+
+
+def test_geometric_pmf_zero_trials_is_zero() -> None:
+    # k counts 1-based trials; k=0 has no trial and must be zero.
+    assert geometric_pmf(0, 0.5) == 0.0
+
+
+def test_geometric_pmf_extreme_probability_does_not_overflow() -> None:
+    value = geometric_pmf(5000, 0.001)
+    assert 0.0 < value < 1.0
+    assert math.isfinite(value)
