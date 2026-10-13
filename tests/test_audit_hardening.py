@@ -39,7 +39,7 @@ def test_measure_uses_private_reproducible_randomness() -> None:
 @pytest.mark.parametrize("shots", [True, 0, -1, cast(int, 1.5)])
 def test_simulate_rejects_invalid_shot_counts(shots: int) -> None:
     with pytest.raises(ValueError, match="positive integer"):
-        simulate(QuantumCircuit().add(hadamard()), shots=shots, seed=1)
+        simulate(QuantumCircuit().add(hadamard()), shots=shots, seed=7920)
 
 
 def test_profile_file_respects_hard_memory_budget(tmp_path: Path) -> None:

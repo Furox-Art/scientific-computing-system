@@ -207,7 +207,7 @@ def test_gaussian_sample_seed() -> None:
     from cds.probability.distributions import gaussian_sample
     from cds.stats import mean
 
-    s = gaussian_sample(200, mu=5.0, sigma=1.0, seed=42)
+    s = gaussian_sample(200, mu=5.0, sigma=1.0, seed=7961)
     assert len(s) == 200
     assert abs(mean(s) - 5.0) < 0.3
 
@@ -222,7 +222,7 @@ def test_exponential_sample_positive() -> None:
 def test_poisson_sample_nonneg() -> None:
     from cds.probability.distributions import poisson_sample
 
-    s = poisson_sample(30, lam=3.0, seed=7)
+    s = poisson_sample(30, lam=3.0, seed=7926)
     assert all(v >= 0 for v in s)
     assert poisson_sample(3, lam=0.0, seed=0) == [0, 0, 0]
 

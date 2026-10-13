@@ -23,11 +23,11 @@ class TestEstimatePi:
         assert abs(result.estimate - math.pi) < 0.1
 
     def test_standard_error_positive(self) -> None:
-        result = estimate_pi(n_samples=1000, seed=42)
+        result = estimate_pi(n_samples=1000, seed=7961)
         assert result.std_error > 0
 
     def test_samples_recorded(self) -> None:
-        result = estimate_pi(n_samples=500, seed=42)
+        result = estimate_pi(n_samples=500, seed=15880)
         assert result.samples == 500
 
     def test_reproducible_with_seed(self) -> None:
@@ -51,15 +51,15 @@ class TestEstimatePi:
 
 class TestMCIntegrate:
     def test_integrate_x_squared(self) -> None:
-        result = mc_integrate(lambda x: x**2, 0, 1, n_samples=50_000, seed=42)
+        result = mc_integrate(lambda x: x**2, 0, 1, n_samples=50_000, seed=23799)
         assert abs(result.estimate - 1 / 3) < 0.02
 
     def test_integrate_sine(self) -> None:
-        result = mc_integrate(math.sin, 0, math.pi, n_samples=50_000, seed=42)
+        result = mc_integrate(math.sin, 0, math.pi, n_samples=50_000, seed=31718)
         assert abs(result.estimate - 2.0) < 0.1
 
     def test_standard_error(self) -> None:
-        result = mc_integrate(lambda x: x, 0, 1, n_samples=10_000, seed=42)
+        result = mc_integrate(lambda x: x, 0, 1, n_samples=10_000, seed=39637)
         assert result.std_error > 0
 
     def test_reversed_and_zero_width_intervals(self) -> None:
@@ -89,7 +89,7 @@ class TestMCIntegrate:
 
     def test_rejects_overflowed_integral_and_standard_error(self) -> None:
         with pytest.raises(ArithmeticError, match="integral became non-finite"):
-            mc_integrate(lambda _x: 1e154, 0.0, 1e155, n_samples=1, seed=1)
+            mc_integrate(lambda _x: 1e154, 0.0, 1e155, n_samples=1, seed=7920)
 
         with mock.patch("cds.montecarlo.methods.random.Random.random", side_effect=[0.25, 0.75]):
             with pytest.raises(ArithmeticError, match="standard error"):
@@ -103,15 +103,15 @@ class TestMCIntegrate:
 
 class TestRandomWalk1D:
     def test_starts_at_zero(self) -> None:
-        walk = random_walk_1d(10, seed=42)
+        walk = random_walk_1d(10, seed=47556)
         assert walk[0] == 0.0
 
     def test_correct_length(self) -> None:
-        walk = random_walk_1d(100, seed=42)
+        walk = random_walk_1d(100, seed=55475)
         assert len(walk) == 101
 
     def test_step_size(self) -> None:
-        walk = random_walk_1d(1, step_size=2.5, seed=42)
+        walk = random_walk_1d(1, step_size=2.5, seed=63394)
         assert abs(walk[1]) == 2.5
 
     def test_reproducible(self) -> None:
@@ -135,15 +135,15 @@ class TestRandomWalk1D:
 
 class TestRandomWalk2D:
     def test_starts_at_origin(self) -> None:
-        walk = random_walk_2d(10, seed=42)
+        walk = random_walk_2d(10, seed=71313)
         assert walk[0] == (0.0, 0.0)
 
     def test_correct_length(self) -> None:
-        walk = random_walk_2d(50, seed=42)
+        walk = random_walk_2d(50, seed=55475)
         assert len(walk) == 51
 
     def test_step_distance(self) -> None:
-        walk = random_walk_2d(1, step_size=1.0, seed=42)
+        walk = random_walk_2d(1, step_size=1.0, seed=79232)
         x, y = walk[1]
         dist = math.hypot(x, y)
         assert abs(dist - 1.0) < 1e-10
@@ -166,7 +166,7 @@ class TestBuffonNeedle:
             needle_length=1.0,
             line_spacing=2.0,
             n_throws=50_000,
-            seed=42,
+            seed=87151,
         )
         assert abs(result.estimate - math.pi) < 0.2
 
@@ -175,8 +175,8 @@ class TestBuffonNeedle:
             buffon_needle(needle_length=3.0, line_spacing=2.0)
 
     def test_reproducible(self) -> None:
-        r1 = buffon_needle(n_throws=1000, seed=42)
-        r2 = buffon_needle(n_throws=1000, seed=42)
+        r1 = buffon_needle(n_throws=1000, seed=95070)
+        r2 = buffon_needle(n_throws=1000, seed=95070)
         assert r1.estimate == r2.estimate
 
     def test_validation_and_zero_crossing_estimator(self) -> None:
@@ -191,11 +191,11 @@ class TestBuffonNeedle:
         with pytest.raises(ValueError, match="must be positive"):
             buffon_needle(needle_length=1.0, line_spacing=0.0)
         with pytest.raises(ArithmeticError, match="zero crossings"):
-            buffon_needle(needle_length=1e-300, line_spacing=1.0, n_throws=1, seed=1)
+            buffon_needle(needle_length=1e-300, line_spacing=1.0, n_throws=1, seed=15839)
 
 
 def test_mc_expectation() -> None:
-    r = mc_expectation(lambda x: x, n_samples=20_000, a=0.0, b=1.0, seed=1)
+    r = mc_expectation(lambda x: x, n_samples=20_000, a=0.0, b=1.0, seed=23758)
     assert abs(r.estimate - 0.5) < 0.05
 
 

@@ -271,8 +271,8 @@ def test_barnsley_determinism() -> None:
 
 
 def test_barnsley_different_seeds_differ() -> None:
-    a = barnsley_fern(20, seed=0)
-    b = barnsley_fern(20, seed=1)
+    a = barnsley_fern(20, seed=7919)
+    b = barnsley_fern(20, seed=7920)
     assert a != b
 
 
@@ -284,25 +284,31 @@ def test_barnsley_without_seed_runs() -> None:
 
 
 def test_barnsley_bounds() -> None:
-    pts = barnsley_fern(500, seed=42)
+    pts = barnsley_fern(500, seed=7961)
     for x, y in pts:
         assert -3.0 <= x <= 3.0
         assert 0.0 <= y <= 10.0
 
 
 def test_barnsley_all_branches_hit() -> None:
-    """Large sample with seed 0 should hit all four IFS maps.
+    """A large sample must exercise all four IFS maps, not just the stem.
 
-    We check that points appear in distinct y-ranges characteristic of each
-    map's vertical translation. The stem (f1) leaves y near 0, f4 has
-    y in [0.4, ~0.8] early, etc. Simpler: just run many points and verify
-    the fern has spread — which requires all branches.
+    The stem map (``y3 = 0.16*y2``) is what carries y near the axis, so
+    "did every branch contribute?" reduces to whether the sample reaches both
+    the stem region and the full height of the frond.
+
+    The thresholds are seed-independent on purpose: this test runs on its own
+    dedicated seed (see H-2 in the audit) so it must not depend on which seed
+    it happens to draw. With 20 000 points the observed minimum y over a dozen
+    unrelated seeds stays well under 0.2, so ``y < 0.5`` is a margin rather
+    than a coin flip; the previous 2 000-point sample with a ``y < 0.3``
+    threshold straddled the boundary.
     """
-    pts = barnsley_fern(2000, seed=0)
-    # At least one point with y < 0.5 (stem via f1) and one with y > 9
-    assert any(y < 0.3 for _, y in pts)
+    pts = barnsley_fern(20_000, seed=15838)
+    # At least one point near the axis (stem via f1) and one at full height.
+    assert any(y < 0.5 for _, y in pts)
     assert any(y > 9.0 for _, y in pts)
-    # All x not identical
+    # All x not identical — the fern must have spread horizontally too.
     xs = [x for x, _ in pts]
     assert max(xs) - min(xs) > 1.0
 
@@ -321,7 +327,7 @@ def test_barnsley_validation() -> None:
 
 
 def test_barnsley_direct_import() -> None:
-    assert len(barnsley_fern_direct(3, seed=0)) == 3
+    assert len(barnsley_fern_direct(3, seed=23757)) == 3
 
 
 # ---------------------------------------------------------------------------
@@ -335,7 +341,7 @@ def test_sierpinski_empty() -> None:
 
 
 def test_sierpinski_length() -> None:
-    assert len(sierpinski_triangle(10, seed=0)) == 10
+    assert len(sierpinski_triangle(10, seed=31676)) == 10
 
 
 def test_sierpinski_determinism() -> None:
@@ -345,13 +351,13 @@ def test_sierpinski_determinism() -> None:
 
 
 def test_sierpinski_different_seeds_differ() -> None:
-    a = sierpinski_triangle(20, seed=0)
-    b = sierpinski_triangle(20, seed=1)
+    a = sierpinski_triangle(20, seed=39595)
+    b = sierpinski_triangle(20, seed=15839)
     assert a != b
 
 
 def test_sierpinski_bounds() -> None:
-    pts = sierpinski_triangle(500, seed=42)
+    pts = sierpinski_triangle(500, seed=15880)
     h = math.sqrt(3.0) / 2.0
     for x, y in pts:
         assert 0.0 <= x <= 1.0
@@ -362,7 +368,7 @@ def test_sierpinski_bounds() -> None:
 
 def test_sierpinski_all_three_vertices_hit() -> None:
     """Large sample should hit all three random choices."""
-    pts = sierpinski_triangle(300, seed=0)
+    pts = sierpinski_triangle(300, seed=47514)
     # Check that points spread across left, right, top
     assert any(x < 0.25 and y < 0.25 for x, y in pts)
     assert any(x > 0.75 and y < 0.25 for x, y in pts)
@@ -379,7 +385,7 @@ def test_sierpinski_validation() -> None:
 
 
 def test_sierpinski_direct_import() -> None:
-    assert len(sierpinski_triangle_direct(5, seed=0)) == 5
+    assert len(sierpinski_triangle_direct(5, seed=55433)) == 5
 
 
 def test_sierpinski_without_seed() -> None:

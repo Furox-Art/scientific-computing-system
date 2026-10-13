@@ -61,7 +61,7 @@ def test_mc_expectation_rejects_nonfinite_standard_error(
     # The ninth check validates the final standard error.
     _fail_isfinite_on_call(monkeypatch, montecarlo_methods, 9)
     with pytest.raises(ArithmeticError, match="Monte Carlo standard error became non-finite"):
-        montecarlo_methods.mc_expectation(lambda _x: 1.0, n_samples=1, seed=0)
+        montecarlo_methods.mc_expectation(lambda _x: 1.0, n_samples=1, seed=7919)
 
 
 def test_hit_or_miss_rejects_nonfinite_final_estimate(
@@ -76,7 +76,7 @@ def test_hit_or_miss_rejects_nonfinite_final_estimate(
             (0.0, 1.0),
             (0.0, 1.0),
             n_samples=1,
-            seed=0,
+            seed=15838,
         )
 
 
@@ -111,5 +111,5 @@ def test_measure_shots_falls_back_to_final_basis_state_on_roundoff(
         lambda _seed=None: BoundaryRandom(),
     )
 
-    counts = register.measure_shots(shots=1, seed=0)
+    counts = register.measure_shots(shots=1, seed=23757)
     assert counts == {"11": 1}
