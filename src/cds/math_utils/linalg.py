@@ -536,8 +536,7 @@ def _require_square_finite(m: Matrix, name: str = "matrix") -> int:
     for row_index, row in enumerate(m):
         if len(row) != width:
             raise ValueError(
-                f"{name} is ragged: row 0 has {width} column(s) but row "
-                f"{row_index} has {len(row)}"
+                f"{name} is ragged: row 0 has {width} column(s) but row {row_index} has {len(row)}"
             )
         for column_index, value in enumerate(row):
             if not math.isfinite(value):

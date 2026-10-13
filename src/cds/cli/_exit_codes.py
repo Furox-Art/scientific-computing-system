@@ -55,9 +55,7 @@ EXIT_CODES: dict[int, str] = {
 #: The set of codes a subcommand handler may return. ``EXIT_USAGE`` is produced
 #: by :func:`argparse.ArgumentParser.parse_args` before any handler runs, so it
 #: is not in a handler's reach and is listed for documentation only.
-_HANDLER_CODES = frozenset(
-    {EXIT_OK, EXIT_ERROR, EXIT_MISSING_DEPENDENCY}
-)
+_HANDLER_CODES = frozenset({EXIT_OK, EXIT_ERROR, EXIT_MISSING_DEPENDENCY})
 
 
 def describe(code: int) -> str:

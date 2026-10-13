@@ -121,8 +121,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         args = parser.parse_args(argv)
     except SystemExit as exc:
         # ``--help`` exits 0; a rejected command line exits EXIT_USAGE (2),
-        # which is argparse's own usage-error code.
-        return EXIT_OK if exc.code in (0, None) else int(exc.code)
+        # which is argparse's own usage-error code. A non-integer code (a
+        # string message or None) is treated as success, which is what
+        # ``sys.exit()`` with no argument does.
+        if exc.code is None or isinstance(exc.code, int) and exc.code == EXIT_OK:
+            return EXIT_OK
+        return int(exc.code) if isinstance(exc.code, int) else EXIT_OK
 
     if args.version:
         from cds import __version__

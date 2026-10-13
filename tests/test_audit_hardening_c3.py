@@ -14,6 +14,7 @@ differently-named object cannot satisfy them.
 from __future__ import annotations
 
 import importlib
+from types import ModuleType
 
 import pytest
 
@@ -54,13 +55,13 @@ class TestLazySubpackageExposure:
         root = Path(__file__).resolve().parents[1]
         script = (
             "import cds, sys\n"
-            "name = %r\n"
+            f"name = {module_name!r}\n"
             "qualified = 'cds.' + name\n"
             "print(name in vars(cds), qualified in sys.modules)\n"
             "getattr(cds, name)\n"
             "print(name in vars(cds), qualified in sys.modules)\n"
             "print(getattr(cds, name) is getattr(cds, name))\n"
-        ) % module_name
+        )
         env = dict(os.environ)
         env["PYTHONPATH"] = str(root / "src")
         completed = subprocess.run(
@@ -81,9 +82,7 @@ class TestLazySubpackageExposure:
         assert lines[2] == "True"
 
     @pytest.mark.parametrize("module_name", DOCUMENTED_MODULES)
-    def test_documented_public_api_is_reachable(
-        self, module_name: str
-    ) -> None:
+    def test_documented_public_api_is_reachable(self, module_name: str) -> None:
         """Each module's ``__all__`` resolves through the ``cds.<name>`` attribute."""
         module = getattr(cds, module_name)
         declared = list(getattr(module, "__all__", ()))
@@ -94,13 +93,14 @@ class TestLazySubpackageExposure:
     @pytest.mark.parametrize("module_name", DOCUMENTED_MODULES)
     def test_from_import_and_star_import(self, module_name: str) -> None:
         """``from cds import <name>`` and ``from cds import *`` both expose it."""
-        namespace: dict[str, object] = {}
+        namespace: dict[str, ModuleType] = {}
         exec(f"from cds import {module_name}", namespace)  # noqa: S102
-        assert namespace[module_name].__name__ == f"cds.{module_name}"  # type: ignore[union-attr]
+        assert namespace[module_name].__name__ == f"cds.{module_name}"
 
-        star_namespace: dict[str, object] = {}
+        star_namespace: dict[str, ModuleType] = {}
         exec("from cds import *", star_namespace)  # noqa: S102
         assert module_name in star_namespace
+        assert star_namespace[module_name].__name__ == f"cds.{module_name}"
         assert module_name in cds.__all__
 
     def test_unknown_attribute_still_raises(self) -> None:
@@ -145,7 +145,8 @@ class TestDocumentedValues:
 
     def test_pde_wave_amplitude_stays_bounded(self) -> None:
         pde = cds.pde
-        result = pde.solve_wave([0.0, 1.0, 0.0], [0.0, 0.0, 0.0], c=1.0, length=1.0,
-                                t_final=0.05, nx=3)
+        result = pde.solve_wave(
+            [0.0, 1.0, 0.0], [0.0, 0.0, 0.0], c=1.0, length=1.0, t_final=0.05, nx=3
+        )
         assert len(result.u_final) == 3
         assert all(abs(value) <= 1.0 + 1e-9 for value in result.u_final)

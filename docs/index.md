@@ -141,7 +141,8 @@ Every module in the table is reachable as `cds.<name>`:
 
 ```python
 import cds
-cds.pde          # attribute access works
+
+cds.pde  # attribute access works
 cds.interpolate  # so does this
 from cds.pde import solve_heat  # and the direct import
 ```

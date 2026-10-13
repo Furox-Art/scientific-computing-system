@@ -31,9 +31,7 @@ _SPD_LOWER: Matrix = [[2.0, 0.0, 0.0], [6.0, 1.0, 0.0], [-8.0, 5.0, 3.0]]
 
 def _max_err(a: Matrix, b: Matrix) -> float:
     """Largest absolute entrywise difference between two equal-shaped matrices."""
-    return max(
-        abs(a[i][j] - b[i][j]) for i in range(len(a)) for j in range(len(a[0]))
-    )
+    return max(abs(a[i][j] - b[i][j]) for i in range(len(a)) for j in range(len(a[0])))
 
 
 class TestCholeskyStillWorks:
@@ -141,12 +139,12 @@ class TestCholeskyNonPositiveDefinite:
     @pytest.mark.parametrize(
         "matrix",
         [
-            [[1.0, 2.0], [2.0, 1.0]],        # eigenvalues +3, -1
-            [[-1.0, 0.0], [0.0, -1.0]],     # negative definite
-            [[2.0, 4.0], [4.0, 2.0]],       # eigenvalues +6, -2
-            [[1.0, 1.0], [1.0, 1.0]],       # positive *semi*-definite / singular
-            [[0.0, 0.0], [0.0, 0.0]],       # zero matrix
-            [[-9.0]],                        # 1x1 negative
+            [[1.0, 2.0], [2.0, 1.0]],  # eigenvalues +3, -1
+            [[-1.0, 0.0], [0.0, -1.0]],  # negative definite
+            [[2.0, 4.0], [4.0, 2.0]],  # eigenvalues +6, -2
+            [[1.0, 1.0], [1.0, 1.0]],  # positive *semi*-definite / singular
+            [[0.0, 0.0], [0.0, 0.0]],  # zero matrix
+            [[-9.0]],  # 1x1 negative
             [
                 [1.0, 2.0, 3.0],
                 [2.0, 1.0, 4.0],

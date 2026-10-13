@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import ast
 import math
+from collections.abc import Callable
 from pathlib import Path
 
 TESTS_DIR = Path(__file__).resolve().parent
@@ -93,9 +94,7 @@ def test_seed_values_are_plain_non_negative_integers() -> None:
     """A negative or boolean seed is never what a test means, and hides typos."""
     for path in sorted(TESTS_DIR.glob("*.py")):
         for function_name, seed, line in _seed_sites(path):
-            assert seed >= 0, (
-                f"{path.name}:{line} uses negative seed {seed} in {function_name}"
-            )
+            assert seed >= 0, f"{path.name}:{line} uses negative seed {seed} in {function_name}"
 
 
 # ---------------------------------------------------------------------------
@@ -119,13 +118,20 @@ def test_seeded_generators_reproduce_exactly() -> None:
         uniform_sample,
     )
 
-    normal_log_pdf = lambda x: -0.5 * x * x  # noqa: E731 - density, not a test
-    seeded_calls = [
+    def normal_log_pdf(x: float) -> float:
+        """Unnormalised standard normal log-density."""
+        return -0.5 * x * x
+
+    # (name, callable) — each closes over its own dedicated seed.
+    seeded_calls: list[tuple[str, Callable[[], object]]] = [
         ("barnsley_fern", lambda: barnsley_fern(50, seed=7919)),
         ("sierpinski_triangle", lambda: sierpinski_triangle(50, seed=7920)),
         ("estimate_pi", lambda: estimate_pi(n_samples=2_000, seed=7921)),
         ("mc_integrate", lambda: mc_integrate(lambda x: x, 0.0, 1.0, n_samples=500, seed=7922)),
-        ("metropolis_hastings", lambda: metropolis_hastings(normal_log_pdf, 0.0, n_samples=50, seed=7923)),
+        (
+            "metropolis_hastings",
+            lambda: metropolis_hastings(normal_log_pdf, 0.0, n_samples=50, seed=7923),
+        ),
         ("uniform_sample", lambda: uniform_sample(0, 1, 20, seed=7924)),
         ("gaussian_sample", lambda: gaussian_sample(20, seed=7925)),
         ("exponential_sample", lambda: exponential_sample(20, lam=2.0, seed=7926)),
@@ -133,9 +139,7 @@ def test_seeded_generators_reproduce_exactly() -> None:
     ]
 
     for name, call in seeded_calls:
-        first = call()
-        second = call()
-        assert first == second, f"{name} is not reproducible under a fixed seed"
+        assert call() == call(), f"{name} is not reproducible under a fixed seed"
 
     # A different seed must actually give a different stream, otherwise
     # "reproducible" would only mean "constant", which is also a defect.

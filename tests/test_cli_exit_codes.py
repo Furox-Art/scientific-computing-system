@@ -48,13 +48,12 @@ class TestDocumentedCodes:
         assert describe(EXIT_USAGE).startswith("command line was rejected")
         assert describe(EXIT_MISSING_DEPENDENCY).startswith("command needs an optional extra")
 
-    def test_describe_rejects_undocumented_codes(self) -> None:
-        """An unlisted status must not read as a passing one."""
+    def test_describe_rejects_non_integers(self) -> None:
+        """``bool`` is an ``int`` subclass in Python, but not an exit code."""
         assert "undocumented" in describe(99)
-        with pytest.raises(TypeError):
-            describe(True)  # type: ignore[arg-type]
-        with pytest.raises(TypeError):
-            describe("0")  # type: ignore[arg-type]
+        for not_a_code in (True, False, "0", 1.0, None):
+            with pytest.raises(TypeError):
+                describe(not_a_code)  # type: ignore[arg-type]
 
     def test_handler_codes_are_a_subset_of_the_documented_set(self) -> None:
         for code in (EXIT_OK, EXIT_ERROR, EXIT_MISSING_DEPENDENCY):
@@ -101,9 +100,7 @@ class TestSuccessContract:
 class TestFailureContract:
     """Each failure class maps to its own documented code."""
 
-    def test_malformed_values_map_to_exit_error(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_malformed_values_map_to_exit_error(self, capsys: pytest.CaptureFixture[str]) -> None:
         """A comma-separated list that is not numbers: bad input, exit 1."""
         assert main(["stats", "1,x,3"]) == EXIT_ERROR
         assert "Error" in capsys.readouterr().out
@@ -124,9 +121,7 @@ class TestFailureContract:
         assert main(["integrate", "sin", "-n", "0"]) == EXIT_ERROR
         capsys.readouterr()
 
-    def test_unknown_choice_maps_to_exit_usage(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_unknown_choice_maps_to_exit_usage(self, capsys: pytest.CaptureFixture[str]) -> None:
         """argparse rejected the command line, so the code is argparse's."""
         assert main(["sample", "no-such-distribution"]) == EXIT_USAGE
         capsys.readouterr()
@@ -199,15 +194,11 @@ class TestFailureContract:
         assert main(["dashboard"]) == EXIT_ERROR
         assert "status 7" in capsys.readouterr().out
 
-    def test_bad_plot_values_map_to_exit_error(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_bad_plot_values_map_to_exit_error(self, capsys: pytest.CaptureFixture[str]) -> None:
         assert main(["plot", "oops"]) == EXIT_ERROR
         capsys.readouterr()
 
-    def test_ascii_hist_kind_maps_to_exit_error(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_ascii_hist_kind_maps_to_exit_error(self, capsys: pytest.CaptureFixture[str]) -> None:
         assert main(["plot", "1,2,3", "--kind", "hist"]) == EXIT_ERROR
         assert "--kind series" in capsys.readouterr().out
 

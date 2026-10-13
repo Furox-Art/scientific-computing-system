@@ -52,9 +52,7 @@ class TestPoissonPmfExtremes:
     def test_small_lambda_values_unchanged(self, lam: float) -> None:
         """Legacy values keep the documented relative accuracy."""
         for k in range(0, 40):
-            assert poisson_pmf(k, lam) == pytest.approx(
-                math.exp(_log_poisson(k, lam)), rel=1e-12
-            )
+            assert poisson_pmf(k, lam) == pytest.approx(math.exp(_log_poisson(k, lam)), rel=1e-12)
 
     def test_support_edges_are_exact(self) -> None:
         """Documented integer semantics: negative k is 0, Poisson(0) is a point mass."""

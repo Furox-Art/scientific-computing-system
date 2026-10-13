@@ -133,12 +133,8 @@ def binomial_pmf(k: int, n: int, p: float) -> float:
         return 1.0 if k == 0 else 0.0
     if p == 1.0:
         return 1.0 if k == n else 0.0
-    log_coefficient = (
-        _log_factorial(n) - _log_factorial(k) - _log_factorial(n - k)
-    )
-    log_probability = (
-        log_coefficient + k * math.log(p) + (n - k) * math.log1p(-p)
-    )
+    log_coefficient = _log_factorial(n) - _log_factorial(k) - _log_factorial(n - k)
+    log_probability = log_coefficient + k * math.log(p) + (n - k) * math.log1p(-p)
     return _exp_or_zero(log_probability)
 
 

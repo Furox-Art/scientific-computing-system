@@ -18,10 +18,7 @@ def _reference_product(a: Matrix, b: Matrix) -> Matrix:
     """Independent index-based ``A * B`` used as the oracle."""
     rows, shared, cols = len(a), len(b), len(b[0])
     return [
-        [
-            math.fsum(a[i][k] * b[k][j] for k in range(shared))
-            for j in range(cols)
-        ]
+        [math.fsum(a[i][k] * b[k][j] for k in range(shared)) for j in range(cols)]
         for i in range(rows)
     ]
 
@@ -87,8 +84,9 @@ class TestMatMulShapeHardening:
     def test_reported_shape_uses_every_row(self) -> None:
         """The error message names the true operand shapes."""
         with pytest.raises(ValueError, match=r"2x4 and 3x2"):
-            mat_mul([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]],
-                    [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+            mat_mul(
+                [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]], [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]
+            )
 
 
 class TestMatMulTransposedProducts:

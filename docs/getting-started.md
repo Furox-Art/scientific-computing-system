@@ -85,10 +85,10 @@ statuses instead of comparing against bare integers.
 ```python
 from cds.cli import EXIT_ERROR, EXIT_MISSING_DEPENDENCY, describe, main
 
-describe(1)   # 'command was understood but could not be carried out'
-main(["stats", "1,x,3"])              # 1  — bad values
-main(["sample", "no-such-dist"])      # 2  — argparse rejected it
-main(["dashboard"])                   # 3  — streamlit absent
+describe(1)  # 'command was understood but could not be carried out'
+main(["stats", "1,x,3"])  # 1  — bad values
+main(["sample", "no-such-dist"])  # 2  — argparse rejected it
+main(["dashboard"])  # 3  — streamlit absent
 ```
 
 ### Python API
