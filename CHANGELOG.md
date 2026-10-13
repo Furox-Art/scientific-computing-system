@@ -5,7 +5,23 @@ All notable changes to **scientific-computing-system** will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.6] - 2026-10-13
+
+### Housekeeping — second-round neighbour sweep
+
+- `transpose` shares the ragged-input contract the rest of the matrix API has
+  held since 2.2.5. It indexed only the leading row's width, so a short row
+  lost entries silently (`[[1.0],[2.0,3.0]]` became `[[1.0, 2.0]]`): the
+  result described a matrix nobody supplied. It now fails closed through the
+  same `_require_rectangular` check `mat_mul` and Cholesky use.
+- Geometric PMF boundary pinned: `geometric_pmf(0, p)` is 0 (no trial counted
+  1-based), and extreme `(k, p)` stays finite.
+- `poisson_pmf(0, 0)` is 1 and the log-space PMFs were probed at their
+  previously-crashing inputs; no remaining overflow class found in the
+  probability module.
+
 ## [v2.2.5] - 2026-10-12
+
 ### Housekeeping — audit hardening
 
 - Closes the findings of the full-repository audit: patched the concrete
