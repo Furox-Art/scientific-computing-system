@@ -507,6 +507,61 @@ def matrix_trace(m: Matrix) -> float:
     return sum(m[i][i] for i in range(n))
 
 
+def _require_square_finite(m: Matrix, name: str = "matrix") -> int:
+    """Validate a square matrix with finite real entries; return its side length.
+
+    Cholesky indexes ``m[i][j]`` for every ``i, j < n`` where ``n = len(m)``.
+    A non-square or ragged input therefore runs off the end of a row (an
+    opaque ``IndexError``) or, worse, silently ignores its extra columns and
+    returns a factorization of a *different* matrix. A non-finite entry slips
+    past the positive-pivot test entirely, because ``nan <= 0`` is ``False``,
+    so ``math.sqrt(nan)`` produces an all-``nan`` ``L`` that the caller
+    mistakes for a decomposition.
+
+    Args:
+        m: candidate matrix.
+        name: label used in the error message.
+
+    Returns:
+        The validated side length ``n``.
+
+    Raises:
+        ValueError: if ``m`` is empty, not rectangular, not square, or holds
+            a NaN or infinite entry.
+    """
+    if not m:
+        raise ValueError(f"{name} must be a non-empty square matrix")
+    n = len(m)
+    width = len(m[0])
+    for row_index, row in enumerate(m):
+        if len(row) != width:
+            raise ValueError(
+                f"{name} is ragged: row 0 has {width} column(s) but row "
+                f"{row_index} has {len(row)}"
+            )
+        for column_index, value in enumerate(row):
+            if not math.isfinite(value):
+                raise ValueError(
+                    f"{name} has a non-finite entry at "
+                    f"({row_index}, {column_index}); Cholesky decomposition "
+                    "requires finite real input"
+                )
+    if width != n:
+        raise ValueError(
+            f"{name} must be square: it has {n} row(s) and {width} column(s); "
+            "Cholesky decomposition is only defined for square matrices"
+        )
+    return n
+
+
+# Relative tolerance for the symmetry test below. Cholesky is only defined
+# for symmetric input, but a caller may build the matrix through arithmetic
+# whose round-off leaves ``a[i][j]`` and ``a[j][i]`` differing in the last few
+# bits. The tolerance is scaled by the matrix magnitude so it is neither
+# vacuous for large entries nor so tight that round-off fails the check.
+_CHOLESKY_SYMMETRY_TOLERANCE = 1e-9
+
+
 def cholesky(m: Matrix) -> Matrix:
     """Cholesky decomposition of a symmetric positive-definite matrix.
 
@@ -518,16 +573,38 @@ def cholesky(m: Matrix) -> Matrix:
         normales... (Procédé du Commandant Cholesky)." Bulletin Géodésique,
         2, 67-77. See also Golub & Van Loan, §4.2.
 
+    Positive-definiteness is *verified*, not assumed. For a symmetric matrix
+    the pivot test ``m[i][i] - Σ L[i][k]² <= 0`` is a complete decision
+    procedure: a real lower-triangular ``L`` exists if and only if the matrix
+    is positive definite, so a non-positive pivot is detected rather than
+    turned into ``math.sqrt`` of a negative number. Non-symmetric input is
+    rejected too, because the pivot test says nothing about symmetry and a
+    non-symmetric matrix would otherwise yield an ``L`` with
+    ``L Lᵀ != A``.
+
     Args:
-        m: symmetric positive-definite matrix
+        m: symmetric positive-definite matrix.
 
     Returns:
         lower-triangular matrix L with A = L L^T
 
     Raises:
-        ValueError: if the matrix is not positive definite
+        ValueError: if the matrix is empty, not square, holds a non-finite
+            entry, is not symmetric, or is not positive definite.
     """
-    n = len(m)
+    n = _require_square_finite(m, "matrix")
+    scale = max(abs(value) for row in m for value in row)
+    symmetry_tolerance = _CHOLESKY_SYMMETRY_TOLERANCE * max(1.0, scale)
+    for i in range(n):
+        for j in range(i + 1, n):
+            if abs(m[i][j] - m[j][i]) > symmetry_tolerance:
+                raise ValueError(
+                    f"matrix is not symmetric: m[{i}][{j}] = {m[i][j]!r} but "
+                    f"m[{j}][{i}] = {m[j][i]!r}; Cholesky decomposition "
+                    "requires a symmetric positive-definite matrix (see "
+                    "lu_decomposition for the general case)"
+                )
+
     L = [[0.0] * n for _ in range(n)]
     for i in range(n):
         for j in range(i + 1):
@@ -536,7 +613,9 @@ def cholesky(m: Matrix) -> Matrix:
                 diag = m[i][i] - s
                 if diag <= 0.0:
                     raise ValueError(
-                        "matrix is not positive definite — Cholesky decomposition requires symmetric positive definite input; check that the matrix is symmetric and all eigenvalues > 0"
+                        "matrix is not positive definite — Cholesky decomposition "
+                        "requires symmetric positive definite input; check that the "
+                        "matrix is symmetric and all eigenvalues > 0"
                     )
                 L[i][j] = math.sqrt(diag)
             else:
