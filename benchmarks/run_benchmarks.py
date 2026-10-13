@@ -18,7 +18,6 @@ report stays deterministic.
 
 import json
 import math
-import multiprocessing
 import subprocess
 import time
 import timeit
@@ -199,12 +198,12 @@ def bench_montecarlo() -> OrderedDict[str, str]:
 
     start = time.perf_counter()
     result = estimate_pi(samples, seed=42)
-    t_parallel = time.perf_counter() - start
+    elapsed = time.perf_counter() - start
 
     return OrderedDict(
         [
-            ("Parallel Pi (100k samples)", f"{t_parallel:.4f}s"),
-            ("CPU Cores Saturated", str(multiprocessing.cpu_count())),
+            ("Pi (100k samples)", f"{elapsed:.4f}s"),
+            ("Sampling mode", "single in-process random.Random stream"),
             ("Estimate error vs π", f"{abs(result.estimate - math.pi):.5f}"),
         ]
     )

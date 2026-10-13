@@ -43,7 +43,7 @@ class TestBenchmarkStructure:
         "func, module, required_key",
         [
             ("bench_linalg", "benchmarks.run_benchmarks", "CDS Matrix Mul (100x100)"),
-            ("bench_montecarlo", "benchmarks.run_benchmarks", "Parallel Pi (100k samples)"),
+            ("bench_montecarlo", "benchmarks.run_benchmarks", "Pi (100k samples)"),
             ("bench_quantum", "benchmarks.run_benchmarks", "Intelligence Speedup"),
             ("bench_signals", "benchmarks.run_benchmarks", "Algorithmic speedup"),
             ("bench_numerical_integration", "benchmarks.run_benchmarks", "Romberg (auto tol)"),
