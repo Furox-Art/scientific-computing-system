@@ -135,6 +135,24 @@ public feature modules. This table summarises them and the
 | `cds.nlp` | Educational NLP from scratch (BPE, embeddings, attention, MiniGPT) |
 | `cds.cli` | The `cds` console script (pure-stdlib `argparse`) |
 
+## Import behaviour
+
+Every module in the table is reachable as `cds.<name>`:
+
+```python
+import cds
+cds.pde          # attribute access works
+cds.interpolate  # so does this
+from cds.pde import solve_heat  # and the direct import
+```
+
+`cds.pde` and `cds.interpolate` are **lazily** imported by the package root
+(PEP 562 module `__getattr__`). Accessing `cds.pde` imports the subpackage on
+first touch and caches it, so `cds.pde` and `import cds.pde` yield the very
+same module object while never putting a PDE solver on the import path of code
+that does not use one. Everything else in the table is imported eagerly by
+`cds/__init__.py`.
+
 ## Quick Navigation
 
 - [Getting Started](getting-started.md)

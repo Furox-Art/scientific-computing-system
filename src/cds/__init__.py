@@ -29,6 +29,38 @@ Usage:
     from cds.hypothesis import generate_hypotheses
 """
 
+from __future__ import annotations
+
+import importlib
+from types import ModuleType
+
+# Subpackages published as ``cds.<name>`` but not part of the eager import
+# block below. ``cds.pde`` and ``cds.interpolate`` ship as their own
+# subpackages, so ``import cds.pde`` and ``from cds.pde import solve_heat``
+# always worked — but the flat package layout meant ``import cds`` alone never
+# bound the attribute, and ``cds.pde`` raised ``AttributeError`` even though
+# docs/index.md and docs/api.md both advertise it as public surface.
+#
+# A PEP 562 module ``__getattr__`` closes the gap without moving the two
+# solvers onto the import path of every ``cds`` user. The imported module is
+# cached in ``globals()`` so the lookup happens exactly once.
+_LAZY_SUBPACKAGES = frozenset({"interpolate", "pde"})
+
+
+def __getattr__(name: str) -> ModuleType:
+    """Lazily import a documented ``cds`` subpackage on first attribute access."""
+    if name in _LAZY_SUBPACKAGES:
+        module = importlib.import_module(f"cds.{name}")
+        globals()[name] = module
+        return module
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    """Expose the lazily-imported subpackages to ``dir(cds)``."""
+    return sorted(set(globals()) | _LAZY_SUBPACKAGES)
+
+
 # Convenient top-level re-exports for common scientific tools
 # Core modules
 # Scientific computing modules
@@ -111,6 +143,7 @@ __all__ = [
     "graph",
     "hypothesis",
     "infotheory",
+    "interpolate",
     "knowledge",
     "math_utils",
     "ml",
@@ -119,6 +152,7 @@ __all__ = [
     "nlp",
     "numerical_integration",
     "optimization",
+    "pde",
     "plot",
     "probability",
     "provenance",
