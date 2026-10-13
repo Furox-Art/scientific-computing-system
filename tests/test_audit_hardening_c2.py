@@ -72,6 +72,18 @@ class TestPoissonPmfExtremes:
         with pytest.raises(ValueError, match="lambda must be non-negative"):
             poisson_pmf(0, -1.0)
 
+    def test_non_finite_lambda_is_propagated_not_swallowed(self) -> None:
+        """A NaN log-probability must not be rounded into a probability of zero.
+
+        The underflow shortcut compares against ``-745.0``; since
+        ``nan < -745.0`` is ``False`` it would fall through to ``exp(nan)``,
+        but only because the NaN branch runs first. Asserting the value pins
+        that ordering -- without it, a future refactor could silently turn
+        NaN input into ``0.0``, which is a valid-looking probability.
+        """
+        assert math.isnan(poisson_pmf(3, float("nan")))
+        assert math.isnan(poisson_pmf(3, float("inf")))
+
 
 class TestBinomialPmfExtremes:
     """``binomial_pmf(1000, 2000, 0.5)`` used to raise OverflowError."""

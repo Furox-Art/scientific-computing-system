@@ -108,6 +108,22 @@ class TestLazySubpackageExposure:
         with pytest.raises(AttributeError, match="no attribute"):
             getattr(cds, "definitely_not_a_subpackage")
 
+    def test_lazy_loader_runs_when_the_attribute_is_absent(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Importing the submodule *directly* also binds it on the package.
+
+        ``import cds.pde`` anywhere in the session pre-binds ``cds.pde`` as a
+        side effect, which would hide the lazy loader entirely. Removing the
+        cached binding forces :meth:`__getattr__` to do the work.
+        """
+        for module_name in DOCUMENTED_MODULES:
+            monkeypatch.delattr(cds, module_name, raising=False)
+            resolved = getattr(cds, module_name)
+            assert resolved.__name__ == f"cds.{module_name}"
+            # The lookup must re-bind the module so later accesses are direct.
+            assert vars(cds)[module_name] is resolved
+
     def test_dir_lists_the_lazy_subpackages(self) -> None:
         for module_name in DOCUMENTED_MODULES:
             assert module_name in dir(cds)
