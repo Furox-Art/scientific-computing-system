@@ -18,6 +18,7 @@ Targets the last 61 uncovered lines across 14 files:
 - __main__.py               (1 line   — __main__ guard)
 """
 
+import importlib.util
 import math
 import os
 import subprocess
@@ -533,6 +534,10 @@ class TestCLIEnvVars:
 
         monkeypatch.setattr(subprocess, "run", fake_run)
         monkeypatch.setattr(Path, "exists", lambda self: True)
+        # The dashboard pre-checks that the optional streamlit extra is
+        # importable, so this branch needs a streamlit that *appears*
+        # installed for the launch path to run at all.
+        monkeypatch.setattr(importlib.util, "find_spec", lambda *_a, **_k: object())
         monkeypatch.setattr(os, "environ", {"PYTHONPATH": "/fake/path"})
 
         ns = argparse.Namespace()

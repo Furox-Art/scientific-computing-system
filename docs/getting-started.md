@@ -69,6 +69,28 @@ cds hypothesis "what causes the Hubble tension?" --domain cosmology
 cds modules
 ```
 
+#### Exit codes
+
+`cds` exits with one of four documented statuses. They are named constants in
+`cds.cli._exit_codes`, re-exported from `cds.cli`, so a wrapper can compare
+statuses instead of comparing against bare integers.
+
+| Code | Name | Meaning |
+|------|------|---------|
+| `0` | `EXIT_OK` | The command completed and produced its output. Also returned by `--help`. |
+| `1` | `EXIT_ERROR` | The command was understood but could not be carried out: malformed values, an out-of-domain parameter, or a missing local resource such as the dashboard script. |
+| `2` | `EXIT_USAGE` | The command line was rejected by `argparse` — an unknown subcommand, a missing required argument, a bad `choices=` value, an unparseable number. (This is `argparse`'s own usage-error code.) |
+| `3` | `EXIT_MISSING_DEPENDENCY` | The command needs an optional extra that is not installed: `[plot]`/matplotlib for `plot --file`, `streamlit` for `dashboard`. The remedy is an install, not a corrected invocation. |
+
+```python
+from cds.cli import EXIT_ERROR, EXIT_MISSING_DEPENDENCY, describe, main
+
+describe(1)   # 'command was understood but could not be carried out'
+main(["stats", "1,x,3"])              # 1  — bad values
+main(["sample", "no-such-dist"])      # 2  — argparse rejected it
+main(["dashboard"])                   # 3  — streamlit absent
+```
+
 ### Python API
 
 ```python

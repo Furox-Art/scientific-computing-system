@@ -3,6 +3,12 @@
 Every handler takes the parsed :class:`argparse.Namespace` and returns an
 integer exit code. Heavy imports stay function-local so ``cds --help`` (and
 the whole parser build) never pays for modules a command does not use.
+
+The return codes are the named constants in :mod:`cds.cli._exit_codes`, which
+is the single source of truth for the CLI's exit-code contract. A bare ``1``
+is deliberately never written at a ``return`` site: the mapping from a failure
+to its code is what the contract test in ``tests/test_cli_exit_codes.py``
+walks.
 """
 
 from __future__ import annotations
@@ -15,6 +21,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+from cds.cli._exit_codes import EXIT_ERROR, EXIT_MISSING_DEPENDENCY, EXIT_OK
 from cds.cli._style import _format_table, _print, _render
 from cds.core.models import Domain
 from cds.hypothesis.generator import PromptTemplate, generate_hypotheses
@@ -25,7 +32,7 @@ def _cmd_version(args: argparse.Namespace) -> int:
     from cds import __version__
 
     _print(_render(f"[bold]System[/] version [cyan]{__version__}[/]"))
-    return 0
+    return EXIT_OK
 
 
 def _cmd_hypothesis(args: argparse.Namespace) -> int:
@@ -35,7 +42,7 @@ def _cmd_hypothesis(args: argparse.Namespace) -> int:
     if args.show_prompt:
         prompt = PromptTemplate.render(args.question, dom, args.num)
         _print(_render(f"[blue]{prompt}[/]"))
-        return 0
+        return EXIT_OK
 
     if args.dry_run:
         _print(_render("[yellow]Dry run mode — no generation performed.[/]"))
@@ -45,7 +52,7 @@ def _cmd_hypothesis(args: argparse.Namespace) -> int:
                 f"[bold]{args.question}[/] in domain [cyan]{dom.value}[/]"
             )
         )
-        return 0
+        return EXIT_OK
 
     _print(_render(f"[bold]Generating hypotheses[/] for: [italic]{args.question}[/]"))
     _print(_render(f"Domain: [cyan]{dom.value}[/] | Count: {args.num}\n"))
@@ -67,7 +74,7 @@ def _cmd_hypothesis(args: argparse.Namespace) -> int:
         Path(args.output).write_text(json.dumps(data, indent=2, default=str))
         _print(_render(f"\n[green]Saved to {args.output}[/]"))
 
-    return 0
+    return EXIT_OK
 
 
 def _cmd_prompt(args: argparse.Namespace) -> int:
@@ -75,7 +82,7 @@ def _cmd_prompt(args: argparse.Namespace) -> int:
     dom = Domain(args.domain)
     prompt_text = PromptTemplate.render(args.question, dom, args.num)
     _print(prompt_text)
-    return 0
+    return EXIT_OK
 
 
 def _cmd_stats(args: argparse.Namespace) -> int:
@@ -86,10 +93,10 @@ def _cmd_stats(args: argparse.Namespace) -> int:
         data = [float(x.strip()) for x in args.values.split(",")]
     except ValueError:
         _print(_render("[red]Error:[/] Values must be a comma-separated list of numbers."))
-        return 1
+        return EXIT_ERROR
     if not data:  # pragma: no cover - split always yields at least one token
         _print(_render("[red]Error:[/] empty list."))
-        return 1
+        return EXIT_ERROR
     rows = [
         ["n", str(len(data))],
         ["mean", f"{mean(data):.6g}"],
@@ -103,7 +110,7 @@ def _cmd_stats(args: argparse.Namespace) -> int:
         rows.append(["stdev", f"{stdev(data):.6g}"])
         rows.append(["variance", f"{variance(data):.6g}"])
     _print(_format_table("Descriptive stats", ["stat", "value"], rows))
-    return 0
+    return EXIT_OK
 
 
 def _cmd_integrate(args: argparse.Namespace) -> int:
@@ -127,7 +134,7 @@ def _cmd_integrate(args: argparse.Namespace) -> int:
                 f"Options: {', '.join(sorted(integrands))}"
             )
         )
-        return 1
+        return EXIT_ERROR
     f = integrands[name]
     a, b, n = args.a, args.b, args.n
     try:
@@ -137,9 +144,9 @@ def _cmd_integrate(args: argparse.Namespace) -> int:
             result = simpson(f, a, b, n=n)
     except ValueError as exc:
         _print(_render(f"[red]Error:[/] {exc}"))
-        return 1
+        return EXIT_ERROR
     _print(_render(f"[green]∫_{a}^{b} {name}(x) dx ≈ {result:.10g}[/] ({args.method}, n={n})"))
-    return 0
+    return EXIT_OK
 
 
 def _cmd_sample(args: argparse.Namespace) -> int:
@@ -169,21 +176,42 @@ def _cmd_sample(args: argparse.Namespace) -> int:
             text = ", ".join(str(v) for v in samples_i)
         else:  # pragma: no cover - argparse choices reject unknown dist
             _print(_render(f"[red]Error:[/] unknown dist {dist!r}"))
-            return 1
+            return EXIT_ERROR
     except ValueError as exc:
         _print(_render(f"[red]Error:[/] {exc}"))
-        return 1
+        return EXIT_ERROR
     _print(text)
-    return 0
+    return EXIT_OK
 
 
 def _cmd_dashboard(args: argparse.Namespace) -> int:
-    """Launch the interactive System dashboard."""
+    """Launch the interactive System dashboard.
+
+    Returns ``EXIT_MISSING_DEPENDENCY`` when the ``streamlit`` extra is not
+    installed, ``EXIT_ERROR`` for any other launch failure, and ``EXIT_OK``
+    when the dashboard exits cleanly.
+
+    The optional-extra check runs first, deliberately. Relying on
+    ``FileNotFoundError`` from :func:`subprocess.run` only covers platforms
+    where the interpreter itself is missing; on Windows ``python -m
+    streamlit`` fails with a non-zero exit status instead, which would
+    otherwise surface as a traceback rather than a documented code.
+    """
     root_dir = Path(__file__).parent.parent.parent.parent
     dashboard_path = root_dir / "dashboard" / "app.py"
     if not dashboard_path.exists():
         _print(_render("[red]Error:[/] Dashboard file not found at " + str(dashboard_path)))
-        return 1
+        return EXIT_ERROR
+
+    import importlib.util
+
+    if importlib.util.find_spec("streamlit") is None:
+        _print(
+            _render("[red]Error:[/] Streamlit not found. Install it with 'pip install streamlit'.")
+        )
+        # An absent optional extra, not a bad invocation: the remedy is an
+        # install, so this maps to its own documented code.
+        return EXIT_MISSING_DEPENDENCY
 
     _print(_render("[yellow]Launching System Interactive Dashboard...[/]"))
 
@@ -207,15 +235,18 @@ def _cmd_dashboard(args: argparse.Namespace) -> int:
         _print(
             _render("[red]Error:[/] Streamlit not found. Install it with 'pip install streamlit'.")
         )
-        return 1
-    return 0
+        return EXIT_MISSING_DEPENDENCY
+    except subprocess.CalledProcessError as exc:
+        _print(_render(f"[red]Error:[/] Dashboard exited with status {exc.returncode}."))
+        return EXIT_ERROR
+    return EXIT_OK
 
 
 def _cmd_benchmark(args: argparse.Namespace) -> int:
     """Run built-in benchmarks to verify performance."""
     _print(_render("[yellow]Benchmarking System performance...[/]"))
     _print("Run 'python benchmarks/run_benchmarks.py' for detailed results.")
-    return 0
+    return EXIT_OK
 
 
 def _cmd_constants(args: argparse.Namespace) -> int:
@@ -227,7 +258,7 @@ def _cmd_constants(args: argparse.Namespace) -> int:
         for name, (val, desc) in CONSTANTS.items()
     ]
     _print(_format_table("Physical Constants", ["Name", "Value", "Description"], rows))
-    return 0
+    return EXIT_OK
 
 
 def _cmd_plot(args: argparse.Namespace) -> int:
@@ -236,7 +267,7 @@ def _cmd_plot(args: argparse.Namespace) -> int:
         data = [float(x.strip()) for x in args.values.split(",")]
     except ValueError:
         _print(_render("[red]Error:[/] Values must be a comma-separated list of numbers."))
-        return 1
+        return EXIT_ERROR
 
     kind = getattr(args, "kind", "series") or "series"
     out_file = getattr(args, "file", None)
@@ -246,7 +277,7 @@ def _cmd_plot(args: argparse.Namespace) -> int:
             from cds.plot import plot_acf, plot_histogram, plot_series, save_figure
         except ImportError as exc:  # pragma: no cover - package always ships cds.plot
             _print(_render(f"[red]Error:[/] {exc}"))
-            return 1
+            return EXIT_MISSING_DEPENDENCY
         try:
             if kind == "hist":
                 fig = plot_histogram(data, title=args.title)
@@ -258,16 +289,17 @@ def _cmd_plot(args: argparse.Namespace) -> int:
                 _print(
                     _render(f"[red]Error:[/] Unknown --kind {kind!r}. Options: series, hist, acf")
                 )
-                return 1
+                return EXIT_ERROR
             save_figure(fig, out_file)
         except ImportError as exc:
+            # matplotlib is an optional extra; the remedy is an install.
             _print(_render(f"[red]Error:[/] {exc}"))
-            return 1
+            return EXIT_MISSING_DEPENDENCY
         except ValueError as exc:
             _print(_render(f"[red]Error:[/] {exc}"))
-            return 1
+            return EXIT_ERROR
         _print(_render(f"[green]Saved[/] {out_file} ({kind})"))
-        return 0
+        return EXIT_OK
 
     if kind != "series":
         _print(
@@ -276,12 +308,12 @@ def _cmd_plot(args: argparse.Namespace) -> int:
                 "(use --file with cds[plot] for hist/acf)."
             )
         )
-        return 1
+        return EXIT_ERROR
 
     from cds.data_analysis.viz import plot_line
 
     _print(plot_line(data, title=args.title))
-    return 0
+    return EXIT_OK
 
 
 def _cmd_calc(args: argparse.Namespace) -> int:
@@ -316,8 +348,8 @@ def _cmd_calc(args: argparse.Namespace) -> int:
             )
     except ValueError:
         _print(_render("[red]Error:[/] Input must be a valid number."))
-        return 1
+        return EXIT_ERROR
     except Exception as e:  # noqa: BLE001 — CLI surface, keep the message readable
         _print(_render(f"[red]Error:[/] {str(e)}"))
-        return 1
-    return 0
+        return EXIT_ERROR
+    return EXIT_OK
