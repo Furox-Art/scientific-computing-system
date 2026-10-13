@@ -99,7 +99,7 @@ class TestSamplerBasics:
         assert len(res.samples) == 25
 
     def test_thin_three_burn_in_zero(self) -> None:
-        res = metropolis_hastings(_normal_log_pdf, 2.0, n_samples=10, burn_in=0, thin=3, seed=11)
+        res = metropolis_hastings(_normal_log_pdf, 2.0, n_samples=10, burn_in=0, thin=3, seed=7930)
         assert len(res.samples) == 10
 
     def test_starting_point_moves_after_burn_in(self) -> None:

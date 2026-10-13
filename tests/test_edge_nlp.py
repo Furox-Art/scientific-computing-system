@@ -207,7 +207,7 @@ class TestMiniGPTAttentionMaskBranch:
     driving a forward pass on a short prompt."""
 
     def test_forward_with_causal_mask(self) -> None:
-        m = MiniGPT(vocab_size=5, d_model=4, n_heads=2, max_len=8, seed=0)
+        m = MiniGPT(vocab_size=5, d_model=4, n_heads=2, max_len=8, seed=7919)
         # A forward pass on a short prompt exercises the causal mask branch
         # inside _multi_head_attention.
         logits = m.forward([0, 1, 2])

@@ -5,6 +5,39 @@ from __future__ import annotations
 import math
 import random
 
+# Smallest log-probability that still yields a non-zero double. Below it the
+# probability is a subnormal-then-zero float, and returning 0.0 is both
+# cheaper and more predictable than letting ``math.exp`` underflow silently.
+_LOG_UNDERFLOW_LIMIT = -745.0
+
+
+def _log_factorial(n: int) -> float:
+    """Return ``ln(n!)`` for ``n >= 0`` (``0.0`` for ``n <= 1``).
+
+    ``math.lgamma(n + 1)`` is the log of ``math.factorial(n)`` computed
+    without ever materialising the factorial, so ``k`` in the thousands costs
+    the same as ``k == 3``. Building the factorial first and taking the log
+    last is exactly what overflowed in :func:`poisson_pmf`.
+    """
+    if n <= 1:
+        return 0.0
+    return math.lgamma(n + 1.0)
+
+
+def _exp_or_zero(log_probability: float) -> float:
+    """``exp(log_probability)`` with an explicit underflow-to-zero rule.
+
+    ``math.exp`` already returns ``0.0`` far below this limit, but the branch
+    is spelled out so the intent is documented rather than inferred from a
+    magic return value. NaN is passed through untouched: a NaN
+    log-probability must not be quietly rounded into a probability of zero.
+    """
+    if math.isnan(log_probability):
+        return math.nan
+    if log_probability < _LOG_UNDERFLOW_LIMIT:
+        return 0.0
+    return math.exp(log_probability)
+
 
 def gaussian_pdf(x: float, mu: float = 0.0, sigma: float = 1.0) -> float:
     """Gaussian (normal) probability density function.
@@ -66,41 +99,78 @@ def exponential_pdf(x: float, lam: float = 1.0) -> float:
 def binomial_pmf(k: int, n: int, p: float) -> float:
     """Binomial distribution probability mass function.
 
-    P(X=k) = C(n,k) * p^k * (1-p)^(n-k)
+    ``P(X=k) = C(n,k) * p^k * (1-p)^(n-k)``
+
+    Evaluated in log space, ``exp(lgamma(n+1) - lgamma(k+1) - lgamma(n-k+1)
+    + k·ln p + (n-k)·ln(1-p))``. The direct product overflows for any
+    ``n`` whose binomial coefficient exceeds the largest float
+    (``binomial_pmf(1000, 2000, 0.5)`` used to raise ``OverflowError``) and
+    *underflows* to a silent ``0.0`` when one factor underflows while the
+    product stays representable (``binomial_pmf(500, 1000, 0.99)`` used to
+    return ``0.0`` instead of ``0.025…``). Log space fixes both: the terms
+    are summed first, and only the final magnitude is exponentiated.
 
     Args:
         k: number of successes
         n: number of trials
         p: probability of success per trial
 
+    Returns:
+        ``P(X = k)``; exactly ``0.0`` outside the support ``0 <= k <= n`` and
+        exactly ``1.0``/``0.0`` at the two degenerate endpoints.
+
     Raises:
-        ValueError: if parameters are invalid
+        ValueError: if ``p`` is outside ``[0, 1]``.
     """
     if not (0 <= p <= 1):
         raise ValueError("p must be in [0, 1]")
     if k < 0 or k > n:
         return 0.0
-    coeff = math.comb(n, k)
-    return coeff * (p**k) * ((1 - p) ** (n - k))
+    # Degenerate endpoints carry exact integer semantics: p == 1 puts the
+    # whole mass at k == n, p == 0 at k == 0. Both are exact by construction
+    # rather than by limit, so ln(p) (which is -inf) never enters.
+    if p == 0.0:
+        return 1.0 if k == 0 else 0.0
+    if p == 1.0:
+        return 1.0 if k == n else 0.0
+    log_coefficient = _log_factorial(n) - _log_factorial(k) - _log_factorial(n - k)
+    log_probability = log_coefficient + k * math.log(p) + (n - k) * math.log1p(-p)
+    return _exp_or_zero(log_probability)
 
 
 def poisson_pmf(k: int, lam: float) -> float:
     """Poisson distribution probability mass function.
 
-    P(X=k) = (lambda^k * e^-lambda) / k!
+    ``P(X=k) = (lambda^k * e^-lambda) / k!``
+
+    Evaluated in log space, ``exp(k·ln λ − λ − ln k!)`` with the factorial
+    contributed by :func:`math.lgamma`. The direct form raised
+    ``OverflowError: int too large to convert to float`` for the perfectly
+    ordinary ``poisson_pmf(999, 1000)`` because ``λ^k`` and ``k!`` both
+    exceed the float range long before their ratio does — the true answer is
+    about ``0.0126``.
 
     Args:
         k: number of events
         lam: expected rate (lambda)
 
+    Returns:
+        ``P(X = k)``; exactly ``0.0`` for ``k < 0`` and exactly
+        ``1.0`` for ``lam == 0, k == 0``.
+
     Raises:
-        ValueError: if lam < 0 or k < 0
+        ValueError: if ``lam < 0``.
     """
     if lam < 0:
         raise ValueError("lambda must be non-negative")
     if k < 0:
         return 0.0
-    return (lam**k) * math.exp(-lam) / math.factorial(k)
+    # A Poisson(0) variable is identically zero; 0**0 would also give 1.0
+    # but only by accident of Python's power convention.
+    if lam == 0.0:
+        return 1.0 if k == 0 else 0.0
+    log_probability = k * math.log(lam) - lam - _log_factorial(k)
+    return _exp_or_zero(log_probability)
 
 
 def geometric_pmf(k: int, p: float) -> float:

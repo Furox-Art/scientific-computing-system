@@ -64,7 +64,7 @@ n= 10,000  π≈3.1372  err=-4.39e-03  σ=1.65e-02
 n=100,000  π≈3.1292  err=-1.24e-02  σ=5.22e-03
 ```
 
-**The lesson.** Halving the standard error takes a **4×** larger sample, slow convergence. But notice the *standard error* tracks the actual error, and crucially the same recipe works in 100 dimensions where grid rules would need $100^{N}$ points. Monte Carlo trades speed for **generality**. CDS also parallelizes the sampling across CPU cores ([`montecarlo/methods.py`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/montecarlo/methods.py)).
+**The lesson.** Halving the standard error takes a **4×** larger sample, slow convergence. But notice the *standard error* tracks the actual error, and crucially the same recipe works in 100 dimensions where grid rules would need $100^{N}$ points. Monte Carlo trades speed for **generality**. `estimate_pi` draws its whole sample from one `random.Random(seed)` stream in a single in-process pass ([`montecarlo/methods.py`](https://github.com/Furox-Art/scientific-computing-system/blob/main/src/cds/montecarlo/methods.py)), so a seeded call returns the same number on every machine and core count instead of a pool-schedule-dependent one.
 
 ---
 

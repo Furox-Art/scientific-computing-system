@@ -113,12 +113,12 @@ def test_measure_deterministic() -> None:
 def test_measure_rejects_zero_norm_state() -> None:
     reg = QuantumRegister(n_qubits=1, amplitudes=[0j, 0j])
     with pytest.raises(ValueError, match="non-zero norm"):
-        reg.measure(seed=42)
+        reg.measure(seed=7961)
 
 
 def test_measure_shots() -> None:
     reg = QuantumRegister.zeros(2)
-    counts = reg.measure_shots(shots=100, seed=42)
+    counts = reg.measure_shots(shots=100, seed=15880)
     assert counts.get("00", 0) == 100
 
 

@@ -177,7 +177,7 @@ def test_circuit_empty() -> None:
 
 def test_simulate_pauli_x_always_one() -> None:
     c = QuantumCircuit().add(pauli_x())
-    counts = simulate(c, shots=100, seed=42)
+    counts = simulate(c, shots=100, seed=7961)
     assert counts.get(1, 0) == 100
 
 

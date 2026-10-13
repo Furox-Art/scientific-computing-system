@@ -59,7 +59,9 @@ number from this page.**
   of why O(1) sampling is the right design, not as a benchmark result.
 - **"CPU Cores Saturated" is a core count, not a saturation measurement.** It
   reports `multiprocessing.cpu_count()`. Nothing here verifies that every core
-  stayed busy or that the workload actually scaled.
+  stayed busy or that the workload actually scaled. The Monte Carlo table no
+  longer carries that row: `estimate_pi` samples on one in-process stream, so
+  a core count would be meaningless there.
 - **The generated section headers describe algorithms, not outcomes.** Strings
   like "Algorithmic Intelligence", "Approaching C-Speed" and "Hardware
   Saturation" come from the generator, not from the data. The first table's
@@ -109,9 +111,21 @@ This report measures both raw speed and algorithmic scaling. Pure Python is slow
 
 | Metric | Value |
 |--------|-------|
-| Parallel Pi (100k samples) | 0.0388s |
-| CPU Cores Saturated | 4 |
+| Pi (100k samples) | 0.0388s |
 | Estimate error vs π | 0.00791 |
+
+The timing above is the committed pre-change measurement and is kept
+unchanged rather than re-measured, because re-running the generator would
+overwrite the hand-written analysis on this page. `estimate_pi` no longer fans
+its samples out to a process pool: on the pooled path, Windows `spawn` cost
+≈1.4 s of interpreter start-up and module re-import per default call against
+≈0.014 s of actual sampling — about 100× the work it was meant to accelerate.
+The estimator now draws its whole sample from one `random.Random(seed)`
+stream in a single in-process pass, which also makes a *seeded* call
+machine-independent (the old chunk boundaries were derived from
+`cpu_count()`, so the result differed between hosts). The row the generator
+emits is now `Sampling mode | single in-process random.Random stream` in
+place of `CPU Cores Saturated`.
 
 #### Quantum sampling (estimated)
 

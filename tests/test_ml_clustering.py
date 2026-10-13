@@ -43,7 +43,7 @@ def test_duplicate_points_hit_uniform_fallback_and_empty_cluster() -> None:
 
 
 def test_max_iter_bounds_iterations() -> None:
-    res = KMeans(2, max_iter=1, seed=0).fit(_blobs())
+    res = KMeans(2, max_iter=1, seed=7919).fit(_blobs())
     assert res.n_iter == 1
 
 
@@ -55,7 +55,7 @@ def test_k_equals_n_gives_zero_inertia() -> None:
 
 
 def test_predict_routes_to_nearest_centroid() -> None:
-    model = KMeans(2, seed=0)
+    model = KMeans(2, seed=15838)
     model.fit(_blobs())
     near_a = model.predict([0.1, 0.1])
     near_b = model.predict([5.1, 5.0])

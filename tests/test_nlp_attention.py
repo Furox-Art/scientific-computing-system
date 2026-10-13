@@ -291,10 +291,10 @@ class TestMultiHeadAttention:
         """With a causal mask, position i cannot depend on position j > i."""
         n, d_model, n_heads = 3, 4, 2
         x = [[float(i)] * d_model for i in range(n)]
-        w_q = self._random_projection(d_model, d_model, seed=1)
-        w_k = self._random_projection(d_model, d_model, seed=2)
-        w_v = self._random_projection(d_model, d_model, seed=3)
-        w_o = self._random_projection(d_model, d_model, seed=4)
+        w_q = self._random_projection(d_model, d_model, seed=7920)
+        w_k = self._random_projection(d_model, d_model, seed=7921)
+        w_v = self._random_projection(d_model, d_model, seed=7922)
+        w_o = self._random_projection(d_model, d_model, seed=7923)
         mask = causal_mask(n)
         out = multi_head_attention(x, w_q, w_k, w_v, w_o, n_heads, mask=mask)
         # First output position must not depend on later v's — verify

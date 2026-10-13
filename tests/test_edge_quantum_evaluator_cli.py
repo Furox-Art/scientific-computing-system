@@ -6,6 +6,7 @@ Targets:
 - cds.hypothesis.evaluator new dispatch paths
 """
 
+import importlib.util
 import math
 import subprocess
 import sys
@@ -465,7 +466,10 @@ def test_cli_plot_file_missing_matplotlib(
     path = tmp_path / "nope.png"
     rc = main(["plot", "1,2,3", "--file", str(path)])
     out = capsys.readouterr().out
-    assert rc == 1
+    # EXIT_MISSING_DEPENDENCY (3): matplotlib is an optional extra, so this
+    # failure has its own documented code, distinct from the generic
+    # EXIT_ERROR (1) a bad input produces. See cds.cli._exit_codes.
+    assert rc == 3
     assert "Error" in out
     assert "optional dependency" in out or "matplotlib" in out.lower()
 
@@ -540,6 +544,10 @@ def test_cli_dashboard_launch(
     monkeypatch.delenv("PYTHONPATH", raising=False)
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(Path, "exists", lambda self: True)
+    # The dashboard pre-checks that the optional streamlit extra is
+    # importable, so the launch path needs a streamlit that *appears*
+    # installed once that check passes.
+    monkeypatch.setattr(importlib.util, "find_spec", lambda *_a, **_k: object())
     rc = main(["dashboard"])
     out = capsys.readouterr().out
     assert rc == 0
@@ -549,15 +557,29 @@ def test_cli_dashboard_launch(
 def test_cli_dashboard_streamlit_missing(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    """A missing streamlit on a platform where ``python -m`` raises instead of
+    exiting non-zero.
+
+    This exercises the ``FileNotFoundError`` fallback, which is distinct from
+    the ``find_spec`` pre-check covered by
+    ``tests/test_cli_exit_codes.py::test_missing_streamlit_maps_to_exit_missing_dependency``.
+    Both must reach the same documented exit code.
+    """
+
     def fake_run(cmd: list[str], **kwargs: object) -> None:
         raise FileNotFoundError("streamlit not found")
 
     monkeypatch.delenv("PYTHONPATH", raising=False)
     monkeypatch.setattr(subprocess, "run", fake_run)
     monkeypatch.setattr(Path, "exists", lambda self: True)
+    # The pre-check must pass so the launch path is actually reached.
+    monkeypatch.setattr(importlib.util, "find_spec", lambda *_a, **_k: object())
     rc = main(["dashboard"])
     out = capsys.readouterr().out
-    assert rc == 1
+    # Exits EXIT_MISSING_DEPENDENCY (3), not the generic EXIT_ERROR (1): the
+    # failure is an absent optional extra whose remedy is an install, not a
+    # bad invocation. See cds.cli._exit_codes.
+    assert rc == 3
     assert "Streamlit not found" in out
 
 
