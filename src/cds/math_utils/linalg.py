@@ -31,15 +31,63 @@ def dot(a: Vector, b: Vector) -> float:
     return sum(x * y for x, y in zip(a, b))
 
 
+def _require_rectangular(m: Matrix, name: str) -> tuple[int, int]:
+    """Return ``(n_rows, n_cols)`` for a non-empty, rectangular matrix.
+
+    Matrix multiplication indexes ``a[0]`` and ``b[0]`` to learn the shape and
+    then walks the remaining rows positionally. A ragged matrix — rows of
+    unequal length — therefore cannot be multiplied: the leading row's width
+    describes only itself, and every row-shorter iterate silently loses
+    entries. Detecting that here is the difference between a raised error and
+    a plausible-looking wrong number.
+
+    Args:
+        m: candidate matrix.
+        name: label used in the error message (``"a"`` / ``"b"``).
+
+    Returns:
+        ``(rows, columns)`` of the verified rectangle.
+
+    Raises:
+        ValueError: if ``m`` is empty or any row differs in length from the
+            first row.
+    """
+    if not m:
+        raise ValueError(f"{name} must be a non-empty matrix with at least one row and column")
+    width = len(m[0])
+    for index, row in enumerate(m):
+        if len(row) != width:
+            raise ValueError(
+                f"{name} is ragged: row 0 has {width} column(s) but row {index} has {len(row)}; "
+                "matrix multiplication requires every row to have the same length"
+            )
+    return len(m), width
+
+
 def mat_mul(a: Matrix, b: Matrix) -> Matrix:
     """Matrix multiplication A * B.
 
     Pre-transposes B so that columns are read as contiguous rows, which
     keeps memory access row-major and lets the inner loops run over
     Python's C-implemented ``zip``/``sum`` rather than indexed lookups.
+
+    Both operands must be non-empty rectangles. ``zip`` truncates to the
+    shortest iterable, so a ragged operand would otherwise produce a
+    *short* result — a wrong number, not an exception.
+
+    Args:
+        a: left operand, an ``rows_a x cols_a`` matrix.
+        b: right operand, a ``rows_b x cols_b`` matrix.
+
+    Returns:
+        The ``rows_a x cols_b`` product matrix.
+
+    Raises:
+        ValueError: if either operand is empty, is ragged, or the shapes are
+            incompatible (``cols_a != rows_b``).
     """
-    rows_a, cols_a = len(a), len(a[0])
-    rows_b, cols_b = len(b), len(b[0])
+    rows_a, cols_a = _require_rectangular(a, "a")
+    rows_b, cols_b = _require_rectangular(b, "b")
     if cols_a != rows_b:
         raise ValueError(f"incompatible shapes: {rows_a}x{cols_a} and {rows_b}x{cols_b}")
 
