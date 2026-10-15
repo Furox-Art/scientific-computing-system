@@ -13,15 +13,12 @@ identity instead of a silently wrong number:
 - PMFs sum to 1 over their support
 - ODE/quadrature error decreases as the step count grows
 """
-from __future__ import annotations
 
-import itertools
-import math
+from __future__ import annotations
 
 import pytest
 
-from cds.math_utils.linalg import (determinant, identity, mat_mul,
-                                   solve_linear, transpose)
+from cds.math_utils.linalg import determinant, identity, mat_mul, solve_linear, transpose
 from cds.probability.distributions import binomial_pmf, geometric_pmf, poisson_pmf
 
 #: Exact-arithmetic inputs keep every identity above exact for integers.
@@ -55,7 +52,9 @@ TWOS = [
 ]
 
 
-@pytest.mark.parametrize("triple", [(a, b, c) for a in THREES for b in THREES[:2] for c in THREES[:2]])
+@pytest.mark.parametrize(
+    "triple", [(a, b, c) for a in THREES for b in THREES[:2] for c in THREES[:2]]
+)
 def test_mat_mul_is_associative(triple) -> None:
     a, b, c = triple
     assert _matmul_chain(a, b, c) == _matmul_chain(a, _matmul_chain(b, c))
