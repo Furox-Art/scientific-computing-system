@@ -78,7 +78,14 @@ def check_bounds(
     violations = [
         index
         for index, (value, (lower, upper)) in enumerate(zip(values, bounds))
-        if value < lower or value > upper
+        if (
+            not math.isfinite(value)
+            or not math.isfinite(lower)
+            or not math.isfinite(upper)
+            or lower > upper
+            or value < lower
+            or value > upper
+        )
     ]
     if violations:
         return ValidationCheck(
