@@ -47,6 +47,8 @@ def cross_method_agreement(
         )
     delta = abs(primary - secondary)
     tolerance = atol + rtol * max(abs(primary), abs(secondary))
+    if not math.isfinite(tolerance):
+        raise ValueError("derived cross-method tolerance must be finite")
     status = CheckStatus.PASS if delta <= tolerance else CheckStatus.FAIL
     message = (
         "independent methods agree"
@@ -148,6 +150,8 @@ def check_conservation(
         )
     delta = abs(after - before)
     tolerance = atol + rtol * max(abs(before), abs(after))
+    if not math.isfinite(tolerance):
+        raise ValueError("derived conservation tolerance must be finite")
     status = CheckStatus.PASS if delta <= tolerance else CheckStatus.FAIL
     message = (
         "conservation law satisfied" if status is CheckStatus.PASS else "conservation law violated"
@@ -288,7 +292,10 @@ def check_ood_ranges(
     for low, high in zip(lower, upper):
         scale = max(abs(low), abs(high), high - low, 1.0)
         margin = margin_fraction * scale
-        expanded.append((low - margin, high + margin))
+        expanded_low, expanded_high = low - margin, high + margin
+        if not (math.isfinite(expanded_low) and math.isfinite(expanded_high)):
+            raise ValueError("derived OOD margins must be finite")
+        expanded.append((expanded_low, expanded_high))
 
     outside = [
         row_index

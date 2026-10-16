@@ -5,6 +5,14 @@ All notable changes to **scientific-computing-system** will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.9] - 2026-10-17
+
+### Scientific numerical tolerance overflow protection
+
+- Reject derived infinite tolerances for independent-method agreement and conservation checks instead of silently returning PASS.
+- Reject expanded OOD bounds that overflow to infinity when user-provided margins are finite.
+- Add regression tests for overflow conditions and ordinary finite thresholds.
+
 ## [v2.2.8] - 2026-10-17
 
 ### Scientific validation fail-closed thresholds
