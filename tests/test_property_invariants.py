@@ -23,7 +23,6 @@ import pytest
 from cds.math_utils.linalg import determinant, identity, mat_mul, solve_linear, transpose
 from cds.probability.distributions import binomial_pmf, geometric_pmf, poisson_pmf
 
-
 #: Exact-arithmetic inputs keep every identity above exact for integers.
 MATRICES = [
     [[1]],
