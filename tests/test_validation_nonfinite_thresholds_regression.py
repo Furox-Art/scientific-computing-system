@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 
 import pytest
 
@@ -18,7 +19,9 @@ from cds.validation.checks import (
 @pytest.mark.parametrize("threshold", [math.nan, math.inf, -math.inf])
 @pytest.mark.parametrize("parameter", ["rtol", "atol"])
 @pytest.mark.parametrize("check", [cross_method_agreement, check_conservation])
-def test_tolerances_reject_nonfinite_values(check, parameter, threshold) -> None:
+def test_tolerances_reject_nonfinite_values(
+    check: Callable[..., object], parameter: str, threshold: float
+) -> None:
     with pytest.raises(ValueError, match="rtol and atol"):
         check(1.0, 2.0, **{parameter: threshold})
 
@@ -33,11 +36,22 @@ def test_ood_margin_must_be_finite(margin: float) -> None:
 @pytest.mark.parametrize("parameter", ["max_standardized_mean_shift", "max_variance_ratio"])
 def test_drift_thresholds_reject_nonfinite(parameter: str, threshold: float) -> None:
     with pytest.raises(ValueError, match=parameter):
-        check_distribution_drift([1.0, 2.0], [10.0, 11.0], **{parameter: threshold})
+        if parameter == "max_standardized_mean_shift":
+            check_distribution_drift(
+                [1.0, 2.0], [10.0, 11.0], max_standardized_mean_shift=threshold
+            )
+        else:
+            check_distribution_drift([1.0, 2.0], [10.0, 11.0], max_variance_ratio=threshold)
 
 
 @pytest.mark.parametrize("threshold", [math.nan, math.inf, -math.inf])
 @pytest.mark.parametrize("parameter", ["max_bias_z", "max_abs_lag1", "max_variance_ratio"])
 def test_residual_thresholds_reject_nonfinite(parameter: str, threshold: float) -> None:
     with pytest.raises(ValueError, match="residual diagnostic thresholds"):
-        check_residual_diagnostics([1.0, -1.0, 2.0, -2.0], **{parameter: threshold})
+        residuals = [1.0, -1.0, 2.0, -2.0]
+        if parameter == "max_bias_z":
+            check_residual_diagnostics(residuals, max_bias_z=threshold)
+        elif parameter == "max_abs_lag1":
+            check_residual_diagnostics(residuals, max_abs_lag1=threshold)
+        else:
+            check_residual_diagnostics(residuals, max_variance_ratio=threshold)

@@ -5,6 +5,15 @@ All notable changes to **scientific-computing-system** will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.8] - 2026-10-17
+
+### Scientific validation fail-closed thresholds
+
+- Reject NaN and infinite tolerances for independent-method agreement and conservation.
+- Reject non-finite OOD margins, distribution-drift thresholds, and residual diagnostic limits.
+- Add regression coverage for these parameter-contract failures and align the public
+  version tuple with the synchronized release metadata.
+
 ## [v2.2.7] - 2026-10-15
 
 ### Housekeeping — version lockstep
