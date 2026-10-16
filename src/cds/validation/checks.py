@@ -36,8 +36,8 @@ def cross_method_agreement(
     name: str = "cross-method-agreement",
 ) -> ValidationCheck:
     """Compare two independently obtained scalar results."""
-    if rtol < 0 or atol < 0:
-        raise ValueError("rtol and atol must be non-negative")
+    if not all(math.isfinite(value) and value >= 0 for value in (rtol, atol)):
+        raise ValueError("rtol and atol must be finite and non-negative")
     if not (math.isfinite(primary) and math.isfinite(secondary)):
         return ValidationCheck(
             name=name,
@@ -137,8 +137,8 @@ def check_conservation(
     name: str = "conservation",
 ) -> ValidationCheck:
     """Check a scalar conservation law such as mass, charge, or energy."""
-    if rtol < 0 or atol < 0:
-        raise ValueError("rtol and atol must be non-negative")
+    if not all(math.isfinite(value) and value >= 0 for value in (rtol, atol)):
+        raise ValueError("rtol and atol must be finite and non-negative")
     if not (math.isfinite(before) and math.isfinite(after)):
         return ValidationCheck(
             name=name,
@@ -265,8 +265,8 @@ def check_ood_ranges(
     """
     if not 0.0 <= allowed_fraction <= 1.0:
         raise ValueError("allowed_fraction must lie in [0, 1]")
-    if margin_fraction < 0.0:
-        raise ValueError("margin_fraction must be non-negative")
+    if not math.isfinite(margin_fraction) or margin_fraction < 0.0:
+        raise ValueError("margin_fraction must be finite and non-negative")
     if not training_rows:
         raise ValueError("training_rows must not be empty")
     width = len(training_rows[0])
@@ -326,10 +326,10 @@ def check_distribution_drift(
     name: str = "distribution-drift",
 ) -> ValidationCheck:
     """Detect large first/second-moment shifts between scalar distributions."""
-    if max_standardized_mean_shift < 0:
-        raise ValueError("max_standardized_mean_shift must be non-negative")
-    if max_variance_ratio < 1.0:
-        raise ValueError("max_variance_ratio must be >= 1")
+    if not math.isfinite(max_standardized_mean_shift) or max_standardized_mean_shift < 0:
+        raise ValueError("max_standardized_mean_shift must be finite and non-negative")
+    if not math.isfinite(max_variance_ratio) or max_variance_ratio < 1.0:
+        raise ValueError("max_variance_ratio must be finite and >= 1")
     if len(reference) < 2 or len(current) < 2:
         raise ValueError("drift check requires at least two values per sample")
     finite = check_finite([*reference, *current], name=name)
@@ -374,7 +374,10 @@ def check_residual_diagnostics(
     name: str = "residual-diagnostics",
 ) -> ValidationCheck:
     """Screen residual bias, lag-1 dependence, and scale instability."""
-    if max_bias_z < 0 or max_abs_lag1 < 0 or max_variance_ratio < 1:
+    thresholds = (max_bias_z, max_abs_lag1, max_variance_ratio)
+    if not all(math.isfinite(value) for value in thresholds) or (
+        max_bias_z < 0 or max_abs_lag1 < 0 or max_variance_ratio < 1
+    ):
         raise ValueError("residual diagnostic thresholds are invalid")
     if len(residuals) < 4:
         return ValidationCheck(
