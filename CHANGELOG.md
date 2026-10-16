@@ -5,6 +5,14 @@ All notable changes to **scientific-computing-system** will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.10] - 2026-10-17
+
+### Fail-closed scientific moment diagnostics
+
+- Refuse distribution-drift PASS when arithmetic overflow makes finite-input sample means, variances, or standardized shifts non-finite.
+- Refuse residual-diagnostic PASS (or uncaught overflow) when derived residual means, centered differences, squares, or dependence statistics are not representable.
+- Preserve explicit warnings for well-defined zero-variance mismatches; add focused regressions for extreme and ordinary numerical inputs.
+
 ## [v2.2.9] - 2026-10-17
 
 ### Scientific numerical tolerance overflow protection

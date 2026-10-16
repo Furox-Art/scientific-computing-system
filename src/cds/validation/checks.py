@@ -348,16 +348,31 @@ def check_distribution_drift(
         variance = sum((value - mean) ** 2 for value in values) / (len(values) - 1)
         return mean, variance
 
-    ref_mean, ref_var = moments(reference)
-    cur_mean, cur_var = moments(current)
-    scale = max(math.sqrt(ref_var), 1e-12)
-    mean_shift = abs(cur_mean - ref_mean) / scale
-    if ref_var <= 1e-24 and cur_var <= 1e-24:
-        variance_ratio = 1.0
-    elif min(ref_var, cur_var) <= 1e-24:
-        variance_ratio = math.inf
-    else:
-        variance_ratio = max(ref_var, cur_var) / min(ref_var, cur_var)
+    try:
+        ref_mean, ref_var = moments(reference)
+        cur_mean, cur_var = moments(current)
+        if not all(math.isfinite(x) for x in (ref_mean, ref_var, cur_mean, cur_var)):
+            raise ArithmeticError("derived moments are not finite")
+        scale = max(math.sqrt(ref_var), 1e-12)
+        mean_shift = abs(cur_mean - ref_mean) / scale
+        if not math.isfinite(mean_shift):
+            raise ArithmeticError("standardized mean shift is not finite")
+        if ref_var <= 1e-24 and cur_var <= 1e-24:
+            variance_ratio = 1.0
+        elif min(ref_var, cur_var) <= 1e-24:
+            # A genuine zero-variance mismatch is a valid drift warning.
+            variance_ratio = math.inf
+        else:
+            variance_ratio = max(ref_var, cur_var) / min(ref_var, cur_var)
+            if not math.isfinite(variance_ratio):
+                raise ArithmeticError("variance ratio overflow")
+    except ArithmeticError:
+        return ValidationCheck(
+            name=name,
+            status=CheckStatus.FAIL,
+            message="distribution drift cannot be evaluated reliably: numerical overflow",
+            details={"reason": "non-finite derived moments or statistics"},
+        )
     drifted = mean_shift > max_standardized_mean_shift or variance_ratio > max_variance_ratio
     return ValidationCheck(
         name=name,
@@ -397,36 +412,58 @@ def check_residual_diagnostics(
     if finite.status is CheckStatus.FAIL:
         return finite
 
-    n = len(residuals)
-    mean = sum(residuals) / n
-    centered = [value - mean for value in residuals]
-    variance = sum(value * value for value in centered) / (n - 1)
-    standard_error = math.sqrt(variance / n) if variance > 0 else 0.0
-    bias_z = abs(mean) / standard_error if standard_error > 0 else (0.0 if mean == 0 else math.inf)
+    try:
+        n = len(residuals)
+        mean = sum(residuals) / n
+        centered = [value - mean for value in residuals]
+        if not math.isfinite(mean) or any(not math.isfinite(x) for x in centered):
+            raise ArithmeticError("derived residual mean or centered values are not finite")
+        variance = sum(value * value for value in centered) / (n - 1)
+        standard_error = math.sqrt(variance / n) if variance > 0 else 0.0
+        bias_z = (
+            abs(mean) / standard_error if standard_error > 0 else (0.0 if mean == 0 else math.inf)
+        )
 
-    denominator = sum(value * value for value in centered)
-    lag1 = (
-        sum(centered[index] * centered[index - 1] for index in range(1, n)) / denominator
-        if denominator > 0
-        else 0.0
-    )
+        denominator = sum(value * value for value in centered)
+        lag1 = (
+            sum(centered[index] * centered[index - 1] for index in range(1, n)) / denominator
+            if denominator > 0
+            else 0.0
+        )
+        if not all(math.isfinite(x) for x in (variance, standard_error, denominator, lag1)):
+            raise ArithmeticError("derived residual variance or dependence is not finite")
+        if math.isnan(bias_z):
+            raise ArithmeticError("derived bias score is not finite")
 
-    midpoint = n // 2
-    first = residuals[:midpoint]
-    second = residuals[midpoint:]
+        midpoint = n // 2
+        first = residuals[:midpoint]
+        second = residuals[midpoint:]
 
-    def sample_variance(values: Sequence[float]) -> float:
-        local_mean = sum(values) / len(values)
-        return sum((value - local_mean) ** 2 for value in values) / max(1, len(values) - 1)
+        def sample_variance(values: Sequence[float]) -> float:
+            local_mean = sum(values) / len(values)
+            if not math.isfinite(local_mean):
+                raise ArithmeticError("local residual mean overflow")
+            return sum((value - local_mean) ** 2 for value in values) / max(1, len(values) - 1)
 
-    first_var = sample_variance(first)
-    second_var = sample_variance(second)
-    if first_var <= 1e-24 and second_var <= 1e-24:
-        variance_ratio = 1.0
-    elif min(first_var, second_var) <= 1e-24:
-        variance_ratio = math.inf
-    else:
-        variance_ratio = max(first_var, second_var) / min(first_var, second_var)
+        first_var = sample_variance(first)
+        second_var = sample_variance(second)
+        if not all(math.isfinite(x) for x in (first_var, second_var)):
+            raise ArithmeticError("segment variance overflow")
+        if first_var <= 1e-24 and second_var <= 1e-24:
+            variance_ratio = 1.0
+        elif min(first_var, second_var) <= 1e-24:
+            variance_ratio = math.inf
+        else:
+            variance_ratio = max(first_var, second_var) / min(first_var, second_var)
+            if not math.isfinite(variance_ratio):
+                raise ArithmeticError("segment variance ratio overflow")
+    except ArithmeticError:
+        return ValidationCheck(
+            name=name,
+            status=CheckStatus.FAIL,
+            message="residual diagnostics cannot be evaluated reliably: numerical overflow",
+            details={"reason": "non-finite derived residual statistics"},
+        )
 
     suspicious = (
         bias_z > max_bias_z or abs(lag1) > max_abs_lag1 or variance_ratio > max_variance_ratio
