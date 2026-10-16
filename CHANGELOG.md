@@ -5,6 +5,17 @@ All notable changes to **scientific-computing-system** will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.7] - 2026-10-15
+
+### Housekeeping — version lockstep
+
+- Release 2.2.7 (2026-10-15): records the production/Stable line against
+  which the repository's locked surfaces (codemeta.json, pyproject.toml,
+  package.json, `cds --version`) are verified by
+  `tests/test_codemeta_version_lockstep.py`.
+- Bumps the npm shim to the same 2.2.7 line so both publish channels ship
+  at identical versions, as documented in the README "Install" section.
+
 ## [v2.2.6] - 2026-10-13
 
 ### Housekeeping — second-round neighbour sweep
