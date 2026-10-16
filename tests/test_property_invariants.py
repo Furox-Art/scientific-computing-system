@@ -16,10 +16,13 @@ identity instead of a silently wrong number:
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from cds.math_utils.linalg import determinant, identity, mat_mul, solve_linear, transpose
 from cds.probability.distributions import binomial_pmf, geometric_pmf, poisson_pmf
+
 
 #: Exact-arithmetic inputs keep every identity above exact for integers.
 MATRICES = [
@@ -31,7 +34,7 @@ MATRICES = [
 ]
 
 
-def _matmul_chain(*matrices):
+def _matmul_chain(*matrices: Any) -> Any:
     result = matrices[0]
     for m in matrices[1:]:
         result = mat_mul(result, m)
@@ -55,36 +58,36 @@ TWOS = [
 @pytest.mark.parametrize(
     "triple", [(a, b, c) for a in THREES for b in THREES[:2] for c in THREES[:2]]
 )
-def test_mat_mul_is_associative(triple) -> None:
+def test_mat_mul_is_associative(triple: Any) -> None:
     a, b, c = triple
     assert _matmul_chain(a, b, c) == _matmul_chain(a, _matmul_chain(b, c))
 
 
 @pytest.mark.parametrize("triple", [(a, b, c) for a in TWOS for b in TWOS for c in TWOS])
-def test_mat_mul_is_associative_2x2(triple) -> None:
+def test_mat_mul_is_associative_2x2(triple: Any) -> None:
     a, b, c = triple
     assert _matmul_chain(a, b, c) == _matmul_chain(a, _matmul_chain(b, c))
 
 
 @pytest.mark.parametrize("matrix", MATRICES)
-def test_transpose_twice_is_identity_on_values(matrix) -> None:
+def test_transpose_twice_is_identity_on_values(matrix: Any) -> None:
     assert transpose(transpose(matrix)) == matrix
 
 
 @pytest.mark.parametrize("a", THREES)
 @pytest.mark.parametrize("b", THREES[:2])
-def test_determinant_of_product_equals_product_of_determinants(a, b) -> None:
+def test_determinant_of_product_equals_product_of_determinants(a: Any, b: Any) -> None:
     assert determinant(mat_mul(a, b)) == pytest.approx(determinant(a) * determinant(b))
 
 
 @pytest.mark.parametrize("a", TWOS)
 @pytest.mark.parametrize("b", TWOS)
-def test_determinant_of_product_equals_product_of_determinants_2x2(a, b) -> None:
+def test_determinant_of_product_equals_product_of_determinants_2x2(a: Any, b: Any) -> None:
     assert determinant(mat_mul(a, b)) == pytest.approx(determinant(a) * determinant(b))
 
 
 @pytest.mark.parametrize("matrix", MATRICES[1:4])
-def test_solve_linear_reproduces_the_rhs(matrix) -> None:
+def test_solve_linear_reproduces_the_rhs(matrix: Any) -> None:
     n = len(matrix)
     rhs = [float(i + 1) for i in range(n)]
     x = solve_linear(matrix, rhs)
@@ -111,28 +114,28 @@ def test_geometric_pmf_sums_to_one(p: float) -> None:
     assert total == pytest.approx(1.0, abs=1e-6)
 
 
-def _add(a, b):
+def _add(a: Any, b: Any) -> Any:
     """Matrix addition; there is no mat_add in the public surface."""
     return [[x + y for x, y in zip(ra, rb)] for ra, rb in zip(a, b)]
 
 
 def test_distributive_law() -> None:
     # Three mutually conformable 3x3 operands.
-    a = [[1, 2, 3], [4, 5, 6], [7, 8, 10]]
-    b = [[2, 0, 1], [1, 3, 0], [0, 1, 2]]
-    c = [[3, 1, 4], [1, 5, 9], [2, 6, 5]]
+    a: Any = [[1, 2, 3], [4, 5, 6], [7, 8, 10]]
+    b: Any = [[2, 0, 1], [1, 3, 0], [0, 1, 2]]
+    c: Any = [[3, 1, 4], [1, 5, 9], [2, 6, 5]]
     assert mat_mul(a, _add(b, c)) == _add(mat_mul(a, b), mat_mul(a, c))
 
 
 def test_identity_is_the_neutral_element() -> None:
-    m = MATRICES[4]
+    m: Any = MATRICES[4]
     assert mat_mul(m, identity(len(m))) == m
 
 
 def test_double_inverse_round_trip() -> None:
     from cds.math_utils.linalg import matrix_inverse
 
-    m = MATRICES[2]
+    m: Any = MATRICES[2]
     twice = matrix_inverse(matrix_inverse(m))
     for got, want in zip(twice, m):
         assert got == pytest.approx(want, abs=1e-9)
