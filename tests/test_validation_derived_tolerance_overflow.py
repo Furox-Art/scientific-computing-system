@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 
 import pytest
 
 from cds.validation.checks import check_conservation, check_ood_ranges, cross_method_agreement
-from cds.validation.report import CheckStatus
+from cds.validation.report import CheckStatus, ValidationCheck
 
 
 @pytest.mark.parametrize(
@@ -17,7 +18,9 @@ from cds.validation.report import CheckStatus
         (check_conservation, "derived conservation tolerance"),
     ],
 )
-def test_finite_user_tolerance_must_not_overflow_to_false_pass(check, message) -> None:
+def test_finite_user_tolerance_must_not_overflow_to_false_pass(
+    check: Callable[..., ValidationCheck], message: str
+) -> None:
     with pytest.raises(ValueError, match=message):
         check(1e200, -1e200, rtol=1e308)
 
