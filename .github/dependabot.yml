@@ -21,6 +21,15 @@ updates:
       codeql:
         patterns:
           - "github/codeql-action*"
+      routine-actions:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "github/codeql-action*"
+        update-types:
+          - minor
+          - patch
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -30,3 +39,11 @@ updates:
       - "python"
     commit-message:
       prefix: "deps"
+    groups:
+      routine-python:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
