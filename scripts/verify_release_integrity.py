@@ -17,7 +17,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10 release compatibility
+    import tomli as tomllib
 
 DIST_NAME = "scientific-computing-system"
 DEFAULT_REPOSITORY = "Furox-Art/scientific-computing-system"

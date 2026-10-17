@@ -22,14 +22,11 @@ The second half is what makes the first meaningful. A test that only asserted
 "the files agree right now" would pass on a repository where the lockstep script
 had simply forgotten about codemeta.json.
 
-A note on Python 3.10
----------------------
+Python 3.10 compatibility
+-------------------------
 
-``scripts/check_version_lockstep.py`` imports :mod:`tomllib`, which is
-Python 3.11+. The ``version_discipline`` CI job runs on 3.12, so the script is
-never executed on 3.10 -- but this test module runs in the full matrix, so the
-subprocess tests are skipped below 3.11. The read-only assertions, including the
-one that reproduces the original drift, still run everywhere.
+The release checker uses tomli on Python 3.10 and tomllib on Python 3.11+.
+The complete positive and negative tests run on both interpreters.
 """
 
 from __future__ import annotations
@@ -40,8 +37,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "check_version_lockstep.py"
@@ -141,16 +136,6 @@ def _run_script_in(root: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-needs_lockstep_script = pytest.mark.skipif(
-    sys.version_info < LOCKSTEP_SCRIPT_MIN_PYTHON,
-    reason=(
-        "scripts/check_version_lockstep.py imports tomllib "
-        f"(Python {LOCKSTEP_SCRIPT_MIN_PYTHON[0]}.{LOCKSTEP_SCRIPT_MIN_PYTHON[1]}+); "
-        "the version_discipline CI job runs on a newer interpreter"
-    ),
-)
-
-
 def test_codemeta_is_a_locked_version_surface() -> None:
     """The script must read codemeta.json, not silently ignore it."""
     source = SCRIPT.read_text(encoding="utf-8")
@@ -197,7 +182,6 @@ def test_codemeta_drift_is_detectable() -> None:
     )
 
 
-@needs_lockstep_script
 def test_drift_in_codemeta_fails_the_lockstep_check(tmp_path: Path) -> None:
     """A stale codemeta.json version must make the CI check exit non-zero."""
     sandbox = tmp_path / "repo"
@@ -225,7 +209,6 @@ def test_drift_in_codemeta_fails_the_lockstep_check(tmp_path: Path) -> None:
     )
 
 
-@needs_lockstep_script
 def test_missing_codemeta_fails_the_lockstep_check(tmp_path: Path) -> None:
     """Deleting codemeta.json must fail rather than silently reduce the surface set."""
     sandbox = tmp_path / "repo"
