@@ -22,6 +22,22 @@ import pytest
 from cds.core.models import Domain, Hypothesis, HypothesisStatus
 
 
+@pytest.hookimpl(trylast=True)
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """Make skipped tests a failing result, including collection-time skips.
+
+    A passing suite must execute every collected test. Missing optional
+    backends are a provisioning failure, not proof that tests passed.
+    """
+    terminal = session.config.pluginmanager.get_plugin("terminalreporter")
+    if terminal is None:
+        return
+    skipped = terminal.stats.get("skipped", ())
+    if skipped:
+        terminal.write_sep("!", f"QUALITY GATE FAILED: {len(skipped)} skipped test(s)")
+        session.exitstatus = pytest.ExitCode.TESTS_FAILED
+
+
 @pytest.fixture(autouse=True)
 def _close_pyplot_figures() -> Iterator[None]:
     """Close every open pyplot figure after each test.

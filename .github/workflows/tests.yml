@@ -50,7 +50,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ".[test,dev,docs,pandas,plot]"
+          pip install ".[test,dev,docs,pandas,plot,property,io]" "hatchling==1.32.4"
       - name: Lint with Ruff
         run: ruff check .
       - name: Format check with Ruff
@@ -123,7 +123,7 @@ jobs:
       - name: Install the exact reference-CI dependency set
         run: |
           python -m pip install --upgrade pip
-          pip install ".[test,dev,docs,pandas,plot]" pip-audit
+          pip install ".[test,dev,docs,pandas,plot,property,io]" "hatchling==1.32.4" pip-audit
       - name: Audit the actually installed environment
         run: |
           # The project itself may be a new, not-yet-published release candidate,
@@ -211,7 +211,7 @@ jobs:
       - name: Install base extras only
         run: |
           python -m pip install --upgrade pip
-          pip install ".[test,dev]"
+          pip install ".[test,dev,pandas,plot,property,io]" "hatchling==1.32.4"
       - name: Run tests and enforce core coverage at 100%
         shell: bash
         run: |
@@ -399,7 +399,7 @@ jobs:
       - name: Run the test suite from the unpacked sdist
         run: |
           set -euo pipefail
-          python -m pip install ".[test]"
+          python -m pip install ".[test,dev,pandas,plot,property,io]" "hatchling==1.32.4"
           mkdir -p /tmp/sdist-check
           tar -xzf dist/scientific_computing_system-*.tar.gz -C /tmp/sdist-check
           cd /tmp/sdist-check/scientific_computing_system-*

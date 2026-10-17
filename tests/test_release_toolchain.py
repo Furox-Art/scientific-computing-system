@@ -396,7 +396,7 @@ def _emitted_metadata_version() -> str:
             check=False,
         )
         if build.returncode != 0:
-            pytest.skip(f"cannot build in this environment: {build.stderr[-400:]}")
+            pytest.fail(f"wheel build prerequisite failed: {build.stderr[-400:]}")
         wheels = list(Path(tmp).glob("*.whl"))
         assert len(wheels) == 1, f"expected one wheel, found {len(wheels)}"
         with zipfile.ZipFile(wheels[0]) as archive:
@@ -639,7 +639,7 @@ def _build_wheel(directory: str) -> Path:
         check=False,
     )
     if build.returncode != 0:
-        pytest.skip(f"cannot build in this environment: {build.stderr[-400:]}")
+        pytest.fail(f"wheel build prerequisite failed: {build.stderr[-400:]}")
     wheels = list(Path(directory).glob("*.whl"))
     assert len(wheels) == 1, f"expected one wheel, found {len(wheels)}"
     return wheels[0]

@@ -51,7 +51,11 @@ def test_all_entries_resolve(module_name: str) -> None:
     module = importlib.import_module(module_name)
     declared = getattr(module, "__all__", None)
     if declared is None:
-        pytest.skip(f"{module_name} declares no __all__")
+        # Python defines the star-import surface as all non-underscore names
+        # when a module does not declare __all__. Exercise that contract too.
+        public = {name: value for name, value in vars(module).items() if not name.startswith("_")}
+        assert all(hasattr(module, name) for name in public)
+        return
     missing = [name for name in declared if not hasattr(module, name)]
     assert not missing, f"{module_name}.__all__ names nothing: {missing}"
 
@@ -60,10 +64,16 @@ def test_all_entries_resolve(module_name: str) -> None:
 def test_star_import_succeeds(module_name: str) -> None:
     """``from <module> import *`` must not raise on a declared ``__all__``."""
     module = importlib.import_module(module_name)
-    if getattr(module, "__all__", None) is None:
-        pytest.skip(f"{module_name} declares no __all__")
+    declared = getattr(module, "__all__", None)
     namespace: dict[str, object] = {}
     exec(f"from {module_name} import *", namespace)  # noqa: S102
+    if declared is None:
+        expected = {name: value for name, value in vars(module).items() if not name.startswith("_")}
+    else:
+        expected = {name: getattr(module, name) for name in declared}
+    for name, value in expected.items():
+        assert name in namespace, f"{module_name}: import * omitted {name!r}"
+        assert namespace[name] is value, f"{module_name}: import * altered {name!r}"
 
 
 def test_stats_reexports_bootstrap() -> None:
