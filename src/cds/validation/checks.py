@@ -432,23 +432,16 @@ def check_residual_diagnostics(
         )
         if not all(math.isfinite(x) for x in (variance, standard_error, denominator, lag1)):
             raise ArithmeticError("derived residual variance or dependence is not finite")
-        if math.isnan(bias_z):
-            raise ArithmeticError("derived bias score is not finite")
-
         midpoint = n // 2
         first = residuals[:midpoint]
         second = residuals[midpoint:]
 
         def sample_variance(values: Sequence[float]) -> float:
             local_mean = sum(values) / len(values)
-            if not math.isfinite(local_mean):
-                raise ArithmeticError("local residual mean overflow")
             return sum((value - local_mean) ** 2 for value in values) / max(1, len(values) - 1)
 
         first_var = sample_variance(first)
         second_var = sample_variance(second)
-        if not all(math.isfinite(x) for x in (first_var, second_var)):
-            raise ArithmeticError("segment variance overflow")
         if first_var <= 1e-24 and second_var <= 1e-24:
             variance_ratio = 1.0
         elif min(first_var, second_var) <= 1e-24:

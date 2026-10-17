@@ -151,11 +151,25 @@ def screen_ood(
     if len(current[0]) != width:
         raise ValueError("reference and observations must have equal feature count")
 
-    means = tuple(sum(row[index] for row in baseline) / len(baseline) for index in range(width))
-    deviations = tuple(
-        math.sqrt(sum((row[index] - means[index]) ** 2 for row in baseline) / len(baseline))
-        for index in range(width)
+    # Accumulate divided terms instead of overflowing before division.
+    # Compute the population RMS using scaling, so finite 1e308 values
+    # do not produce spurious NaN means or OverflowError during squaring.
+    means = tuple(
+        math.fsum(row[index] / len(baseline) for row in baseline) for index in range(width)
     )
+    deviations_list: list[float] = []
+    for index, mean in enumerate(means):
+        offsets = [row[index] - mean for row in baseline]
+        if any(not math.isfinite(offset) for offset in offsets):
+            raise ValueError("reference deviations overflowed")
+        largest = max(abs(offset) for offset in offsets)
+        if largest == 0.0:
+            deviations_list.append(0.0)
+        else:
+            scaled = math.fsum((offset / largest) ** 2 for offset in offsets)
+            deviation = largest * math.sqrt(scaled / len(baseline))
+            deviations_list.append(deviation)
+    deviations = tuple(deviations_list)
 
     screened: list[OODObservation] = []
     for row_index, row in enumerate(current):

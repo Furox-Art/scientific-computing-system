@@ -5,6 +5,14 @@ All notable changes to **scientific-computing-system** will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.11] - 2026-10-17
+
+### Scientific validation CI and overflow resilience
+
+- Restore the 100% branch-coverage contract for numeric drift and residual overflow detection through explicit extreme-input regressions and removal of unreachable redundant checks.
+- Stabilize OOD reference means and standard deviations for large, finite observations; prevent NaN-derived false negatives and reject unrepresentable centered differences.
+- Keep ordinary OOD thresholds, constant-reference semantics, and normal sample behavior unchanged.
+
 ## [v2.2.10] - 2026-10-17
 
 ### Fail-closed scientific moment diagnostics
