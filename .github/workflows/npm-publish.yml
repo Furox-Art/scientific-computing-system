@@ -41,6 +41,15 @@ name: npm Publish
 # the repository's verified NPM_TOKEN until npm Trusted Publishing is registered.
 # Manual workflow_dispatch runs still default to OIDC so that path can be tested
 # and adopted later without changing the release topology.
+#
+# ## Automatic trigger after a release
+#
+# release.yml creates the `v*` tag with GITHUB_TOKEN, and GitHub does not start
+# workflows from events created by GITHUB_TOKEN. The tag trigger below therefore
+# never fires for a real release. This workflow also runs when the `Release`
+# workflow completes; `release_gate` reads that run's jobs and proceeds only when
+# the PyPI publish job actually succeeded, so ordinary completions and
+# non-release runs skip instead of failing on an already-published version.
 
 on:
   workflow_dispatch:
@@ -54,10 +63,14 @@ on:
           npmjs.com trusted publisher is not yet registered.
         type: boolean
         default: false
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
   push:
     # release.yml creates the version tag only after the PyPI release succeeds.
     # Publishing npm from that tag gives one version bump exactly one automatic
     # npm run, avoiding the previous branch-push + tag-push duplicate race.
+    # Kept for manual tag pushes; GITHUB_TOKEN-created tags do not trigger it.
     tags:
       - "v*"
 
@@ -70,8 +83,38 @@ permissions:
   contents: read
 
 jobs:
+  release_gate:
+    name: Require a published release
+    if: github.event_name == 'workflow_run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      published: ${{ steps.check.outputs.published }}
+    steps:
+      - name: Check the triggering Release run published
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          conclusion="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/jobs?per_page=100" \
+            --jq '[.jobs[] | select(.name == "Build + verify + publish to PyPI + metadata-only GitHub Release") | .conclusion] | first // "missing"')"
+          echo "Release publish job: ${conclusion}"
+          if [ "${conclusion}" = "success" ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
   publish:
     name: Verify and publish to npm with OIDC trusted publishing
+    needs: release_gate
+    if: |
+      always() &&
+      (github.event_name != 'workflow_run' || needs.release_gate.outputs.published == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # The `npm` environment is referenced by the trusted-publisher configuration
@@ -88,6 +131,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Release-triggered runs must publish the exact commit that was released,
+          # not whatever main points at when the follow-up workflow starts.
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.ref }}
 
       # Node 24 ships npm 11.5.1+, the floor for trusted publishing.
       #
