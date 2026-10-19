@@ -163,6 +163,7 @@ The package installs a `cds` command with 13 subcommands:
 | `cds --help` | Full command list |
 | `cds modules` | Curated module catalog (see the caveat above) |
 | `cds info` | Version, module status, health summary |
+| `cds version` | Show the installed version |
 | `cds constants` | Table of physical constants |
 | `cds calc <formula>` | Quick physics calculation (`ke`, `gravity`, `wave`, `gas`) |
 | `cds stats <numbers>` | Descriptive statistics for a comma-separated list |
