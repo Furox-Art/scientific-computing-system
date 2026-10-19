@@ -5,6 +5,13 @@ All notable changes to **scientific-computing-system** will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.2.12] - 2026-10-20
+
+### Tooling reproducibility
+
+- Pin ruff to the already-locked 0.15.17 in the `all` and `dev` extras and in `requirements-dev.txt`; raise the pre-commit hook from v0.15.0 to the same v0.15.17 release so local hooks and CI run identical tooling.
+- Bump synchronized package metadata to 2.2.12 as required by the version-discipline gate for `[project]` changes.
+
 ## [v2.2.11] - 2026-10-17
 
 ### Scientific validation CI and overflow resilience
