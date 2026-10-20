@@ -177,8 +177,12 @@ def test_release_recovery_is_idempotent_and_refuses_tag_rewrite() -> None:
 
 def test_release_policy_never_downloads_released_distributions() -> None:
     policy = _text(REGISTRY_WORKFLOW)
+    assert "name: PyPI Release Policy" in policy
     assert "pip install" not in policy
     assert "pypi.org/simple" not in policy
+    assert "verify_pypi_release.py" not in policy
+    assert "registry-cli:" not in policy
+    assert "workflow_dispatch:" in policy
     assert "verify_release_integrity.py" in policy
 
 
