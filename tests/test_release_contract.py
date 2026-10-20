@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "tests.yml"
-REGISTRY_WORKFLOW = ROOT / ".github" / "workflows" / "pypi-registry-smoke.yml"
+REGISTRY_WORKFLOW = ROOT / ".github" / "workflows" / "pypi-release-policy.yml"
 CHANGELOG_WORKFLOW = ROOT / ".github" / "workflows" / "changelog.yml"
 LEGACY_ATTEST_WORKFLOW = ROOT / ".github" / "workflows" / "attest.yml"
 BUILD_LOCK = ROOT / "requirements-build.lock"
@@ -175,7 +175,14 @@ def test_release_recovery_is_idempotent_and_refuses_tag_rewrite() -> None:
     assert "Refusing to rewrite a release tag" in release
 
 
-def test_registry_smoke_removes_forbidden_distribution_assets() -> None:
+def test_release_policy_never_downloads_released_distributions() -> None:
+    policy = _text(REGISTRY_WORKFLOW)
+    assert "pip install" not in policy
+    assert "pypi.org/simple" not in policy
+    assert "verify_release_integrity.py" in policy
+
+
+def test_release_policy_removes_forbidden_distribution_assets() -> None:
     registry = _text(REGISTRY_WORKFLOW)
     assert "Remove forbidden wheel and sdist assets from matching GitHub Release" in registry
     assert "gh release upload" not in registry
@@ -185,14 +192,14 @@ def test_registry_smoke_removes_forbidden_distribution_assets() -> None:
     assert "Verify public PyPI and asset-free GitHub Release policy" in registry
 
 
-def test_registry_smoke_does_not_copy_pypi_distributions_to_github() -> None:
+def test_release_policy_does_not_copy_pypi_distributions_to_github() -> None:
     registry = _text(REGISTRY_WORKFLOW)
     assert "Download exact wheel and sdist from public PyPI" not in registry
     assert "Synchronize exact PyPI files to matching GitHub Release" not in registry
     assert "dist/* --clobber" not in registry
 
 
-def test_release_workflow_changes_trigger_registry_contract_check() -> None:
+def test_release_workflow_changes_trigger_release_policy_check() -> None:
     registry = _text(REGISTRY_WORKFLOW)
     assert '".github/workflows/release.yml"' in registry
     assert '"scripts/verify_release_integrity.py"' in registry
