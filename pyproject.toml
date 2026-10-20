@@ -178,7 +178,6 @@ only-include = [
   "docs",
   "scripts/publish.py",
   "scripts/verify_cli_install.py",
-  "scripts/verify_pypi_release.py",
   "scripts/verify_release_integrity.py",
   "scripts/verify_ml_reference.py",
   "scripts/verify_cookbook.py",
