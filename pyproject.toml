@@ -162,7 +162,7 @@ packages = ["src/cds"]
 # inline type annotations. Hatchling picks up non-.py files in the
 # package dir by default, but declaring it explicitly is safer and
 # documents intent.
-force-include = { "src/cds/py.typed" = "cds/py.typed" }
+force-include = { "src/cds/py.typed" = "cds/py.typed", "dashboard/app.py" = "cds/dashboard/app.py" }
 
 # Keep the sdist lean. By default Hatchling ships the whole repo tree,
 # which dragged in ~87 MB of promo/render artifacts (assets/_promo_frames/,

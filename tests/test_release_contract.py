@@ -29,6 +29,14 @@ def _action_refs(path: Path) -> tuple[str, ...]:
     return tuple(refs)
 
 
+def test_dashboard_ships_inside_the_wheel() -> None:
+    import tomllib
+
+    data = tomllib.loads(_text(ROOT / "pyproject.toml"))
+    force = data["tool"]["hatch"]["build"]["targets"]["wheel"]["force-include"]
+    assert force["dashboard/app.py"] == "cds/dashboard/app.py"
+
+
 def test_release_workflow_keeps_distribution_assets_off_github() -> None:
     release = _text(RELEASE_WORKFLOW)
     assert "Create metadata-only GitHub Release" in release
@@ -136,8 +144,8 @@ def test_ci_gates_optional_dependency_audit_and_version_discipline() -> None:
     assert "scripts/check_version_discipline.py --base-ref HEAD^1" in ci
     assert "optional_audit" in ci
     assert "version_discipline" in ci
-    assert "needs.optional_audit.result" in ci or "optional_audit" in ci
-    assert "needs.version_discipline.result" in ci or "version_discipline" in ci
+    assert "needs.optional_audit.result" in ci
+    assert "needs.version_discipline.result" in ci
 
 
 def test_security_sensitive_workflows_pin_actions_to_full_commit_shas() -> None:

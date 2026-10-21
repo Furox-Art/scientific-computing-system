@@ -10,9 +10,8 @@ and a high-level training helper.
 
 Designed for teaching, prototyping, and small-model experiments, not
 for production-scale training (no NumPy, no BLAS — performance is
-deliberately the trade-off for full transparency). The optional
-``cds[fast-jit]`` extra brings in Numba for the matmul hot-path
-without changing the public surface.
+deliberately the trade-off for full transparency). No accelerated backend
+is bundled; the pure-Python path is the public surface.
 
 Why this module exists inside CDS:
 - Demonstrates that the *core ideas* of transformer-era NLP are short,

@@ -27,8 +27,8 @@ name: npm Publish
 # `scientific-computing-system`, workflow `npm-publish.yml`, environment `npm`.
 #
 # Token mode (explicit opt-in, `use_token_fallback=true`). Uses the repository's
-# NPM_TOKEN secret through NODE_AUTH_TOKEN. This is the mode in use while the
-# npmjs.com trusted-publisher registration is pending.
+# NPM_TOKEN secret through NODE_AUTH_TOKEN. Kept only as a break-glass path for
+# when the trusted publisher is unavailable; it is never selected automatically.
 #
 # The token mode deliberately omits `--provenance`. Provenance is an OIDC-only
 # attestation: with a token there is no OIDC identity to attest to, so npm
@@ -37,10 +37,9 @@ name: npm Publish
 # cannot work or pretending an attestation was produced.
 #
 # Both modes are fail-closed. A requested mode with no usable credential exits 1
-# with an actionable message. The automatic release-tag path deliberately uses
-# the repository's verified NPM_TOKEN until npm Trusted Publishing is registered.
-# Manual workflow_dispatch runs still default to OIDC so that path can be tested
-# and adopted later without changing the release topology.
+# with an actionable message. Automatic release runs use OIDC: the npm
+# attestation for 2.2.12 confirmed the trusted publisher is registered, so the
+# token path is no longer the default.
 #
 # ## Automatic trigger after a release
 #
@@ -59,8 +58,8 @@ on:
           Publish mode. false (default) = OIDC trusted publishing, which mints a
           Sigstore provenance attestation. true = token mode, using the
           repository NPM_TOKEN secret; that mode publishes WITHOUT provenance,
-          because a token cannot mint an attestation. Use true while the
-          npmjs.com trusted publisher is not yet registered.
+          because a token cannot mint an attestation. Use true only as a
+          break-glass fallback when the npm trusted publisher is unavailable.
         type: boolean
         default: false
   workflow_run:
@@ -330,15 +329,16 @@ jobs:
 
       # Two supported modes, selected by the `use_token_fallback` dispatch input.
       #
-      # OIDC (preferred, default): no NODE_AUTH_TOKEN is set. The npm CLI
-      # detects the OIDC environment (id-token: write above) and exchanges the
-      # runner's identity token for a short-lived publish credential scoped to
-      # this repository, workflow and environment. `--provenance` attaches a
-      # Sigstore-signed attestation to the tarball binding it to this commit.
+      # OIDC (default, including every automatic release run): no
+      # NODE_AUTH_TOKEN is set. The npm CLI detects the OIDC environment
+      # (id-token: write above) and exchanges the runner's identity token for a
+      # short-lived publish credential scoped to this repository, workflow and
+      # environment. `--provenance` attaches a Sigstore-signed attestation to
+      # the tarball binding it to this commit.
       #
       # Token (explicit opt-in): uses the repository's existing NPM_TOKEN secret
-      # via NODE_AUTH_TOKEN. This is the mode the maintainer selected while the
-      # npmjs.com trusted-publisher registration is still pending.
+      # via NODE_AUTH_TOKEN. Break-glass only: it is never selected without a
+      # workflow_dispatch input that asks for it.
       #
       # The token mode does NOT pass --provenance, and must not. Provenance is an
       # OIDC-only attestation: without a trusted-publisher configuration npm has
@@ -366,7 +366,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             requested_token="${{ inputs.use_token_fallback }}"
           else
-            requested_token="true"
+            requested_token="false"
           fi
 
           if [ "$requested_token" = "true" ]; then
@@ -376,7 +376,7 @@ jobs:
               exit 1
             fi
             echo "mode=token via NPM_TOKEN (no provenance: a long-lived token cannot mint a Sigstore attestation)"
-            echo "::warning::Automatic release-tag publishing uses NPM_TOKEN until npm Trusted Publishing is registered."
+            echo "::warning::Publishing with NPM_TOKEN break-glass mode; this release carries no provenance attestation."
           else
             if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
               echo "::error::OIDC mode was requested but this job cannot mint an OIDC token"
@@ -430,7 +430,7 @@ jobs:
       # trusted publisher is the cause, and "bump the version" would not have
       # helped.
       - name: Publish to npm (OIDC trusted publishing, with provenance)
-        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.use_token_fallback }}
+        if: ${{ !inputs.use_token_fallback }}
         run: |
           # `-e` is on by default in this shell, so it is explicitly suspended
           # around npm to capture the exit code instead of aborting before the
@@ -476,7 +476,7 @@ jobs:
           echo "PASS: npm publish returned 0"
 
       - name: Publish to npm (token mode, no provenance)
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.use_token_fallback }}
+        if: ${{ inputs.use_token_fallback }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |

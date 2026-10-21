@@ -26,9 +26,8 @@ Why this lives in CDS:
   + attention in hand, a learner can now watch a tiny GPT actually fit
   Shakespeare — and *see* every gradient flowing back through the graph
   because the engine is ~250 lines, not 50,000.
-- The optional ``cds[fast-jit]`` Numba backend swaps just the matmul
-  hot-path for ~10× speed-up; the rest of the graph stays pure Python
-  so the educational narrative is unbroken.
+- The matmul hot-path is pure Python today: there is no Numba backend,
+  so every gradient stays visible for the educational narrative.
 
 References:
     - Karpathy, A. (2020). "micrograd — A tiny scalar-valued autograd
