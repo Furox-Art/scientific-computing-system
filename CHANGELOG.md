@@ -19,6 +19,18 @@ a git tag in this repository or on `origin` (checked with `git ls-remote --tags`
 Any retroactive `v2.2.6` or `v2.2.7` tag should point at those commits. This note records
 what the history supports; it does not claim that a tag exists.
 
+## [v2.2.13] - 2026-10-21
+
+### Release packaging, CI and documentation accuracy
+
+- Ship `cds/dashboard/app.py` inside the wheel through the hatch force-include table and resolve the dashboard from the installed package first, so `cds dashboard` works from a wheel install.
+- Stop cancelling in-progress CI runs on `main`; deploy documentation only after the aggregate CI job succeeds.
+- Default npm publishing to OIDC trusted publishing with provenance; keep `NPM_TOKEN` as an explicit `workflow_dispatch` break-glass fallback only.
+- Document the real release topology in `docs/maintenance.md` (`workflow_run` from main CI, tag created after upload) and scope `scripts/publish.py` to a local preflight that pushes nothing.
+- Correct the README version example and the fast-jit/Numba docstrings that claimed acceleration the pure-Python core does not provide.
+- Harden the missing-dashboard-extra CLI test so it no longer depends on whether Streamlit is installed on the test machine.
+- Bump synchronized package metadata to 2.2.13 as required by the version-discipline gate for `src/cds/` changes.
+
 ## [v2.2.12] - 2026-10-20
 
 ### Tooling reproducibility

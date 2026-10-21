@@ -37,9 +37,9 @@ name: npm Publish
 # cannot work or pretending an attestation was produced.
 #
 # Both modes are fail-closed. A requested mode with no usable credential exits 1
-# with an actionable message. Automatic release runs use OIDC: the npm
-# attestation for 2.2.12 confirmed the trusted publisher is registered, so the
-# token path is no longer the default.
+# with an actionable message. Automatic release runs use OIDC: the attestation
+# attached to the last OIDC publish confirmed the trusted publisher is
+# registered, so the token path is no longer the default.
 #
 # ## Automatic trigger after a release
 #
