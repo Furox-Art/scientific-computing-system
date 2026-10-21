@@ -288,6 +288,72 @@ test('automatic npm publishing is single-shot from release tags', () => {
   );
 });
 
+test('manual npm dispatch is restricted to main and tag pushes to the package version', () => {
+  const workflow = workflowBody('npm-publish.yml');
+  const step = stepBlock(workflow, 'Validate the trigger ref and tag');
+  assert.ok(step, 'the trigger ref/tag validation step must exist');
+
+  // A dispatch can name any ref; publishing from a feature branch would
+  // advertise an unreleased package.json version.
+  assert.ok(
+    /if \[ "\$REF" != "refs\/heads\/main" \]; then/.test(step),
+    'workflow_dispatch must be rejected unless it runs from refs/heads/main',
+  );
+
+  // The `v*` trigger accepts any matching tag, so bind it to package.json.
+  assert.ok(
+    /expected_tag="v\$\{version\}"/.test(step),
+    'the tag guard must derive the expected tag from package.json',
+  );
+  assert.ok(
+    /if \[ "\$REF" != "refs\/tags\/\$\{expected_tag\}" \]; then/.test(step),
+    'a v* tag push must be rejected unless it is exactly v<package.json version>',
+  );
+
+  // Every rejection path must terminate the job instead of falling through.
+  assert.ok(
+    (step.match(/^\s*exit 1\s*$/gm) || []).length >= 3,
+    'dispatch, tag mismatch and unknown-event paths must all exit 1',
+  );
+});
+
+test('npm publishing requires the exact version to already exist on PyPI', () => {
+  const workflow = workflowBody('npm-publish.yml');
+  const step = stepBlock(workflow, 'Assert the exact version is already published on PyPI');
+  assert.ok(step, 'the PyPI version-existence gate must exist');
+
+  // The gate must ask PyPI about the exact package.json version, not a
+  // hardcoded or floating one.
+  assert.ok(
+    /pypi\.org\/pypi\/\{distribution\}\/\{version\}\/json/.test(step),
+    'the gate must query the PyPI JSON API for the exact version',
+  );
+  assert.ok(
+    /info\.get\("version"\) != version/.test(step),
+    'the gate must compare the reported PyPI version to the expected one',
+  );
+  assert.ok(
+    /endswith\("\.whl"\)/.test(step),
+    'the gate must require an installable wheel, not just any file',
+  );
+  assert.ok(/urllib\.error\.HTTPError/.test(step), 'a PyPI 404 must be handled explicitly');
+  assert.ok(
+    (step.match(/sys\.exit\(1\)/g) || []).length >= 3,
+    'HTTP errors, network failures and incomplete versions must all exit 1',
+  );
+
+  // It must run before either publish step, so a failure cannot be bypassed.
+  const gate = workflow.indexOf('Assert the exact version is already published on PyPI');
+  assert.ok(
+    gate > -1 && gate < workflow.indexOf('Publish to npm (OIDC trusted publishing'),
+    'the PyPI gate must run before the OIDC publish step',
+  );
+  assert.ok(
+    gate < workflow.indexOf('Publish to npm (token mode'),
+    'the PyPI gate must run before the token publish step',
+  );
+});
+
 test('both publish modes exist and are selected by one input', () => {
   const workflow = workflowBody('npm-publish.yml');
 

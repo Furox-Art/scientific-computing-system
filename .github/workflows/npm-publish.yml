@@ -49,6 +49,14 @@ name: npm Publish
 # workflow completes; `release_gate` reads that run's jobs and proceeds only when
 # the PyPI publish job actually succeeded, so ordinary completions and
 # non-release runs skip instead of failing on an already-published version.
+#
+# ## Trigger contract
+#
+# A manual dispatch is accepted only from `main`, and a `v*` tag push only when
+# the tag is exactly `v<package.json version>`. Every path additionally requires
+# that exact version to already exist on PyPI: the npm package is a launcher for
+# the Python distribution, so publishing it first would advertise a version that
+# `pip install` cannot yet provide.
 
 on:
   workflow_dispatch:
@@ -133,6 +141,98 @@ jobs:
           # Release-triggered runs must publish the exact commit that was released,
           # not whatever main points at when the follow-up workflow starts.
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.ref }}
+
+      # GATE: bind each trigger to the version it is allowed to publish.
+      #
+      # `workflow_dispatch` accepts an arbitrary ref, so without this a dispatch
+      # from a feature branch would publish whatever (possibly unreleased)
+      # package.json version that branch carries. The tag trigger is equally
+      # broad (`v*`), so a stray `v`-prefixed tag could publish a version that
+      # the checked-out package.json does not declare. Both cases end here.
+      - name: Validate the trigger ref and tag
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          version="$(python3 -c 'import json; print(json.load(open("package.json", encoding="utf-8"))["version"])')"
+          expected_tag="v${version}"
+          case "$EVENT_NAME" in
+            workflow_dispatch)
+              if [ "$REF" != "refs/heads/main" ]; then
+                echo "::error::workflow_dispatch may only publish from main; got ${REF}"
+                echo "::error::dispatch from main so package.json is the reviewed release version"
+                exit 1
+              fi
+              echo "PASS: manual dispatch from main (package.json ${version})"
+              ;;
+            push)
+              if [ "$REF" != "refs/tags/${expected_tag}" ]; then
+                echo "::error::tag ${REF} does not match package.json version ${version}"
+                echo "::error::expected refs/tags/${expected_tag}; refusing to publish a mismatched tag"
+                exit 1
+              fi
+              echo "PASS: tag ${expected_tag} matches package.json ${version}"
+              ;;
+            workflow_run)
+              echo "PASS: release-triggered run (release_gate checked the PyPI publish job)"
+              ;;
+            *)
+              echo "::error::unsupported trigger event: ${EVENT_NAME}"
+              exit 1
+              ;;
+          esac
+
+      # GATE: npm is a launcher for the PyPI distribution, and docs/maintenance.md
+      # promises npm only proceeds when the release is already on PyPI. The
+      # workflow_run path proves that through `release_gate`; this checks the
+      # registry itself so dispatch and tag-push paths get the same guarantee.
+      # A 404, an unparsable response, or an outage is a failure, never a pass.
+      - name: Assert the exact version is already published on PyPI
+        shell: bash
+        env:
+          DISTRIBUTION: scientific-computing-system
+        run: |
+          set -euo pipefail
+          version="$(python3 -c 'import json; print(json.load(open("package.json", encoding="utf-8"))["version"])')"
+          python3 - "$DISTRIBUTION" "$version" <<'PY'
+          import json
+          import sys
+          import urllib.error
+          import urllib.request
+
+          distribution, version = sys.argv[1], sys.argv[2]
+          url = f"https://pypi.org/pypi/{distribution}/{version}/json"
+          try:
+              with urllib.request.urlopen(url, timeout=60) as response:
+                  payload = json.load(response)
+          except urllib.error.HTTPError as exc:
+              print(
+                  f"::error::PyPI has no {distribution} {version} (HTTP {exc.code}): {url}",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+          except (urllib.error.URLError, TimeoutError, OSError) as exc:
+              print(
+                  f"::error::could not verify PyPI state for {distribution} {version}: {exc}",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+
+          info = payload.get("info") or {}
+          files = payload.get("urls") or []
+          wheels = [f for f in files if str(f.get("filename", "")).endswith(".whl")]
+          if info.get("version") != version or not wheels:
+              print(
+                  f"::error::PyPI {distribution} {version} is not fully published "
+                  f"(reported version {info.get('version')!r}, {len(files)} file(s), "
+                  f"{len(wheels)} wheel(s))",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+          print(f"PASS: PyPI already serves {distribution} {version} ({len(files)} files)")
+          PY
 
       # Node 24 ships npm 11.5.1+, the floor for trusted publishing.
       #
