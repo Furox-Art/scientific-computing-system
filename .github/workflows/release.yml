@@ -74,21 +74,37 @@ jobs:
 
           echo "release_sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
 
+          should_release=false
+          reason="CI-tested commit did not change src/cds/_version.py; no release required."
           if git rev-parse -q --verify "${RELEASE_SHA}^1" >/dev/null; then
-            if git diff --quiet "${RELEASE_SHA}^1" "$RELEASE_SHA" -- src/cds/_version.py; then
-              echo "should_release=false" >> "$GITHUB_OUTPUT"
-              echo "CI-tested commit did not change src/cds/_version.py; no release required."
-            else
-              echo "should_release=true" >> "$GITHUB_OUTPUT"
-              echo "CI-tested commit changed src/cds/_version.py; release authorized."
+            if ! git diff --quiet "${RELEASE_SHA}^1" "$RELEASE_SHA" -- src/cds/_version.py; then
+              should_release=true
+              reason="CI-tested commit changed src/cds/_version.py; release authorized."
             fi
           elif git ls-tree -r --name-only "$RELEASE_SHA" | grep -Fxq "src/cds/_version.py"; then
-            echo "should_release=true" >> "$GITHUB_OUTPUT"
-            echo "Root commit contains src/cds/_version.py; release authorized."
+            should_release=true
+            reason="Root commit contains src/cds/_version.py; release authorized."
           else
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
-            echo "Root commit has no src/cds/_version.py; no release required."
+            reason="Root commit has no src/cds/_version.py; no release required."
           fi
+
+          # Self-healing recovery: a version bump whose release never reached
+          # PyPI must not stay stranded because a later commit is what finally
+          # turned main CI green. Release the tree version whenever PyPI does
+          # not serve it, regardless of which commit introduced it. The publish
+          # job re-checks existence before uploading, so a false negative here
+          # cannot produce a duplicate upload.
+          if [ "$should_release" = false ]; then
+            version="$(python3 -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text(encoding='utf-8'))['project']['version'])")"
+            if ! curl --retry 2 --retry-delay 2 --retry-all-errors -sfL \
+              "https://pypi.org/pypi/scientific-computing-system/${version}/json" > /dev/null; then
+              should_release=true
+              reason="tree version ${version} is not on PyPI; releasing it from this CI-tested commit."
+            fi
+          fi
+
+          echo "should_release=$should_release" >> "$GITHUB_OUTPUT"
+          echo "$reason"
 
   publish:
     name: Build + verify + publish to PyPI + metadata-only GitHub Release

@@ -8,6 +8,7 @@ RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "tests.yml"
 REGISTRY_WORKFLOW = ROOT / ".github" / "workflows" / "pypi-release-policy.yml"
 CHANGELOG_WORKFLOW = ROOT / ".github" / "workflows" / "changelog.yml"
+PR_AUTOMATION_WORKFLOW = ROOT / ".github" / "workflows" / "pr-automation.yml"
 LEGACY_ATTEST_WORKFLOW = ROOT / ".github" / "workflows" / "attest.yml"
 BUILD_LOCK = ROOT / "requirements-build.lock"
 
@@ -37,6 +38,20 @@ def test_dashboard_ships_inside_the_wheel() -> None:
     assert match is not None, "the wheel force-include table is missing"
     force = dict(re.findall(r'"([^"]+)"\s*=\s*"([^"]+)"', match.group(1)))
     assert force["dashboard/app.py"] == "cds/dashboard/app.py"
+
+
+def test_release_gate_self_heals_a_stranded_version() -> None:
+    release = _text(RELEASE_WORKFLOW)
+    bind = release.index("Bind release to the exact CI-tested commit")
+    gate = release[bind : release.index("publish:")]
+    # A version bump whose first main CI run failed must not stay stranded
+    # behind a later fix commit. Whenever the tested commit did not itself
+    # change the version source, the gate releases the tree version if PyPI
+    # does not serve it yet. The publish job re-checks PyPI before uploading.
+    assert "pypi.org/pypi/scientific-computing-system/${version}/json" in gate
+    assert "Self-healing" in gate
+    assert "should_release=true" in gate
+    assert "if: steps.pypi_state.outputs.already_published != 'true'" in release
 
 
 def test_release_workflow_keeps_distribution_assets_off_github() -> None:
@@ -143,7 +158,10 @@ def test_ci_gates_optional_dependency_audit_and_version_discipline() -> None:
     assert "pip freeze --exclude scientific-computing-system" in ci
     assert "pip-audit -r /tmp/scientific-io-resolved.txt --strict" in ci
     assert 'pip install pip-audit ".[test,scientific,io]"' in ci
-    assert "scripts/check_version_discipline.py --base-ref HEAD^1" in ci
+    assert (
+        "run: python scripts/check_version_discipline.py --base-ref "
+        '"${{ steps.base.outputs.ref }}"' in ci
+    )
     assert "optional_audit" in ci
     assert "version_discipline" in ci
     assert "needs.optional_audit.result" in ci
@@ -159,6 +177,35 @@ def test_security_sensitive_workflows_pin_actions_to_full_commit_shas() -> None:
             assert all(char in "0123456789abcdef" for char in ref.lower()), (
                 f"non-hex action ref in {workflow}: {ref}"
             )
+
+
+def test_changelog_dispatch_validates_the_tag_before_using_it() -> None:
+    changelog = _text(CHANGELOG_WORKFLOW)
+    validate = changelog.index("Validate the tag input")
+    use = changelog.index("args: --verbose --tag ${{ steps.tag.outputs.tag }}")
+    assert validate < use, "the tag input must be validated before git-cliff runs"
+    # The raw input is read only through env, then emitted as a validated output.
+    assert "REQUESTED_TAG: ${{ inputs.tag }}" in changelog
+    assert "tag_re='^v(0|[1-9][0-9]*)" in changelog
+    assert '"refs/tags/${tag}"' in changelog
+    assert "args: --verbose --tag ${{ inputs.tag }}" not in changelog
+
+
+def test_pr_automation_validates_dispatch_input_through_env() -> None:
+    workflow = _text(PR_AUTOMATION_WORKFLOW)
+    assert "parseInt('${{ inputs.pr_number }}')" not in workflow
+    assert "REQUESTED_PR_NUMBER: ${{ inputs.pr_number }}" in workflow
+    assert "/^[1-9][0-9]{0,9}$/" in workflow
+    assert "core.setFailed" in workflow
+
+
+def test_runtime_lock_gate_does_not_claim_to_audit_an_empty_lock() -> None:
+    ci = _text(CI_WORKFLOW)
+    # `pip-audit -r requirements.lock` audits nothing while the runtime
+    # dependency set is empty; the real audit resolves pyproject.toml.
+    assert "pip-audit -r requirements.lock" not in ci
+    assert "Assert runtime lock is empty" in ci
+    assert "resolved-audit:" in ci
 
 
 def test_release_workflow_verifies_asset_free_policy() -> None:

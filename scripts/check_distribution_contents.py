@@ -10,6 +10,7 @@ promo media still installs, just several orders of magnitude larger.
 This script is the packaging content gate. It fails on:
 
 * **missing** ``cds/py.typed`` (PEP 561 marker)
+* **missing** ``cds/dashboard/app.py`` (the dashboard shipped in the wheel)
 * **missing** console entry point metadata (``cds = cds.cli:main``)
 * **wrong** distribution name / version in ``METADATA`` and ``PKG-INFO``
 * **extra** top-level importable packages in the wheel (the wheel must ship
@@ -92,6 +93,7 @@ FORBIDDEN_SUFFIXES = (".pyc", ".pyo", ".so.orig", ".rej")
 # Required wheel members beyond the package itself.
 REQUIRED_WHEEL_MEMBERS = (
     "cds/__init__.py",
+    "cds/dashboard/app.py",
     "cds/py.typed",
     "DIST_INFO/METADATA",
     "DIST_INFO/entry_points.txt",

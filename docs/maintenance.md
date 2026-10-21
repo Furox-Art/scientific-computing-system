@@ -70,7 +70,11 @@ greater than the previous release tag.
      artifacts live on PyPI);
    - verifies the result with `scripts/verify_release_integrity.py`.
 
-A push to `main` that does not touch `src/cds/_version.py` does not release.
+A push to `main` that does not touch `src/cds/_version.py` does not release —
+unless the version in `pyproject.toml` is not yet on PyPI. That self-healing
+path releases the tree version from the CI-tested commit, so a version bump
+whose first main CI run failed cannot stay stranded behind a later fix. The
+publish job re-checks PyPI before uploading, so it cannot duplicate a release.
 
 ### One-time PyPI setup
 
@@ -94,11 +98,13 @@ PyPI: owner `Furox-Art`, repository `scientific-computing-system`, workflow
 
 `.github/workflows/npm-publish.yml` is the sole npm authority. It runs when the
 `Release` workflow completes and proceeds only when the PyPI publish job
-succeeded. Publishing uses OIDC trusted publishing with a provenance
-attestation; dispatch with `use_token_fallback=true` only while the npm trusted
-publisher is unavailable, which publishes without provenance. One-time setup:
-npmjs.com → `scientific-computing-system` → Settings → Trusted Publisher
-(owner `Furox-Art`, workflow `npm-publish.yml`, environment `npm`, with
+succeeded. A manual dispatch is accepted only from `main`, a `v*` tag push only
+when the tag matches the `package.json` version, and every path requires that
+exact version to already exist on PyPI. Publishing uses OIDC trusted publishing
+with a provenance attestation; dispatch with `use_token_fallback=true` only while
+the npm trusted publisher is unavailable, which publishes without provenance.
+One-time setup: npmjs.com → `scientific-computing-system` → Settings → Trusted
+Publisher (owner `Furox-Art`, workflow `npm-publish.yml`, environment `npm`, with
 `npm publish` allowed).
 
 ## Documentation Deployment

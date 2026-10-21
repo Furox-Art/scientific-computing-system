@@ -111,12 +111,21 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pip-audit
-      # The runtime lock is intentionally empty (zero runtime dependencies), so
-      # this command resolves nothing. It is kept as an explicit assertion that
-      # the file stays empty: if a dependency is ever added to pyproject.toml
-      # without regenerating the lock, pip-compile drift becomes visible here.
-      - name: Audit runtime lock
-        run: pip-audit -r requirements.lock --strict
+      # requirements.lock is intentionally empty: the runtime dependency set is
+      # zero. `pip-audit -r` on a comment-only file audits nothing, so it was
+      # never a dependency-audit gate despite its old name. The real audit of
+      # what pyproject.toml resolves to is the `resolved-audit` job below. This
+      # check stays so a new runtime dependency cannot appear in the lock
+      # without someone revisiting that audit.
+      - name: Assert runtime lock is empty (zero runtime dependencies)
+        run: |
+          set -euo pipefail
+          if grep -Eq '^[[:space:]]*[^#[:space:]]' requirements.lock; then
+            echo "::error::requirements.lock declares entries; this gate does not audit them."
+            echo "::error::audit the resolved runtime set and update this step before merging."
+            exit 1
+          fi
+          echo "PASS: requirements.lock is comment-only; resolved-audit audits the installed set."
       - name: Audit dev/docs/test lock
         run: pip-audit -r requirements-dev.lock --strict
 
