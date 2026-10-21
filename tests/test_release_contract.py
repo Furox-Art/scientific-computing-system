@@ -243,6 +243,16 @@ def test_release_policy_never_downloads_released_distributions() -> None:
     assert "verify_release_integrity.py" in policy
 
 
+def test_release_policy_noops_when_the_release_does_not_exist_yet() -> None:
+    policy = _text(REGISTRY_WORKFLOW)
+    # A push that touches the release workflow can land before the version is
+    # released. The policy job must treat that as "nothing to enforce" instead
+    # of failing on the 404, and must still run once the release exists.
+    assert "Resolve matching GitHub Release" in policy
+    assert "exists=false" in policy
+    assert policy.count("steps.release_state.outputs.exists == 'true'") == 2
+
+
 def test_release_policy_removes_forbidden_distribution_assets() -> None:
     registry = _text(REGISTRY_WORKFLOW)
     assert "Remove forbidden wheel and sdist assets from matching GitHub Release" in registry

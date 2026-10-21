@@ -64,18 +64,41 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
-      - name: Remove forbidden wheel and sdist assets from matching GitHub Release
+      # The policy check also runs on a push that touches the release
+      # workflow, which can land before the version has been released (the
+      # 2.2.13 merge did exactly that). A missing release is not a policy
+      # violation: there is nothing to check yet, and the workflow_run trigger
+      # re-runs this job after the Release workflow creates it.
+      - name: Resolve matching GitHub Release
+        id: release_state
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         shell: bash
         run: |
           set -euo pipefail
-          release_id="$(
-            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq '.id'
-          )"
+          if release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" --jq '.id' 2>&1)"; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "release_id=$release_id" >> "$GITHUB_OUTPUT"
+          elif grep -q "HTTP 404" <<<"$release_id"; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "GitHub Release $RELEASE_TAG does not exist yet; nothing to enforce."
+          else
+            echo "::error::Could not resolve GitHub Release $RELEASE_TAG: $release_id"
+            exit 1
+          fi
+
+      - name: Remove forbidden wheel and sdist assets from matching GitHub Release
+        if: steps.release_state.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_ID: ${{ steps.release_state.outputs.release_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
           asset_ids="$(
-            gh api --paginate "repos/$GITHUB_REPOSITORY/releases/$release_id/assets" \
+            gh api --paginate "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" \
               --jq '.[] | select((.name | endswith(".whl")) or (.name | endswith(".tar.gz"))) | .id'
           )"
           if [ -z "$asset_ids" ]; then
@@ -88,6 +111,7 @@ jobs:
           fi
 
       - name: Verify public PyPI and asset-free GitHub Release policy
+        if: steps.release_state.outputs.exists == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
