@@ -13,7 +13,9 @@ on:
       - 'CONTRIBUTING.md'
       - 'LICENSE'
       - 'SECURITY.md'
-      - 'docs/**'
+      # No 'docs/**' here: deploy-docs runs inside this workflow on main
+      # pushes, so ignoring docs-only pushes meant documentation changes
+      # merged to main were never deployed.
   pull_request:
     branches: [main]
 

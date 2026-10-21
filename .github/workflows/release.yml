@@ -167,7 +167,10 @@ jobs:
               previous_tag="$tag"
               break
             fi
-          done < <(git tag --merged HEAD --sort=-creatordate --list 'v*')
+          # Sort by version, not tag creation date: tags backfilled for older
+          # versions are created later, so -creatordate would pick e.g. v2.2.6
+          # as the base for v2.2.13 and weaken the version-discipline diff.
+          done < <(git tag --merged HEAD --sort=-v:refname --list 'v*')
           if [ -n "$previous_tag" ]; then
             base="$(git rev-list -n 1 "$previous_tag")"
             echo "Previous release: $previous_tag ($base)"

@@ -131,6 +131,15 @@ def test_release_workflow_rechecks_version_discipline_before_build() -> None:
     assert "scripts/check_version_discipline.py" in release
 
 
+def test_previous_release_tag_is_selected_by_version_not_creation_date() -> None:
+    release = _text(RELEASE_WORKFLOW)
+    assert "--sort=-v:refname" in release, (
+        "the previous release must be the highest reachable version tag; "
+        "backfilled tags sort as newest by creatordate"
+    )
+    assert "--sort=-creatordate" not in release
+
+
 def test_current_public_version_metadata_is_synchronized() -> None:
     match = re.search(
         r'^version\s*=\s*["\']([^"\']+)["\']',
