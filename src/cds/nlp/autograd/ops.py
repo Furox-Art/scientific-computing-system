@@ -78,9 +78,8 @@ def matmul(a: list[list[Tensor]], b: list[list[Tensor]]) -> list[list[Tensor]]:
     contributing ``a`` and ``b`` entries.
 
     For a 50K-param model this is the hot path — the pure-Python
-    implementation stays as-is; the optional ``cds[fast-jit]`` Numba
-    backend wraps the inner loop for ~10x speed-up without
-    changing the autograd semantics.
+    implementation is the supported one; there is no Numba backend yet,
+    and any future accelerator must preserve these autograd semantics.
     """
     if not a or not b or not a[0] or not b[0]:
         return []

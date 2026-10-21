@@ -198,7 +198,9 @@ def _cmd_dashboard(args: argparse.Namespace) -> int:
     otherwise surface as a traceback rather than a documented code.
     """
     root_dir = Path(__file__).parent.parent.parent.parent
-    dashboard_path = root_dir / "dashboard" / "app.py"
+    package_dashboard = Path(__file__).resolve().parent.parent / "dashboard" / "app.py"
+    repo_dashboard = root_dir / "dashboard" / "app.py"
+    dashboard_path = package_dashboard if package_dashboard.exists() else repo_dashboard
     if not dashboard_path.exists():
         _print(_render("[red]Error:[/] Dashboard file not found at " + str(dashboard_path)))
         return EXIT_ERROR

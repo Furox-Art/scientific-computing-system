@@ -283,8 +283,8 @@ test('automatic npm publishing is single-shot from release tags', () => {
   assert.ok(/tags:\s*\n\s*- "v\*"/.test(workflow), 'v* tags must trigger npm publishing');
   assert.ok(!/branches:\s*\[main\]/.test(workflow), 'main branch pushes must not duplicate the tag release');
   assert.ok(
-    /github\.event_name != 'workflow_dispatch' \|\| inputs\.use_token_fallback/.test(workflow),
-    'automatic tag runs must select the verified token path',
+    /requested_token="false"/.test(workflow),
+    'automatic tag runs must select the OIDC path',
   );
 });
 
@@ -306,18 +306,15 @@ test('both publish modes exist and are selected by one input', () => {
     'use_token_fallback must default to false so OIDC remains the default mode',
   );
 
-  // Both modes must be present and mutually exclusive. Automatic tag releases
-  // use the verified token path; manual dispatches remain available for OIDC.
+  // Both modes must be present and mutually exclusive. Every run, automatic
+  // included, defaults to OIDC; the token path exists only as an explicit
+  // break-glass dispatch.
   const publishSteps = workflow.split('- name: ').filter((block) => /^Publish to npm/.test(block));
   assert.strictEqual(publishSteps.length, 2, 'there must be exactly two publish steps');
-  const oidcStep = publishSteps.find(
-    (s) => /github\.event_name == 'workflow_dispatch'/.test(s) && /!inputs\.use_token_fallback/.test(s),
-  );
-  const tokenStep = publishSteps.find(
-    (s) => /github\.event_name != 'workflow_dispatch'/.test(s) && /inputs\.use_token_fallback/.test(s),
-  );
-  assert.ok(oidcStep, 'manual OIDC publish must remain available');
-  assert.ok(tokenStep, 'automatic tag publishing must use the token path');
+  const oidcStep = publishSteps.find((s) => /if: \$\{\{ !inputs\.use_token_fallback \}\}/.test(s));
+  const tokenStep = publishSteps.find((s) => /if: \$\{\{ inputs\.use_token_fallback \}\}/.test(s));
+  assert.ok(oidcStep, 'OIDC publishing must be the default for every run');
+  assert.ok(tokenStep, 'token publishing must remain available as an explicit fallback');
   assert.notStrictEqual(oidcStep, tokenStep, 'the two modes must be distinct steps');
 
   // The token step must read the repository's existing NPM_TOKEN secret.
@@ -342,12 +339,8 @@ test('the token mode does not request provenance', () => {
     .split('- name: ')
     .filter((block) => /^Publish to npm/.test(block));
 
-  const oidc = publishSteps.find(
-    (s) => /github\.event_name == 'workflow_dispatch'/.test(s) && /!inputs\.use_token_fallback/.test(s),
-  );
-  const token = publishSteps.find(
-    (s) => /github\.event_name != 'workflow_dispatch'/.test(s) && /inputs\.use_token_fallback/.test(s),
-  );
+  const oidc = publishSteps.find((s) => /if: \$\{\{ !inputs\.use_token_fallback \}\}/.test(s));
+  const token = publishSteps.find((s) => /if: \$\{\{ inputs\.use_token_fallback \}\}/.test(s));
   assert.ok(oidc, 'OIDC publish step not found');
   assert.ok(token, 'token publish step not found');
 
@@ -566,7 +559,7 @@ test('a missing credential exits before any publish step can run', () => {
     /github\.event_name/.test(preflightBlock) &&
       /requested_token/.test(preflightBlock) &&
       /inputs\.use_token_fallback/.test(preflightBlock),
-    'the preflight must select token mode automatically for tag pushes and honor the manual input',
+    'the preflight must default automatic runs to OIDC and honor the manual token input',
   );
 
   // Exactly two `exit 1`s: one per mode. Each failing branch must terminate

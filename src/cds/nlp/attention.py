@@ -18,8 +18,8 @@ Performance note: ``matmul`` is O(m · p · n) on nested lists. This is
 deliberately slow — it is the trade-off for the educational track. The
 :class:`cds.nlp.embed.TokenEmbedding` weights are read-only at
 inference time, so the attention block is still functional for
-hand-rolled demos. An optional ``cds[fast-jit]`` Numba backend is
-available for the same code path.
+hand-rolled demos. There is no accelerated backend yet; this pure-Python
+path is the supported implementation.
 
 References:
     - Vaswani, A. et al. (2017). "Attention Is All You Need." NeurIPS.

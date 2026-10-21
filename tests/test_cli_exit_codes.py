@@ -157,6 +157,9 @@ class TestFailureContract:
             raise FileNotFoundError("streamlit not found")
 
         monkeypatch.setattr(Path, "exists", lambda self: True)
+        # A dev environment may have streamlit installed; force the documented
+        # "extra is absent" path instead of depending on the machine.
+        monkeypatch.setattr(importlib.util, "find_spec", lambda *_a, **_k: None)
         monkeypatch.setattr(subprocess, "run", fake_run)
         code = main(["dashboard"])
         assert code == EXIT_MISSING_DEPENDENCY

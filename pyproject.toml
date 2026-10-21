@@ -2,7 +2,7 @@
 # Distribution name. Formerly published as "cognitive-discovery-system";
 # the import name stays `cds`. Keep the old PyPI project alive as an alias.
 name = "scientific-computing-system"
-version = "2.2.12"
+version = "2.2.13"
 description = "A pure-Python computational science platform for numerical methods, modeling, validation, uncertainty, scientific workflows, dimensional analysis, and optional research-data backends. Zero runtime dependencies."
 readme = "README.md"
 license = "MIT"
@@ -162,7 +162,7 @@ packages = ["src/cds"]
 # inline type annotations. Hatchling picks up non-.py files in the
 # package dir by default, but declaring it explicitly is safer and
 # documents intent.
-force-include = { "src/cds/py.typed" = "cds/py.typed" }
+force-include = { "src/cds/py.typed" = "cds/py.typed", "dashboard/app.py" = "cds/dashboard/app.py" }
 
 # Keep the sdist lean. By default Hatchling ships the whole repo tree,
 # which dragged in ~87 MB of promo/render artifacts (assets/_promo_frames/,

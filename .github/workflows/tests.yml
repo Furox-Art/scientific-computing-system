@@ -19,7 +19,9 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel a main-branch run: release.yml releases the outcome of that
+  # exact commit, so a superseded run would leave its version unreleased.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Default-deny. Every job below opts in to exactly the scopes it needs; the
 # workflow-level default is `contents: read` so a job that forgets to declare
@@ -476,11 +478,9 @@ jobs:
           node --check bin/scs.js
       - name: Run the npm entry-point contract suite
         run: npm test
-      # NOTE: there is deliberately no tarball/publish step here. npm publishing
-      # was disabled by explicit product decision ("npm is no longer published",
-      # main @ 52717c5): `npm-publish.yml` is a no-op and `package.json` is
-      # private. This job guards the launcher files that remain in the
-      # repository -- nothing in it may upload to a registry.
+      # NOTE: there is deliberately no tarball/publish step here. Publishing to
+      # npm is owned by `npm-publish.yml`; this job only guards the launcher
+      # files, and nothing in it may upload to a registry.
       - name: Verify the launcher forwards to the real cds CLI
         run: |
           set -euo pipefail

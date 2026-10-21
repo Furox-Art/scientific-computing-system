@@ -17,8 +17,7 @@ Scope:
 - Mini-batch SGD on the educational track (batch size 4-32). For
   larger batches the user can call :func:`train_step` in a loop.
 - No mixed precision, no gradient accumulation, no learning-rate
-  scheduling — these are deferred until the ``cds[fast-jit]`` Numba
-  backend is added.
+  scheduling — these are not implemented yet.
 """
 
 from __future__ import annotations

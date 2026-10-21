@@ -1,31 +1,20 @@
 #!/usr/bin/env python3
-"""Local release driver for scientific-computing-system.
+"""Local release preflight for scientific-computing-system.
 
 Usage:
-    python scripts/publish.py                   # use latest git tag as version
-    python scripts/publish.py --tag v1.1.6      # use a specific tag
-    python scripts/publish.py --dry-run         # build + verify, but push nothing
-    python scripts/publish.py --skip-tests      # skip the pytest step
-    python scripts/publish.py --skip-docs       # skip mkdocs gh-deploy
+    python scripts/publish.py                 # run tests, build, verify version
+    python scripts/publish.py --skip-tests    # skip the pytest step
 
-Role of this script: it is the LOCAL half of a two-stage release. It
-verifies a clean tree on ``main``, runs the test suite, builds the sdist
-+ wheel, confirms the built version matches the tag, then **pushes the
-tag**. Pushing a ``v*`` tag triggers ``.github/workflows/release.yml``,
-which is the SOLE authority for the PyPI upload and the GitHub Release —
-this script does not touch PyPI or create the release, so there is no
-double-upload and no long-lived token handled locally.
+GitHub Actions publishes: ``release.yml`` starts from a successful CI run on
+``main`` and is the sole authority for the PyPI upload, the release tag, and the
+GitHub Release; ``tests.yml`` deploys the docs. This script only verifies
+locally what CI verifies again -- a clean tree on ``main``, the tests, a clean
+build, and an artifact whose version matches ``pyproject.toml``.
 
-Docs are deployed here (``mkdocs gh-deploy``) rather than in CI, because
-the canonical docs build lives on the local toolchain.
-
-Versioning: static. ``version`` lives in ``pyproject.toml`` and is mirrored
-in ``src/cds/_version.py`` (kept in lockstep — bump both before tagging).
-The script reads the version from the built wheel filename (e.g.
-``scientific_computing_system-1.0.2-py3-none-any.whl``) and uses it for
-verification and tag creation. (Previously we tried hatch-vcs, but 0.5.0
-silently ignored the version-scheme override; static versioning is what
-shipped — see ``pyproject.toml`` release checklist.)
+Versioning: static. ``version`` lives in ``pyproject.toml`` and is mirrored in
+``package.json``, ``codemeta.json``, ``src/cds/_version.py``, ``CITATION.cff``
+and ``CHANGELOG.md``. ``scripts/check_version_lockstep.py`` enforces that all six
+agree.
 
 Requirements (install once):
     pip install build
@@ -41,6 +30,8 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+
+import tomllib
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -66,10 +57,13 @@ def git(*args: str) -> str:
     return run_capture(["git", *args], cwd=PROJECT_ROOT).stdout.strip()
 
 
-def latest_tag() -> str | None:
-    """Return the latest ``v*`` tag, or None if there is none."""
-    out = git("tag", "--list", "v*", "--sort=-v:refname")
-    return out.splitlines()[0] if out else None
+def declared_version() -> str:
+    """Return the authoritative ``[project] version`` from pyproject.toml."""
+    payload = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    version = payload["project"]["version"]
+    if not isinstance(version, str):
+        raise SystemExit("pyproject.toml must contain a string [project] version")
+    return version
 
 
 def version_from_wheel(path: Path) -> str | None:
@@ -84,25 +78,14 @@ def version_from_wheel(path: Path) -> str | None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    parser.add_argument(
-        "--tag",
-        help="Git tag to publish (e.g. v0.9.0b1). Defaults to the latest v* tag.",
-    )
-    parser.add_argument("--dry-run", action="store_true", help="Build + verify, but push nothing")
     parser.add_argument("--skip-tests", action="store_true", help="Skip pytest step")
-    parser.add_argument(
-        "--skip-docs",
-        action="store_true",
-        help="Skip mkdocs gh-deploy (Pages not updated after the tag push).",
-    )
     args = parser.parse_args()
 
     os.chdir(PROJECT_ROOT)
 
     # 1. Sanity: clean working tree, on main. ``src/cds/_version.py`` is a
-    #    committed static file (lockstepped with ``pyproject.toml`` version),
-    #    so a dirty tree there MUST block publish — a forgotten bump would
-    #    otherwise ship a version mismatch.
+    #    committed static file, so a forgotten bump would otherwise pass here
+    #    and fail in CI.
     status = git("status", "--porcelain")
     if status:
         print("Working tree is dirty. Commit/stash first:\n", status, file=sys.stderr)
@@ -110,32 +93,19 @@ def main() -> int:
 
     branch = git("branch", "--show-current")
     if branch != "main":
-        print(f"Not on main (currently on {branch!r}). Publish from main only.", file=sys.stderr)
+        print(f"Not on main (currently on {branch!r}). Run this from main.", file=sys.stderr)
         return 1
 
-    # 2. Determine the tag/version
-    if args.tag:
-        tag = args.tag
-    else:
-        tag = latest_tag()
+    expected_version = declared_version()
+    print(f"Declared version: {expected_version}", flush=True)
 
-    if not tag:
-        print("No --tag given and no v* tags found locally. Use --tag vX.Y.Z.", file=sys.stderr)
-        return 1
-
-    if not tag.startswith("v"):
-        print(f"Tag {tag!r} does not start with 'v'. Rename and retry.", file=sys.stderr)
-        return 1
-
-    print(f"Version: {tag} (from {'--tag' if args.tag else 'latest'})", flush=True)
-
-    # 3. Tests
+    # 2. Tests
     if not args.skip_tests:
         print("\n=== Running tests ===", flush=True)
         run([sys.executable, "-m", "pytest", "-q"])
 
-    # 4. Clean dist, build (the wheel is needed to verify the version the
-    #    tag will publish; CI rebuilds independently from a clean checkout).
+    # 3. Clean dist and build. CI rebuilds independently from a clean checkout;
+    #    this build only proves the tree produces an artifact locally.
     dist = PROJECT_ROOT / "dist"
     if dist.exists():
         shutil.rmtree(dist)
@@ -149,47 +119,23 @@ def main() -> int:
         size_kb = path.stat().st_size / 1024
         print(f"  {path.name} ({size_kb:.1f} kB)")
 
-    # 5. Verify the built version matches the requested tag
+    # 4. Verify the built version matches the version CI will release.
     wheel = next((p for p in artifacts if p.suffix == ".whl"), None)
     if not wheel:
         print("No wheel produced. Aborting.", file=sys.stderr)
         return 1
     built_version = version_from_wheel(wheel)
-    expected_version = tag.lstrip("v")
     if built_version != expected_version:
         print(
-            f"Version mismatch: built={built_version}, expected={expected_version}.\n"
-            f"  Did you forget to create the tag? `git tag -a {tag} -m 'Release {tag}'`",
+            f"Version mismatch: built={built_version}, declared={expected_version}.\n"
+            "Check the version surfaces listed in docs/maintenance.md.",
             file=sys.stderr,
         )
         return 1
 
-    # 6. Stop here on a dry run — nothing is pushed, no release is triggered.
-    if args.dry_run:
-        print("\nDry run: skipping tag push and docs deploy.", flush=True)
-        return 0
-
-    # 7. Push tag. This triggers release.yml, which uploads to PyPI and
-    #    creates the GitHub Release. The local script stays out of both.
-    print(f"\n=== Pushing tag {tag} (triggers CI release.yml) ===", flush=True)
-    run(["git", "push", "origin", tag])
-
-    # 8. Deploy docs to GitHub Pages (legacy mode: push to gh-pages branch).
-    #    Kept local on purpose — docs deploy is not part of release.yml.
-    if not args.skip_docs:
-        print("\n=== Deploying docs to GitHub Pages ===", flush=True)
-        try:
-            run([sys.executable, "-m", "mkdocs", "gh-deploy", "--force", "--no-history"])
-        except subprocess.CalledProcessError as exc:
-            print(
-                f"  mkdocs gh-deploy failed (exit {exc.returncode}). "
-                "The tag push already succeeded and release.yml is running; "
-                "you can retry the docs deploy later with --skip-tests.",
-                file=sys.stderr,
-            )
-
     print(
-        f"\nDone. {tag} pushed; CI release.yml will publish to PyPI and create the GitHub Release.",
+        f"\nPreflight passed for {expected_version}. Nothing was pushed or uploaded.\n"
+        "Merge to main; CI and the Release workflow publish from there.",
         flush=True,
     )
     print(
