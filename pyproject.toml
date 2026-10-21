@@ -95,6 +95,11 @@ plot = [
 test = [
     "pytest>=8.0",
     "pytest-cov",
+    # tests/test_release_toolchain.py builds the wheel with
+    # `python -m build --no-isolation`, so the ambient hatchling must match the
+    # build-system pin above; otherwise the suite validates a metadata version
+    # emitted by a different backend than the one releases use.
+    "hatchling==1.32.4",
 ]
 # Property-based testing. Used only by tests/test_property_invariants.py and
 # tests/test_special_invariants.py

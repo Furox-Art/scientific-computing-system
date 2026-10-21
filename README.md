@@ -207,10 +207,14 @@ NumPy or the 2.0 build instead.
 ## Contributing
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev,test,docs]"   # lint/type, test, and docs tooling
 pytest            # CI also enforces 100% blended coverage (statement + branch)
 mkdocs serve      # docs at http://127.0.0.1:8000/
 ```
+
+`.[dev,test,docs]` is the smallest environment for the default test suite and the docs.
+Add `.[property]` for the Hypothesis invariants, or `.[all]` for the dashboard,
+HDF5/NetCDF, plotting and scientific backends together.
 
 Issues and PRs welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) and
 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).

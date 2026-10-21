@@ -18,6 +18,9 @@ These tests pin three properties:
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -96,18 +99,78 @@ def test_sibling_sharing_a_textual_prefix_is_rejected(tmp_path: Path) -> None:
         resolve_within_root(sibling / "loot.txt", root)
 
 
+def _link_directory(link: Path, target: Path) -> bool:
+    """Create a link at ``link`` pointing to ``target``; report junction use.
+
+    POSIX (and privileged Windows) gets a real symbolic link. An unprivileged
+    Windows process cannot create one -- ``os.symlink`` raises ``WinError
+    1314`` -- but ``mklink /J`` creates a directory junction without any
+    privilege, and :meth:`Path.resolve` follows junctions exactly like
+    symlinks. The confinement check therefore sees the same real target, so
+    the escape path is still exercised rather than skipped.
+
+    Returns ``True`` when a junction was used and ``False`` for a symlink.
+    """
+    try:
+        link.symlink_to(target, target_is_directory=True)
+    except (OSError, NotImplementedError) as exc:
+        if sys.platform != "win32":
+            pytest.fail(
+                "cannot create the symlink this escape test requires: "
+                f"{exc}. The filesystem or sandbox must permit symlinks for "
+                "confinement to be verifiable on POSIX.",
+                pytrace=False,
+            )
+        completed = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(link), str(target)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if completed.returncode != 0 or not link.is_dir():
+            detail = (completed.stdout + completed.stderr).strip() or "no output"
+            pytest.fail(
+                "symlink creation failed (Windows requires Developer Mode or "
+                "SeCreateSymbolicLinkPrivilege; unprivileged attempts raise "
+                f"WinError 1314: {exc}), and the `cmd /c mklink /J` directory-"
+                f"junction fallback also failed: {detail}. Enable Developer "
+                "Mode, run this test as an administrator, or repair NTFS "
+                "junction support so the escape path can be exercised.",
+                pytrace=False,
+            )
+        return True
+    return False
+
+
+def _remove_directory_link(link: Path, *, junction: bool) -> None:
+    """Delete a directory link without touching the target it points at."""
+    if junction:
+        # rmdir removes the junction entry only; target contents stay intact.
+        subprocess.run(
+            ["cmd", "/c", "rmdir", str(link)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return
+    try:
+        link.unlink()
+    except OSError:  # Windows directory symlinks must be removed with rmdir.
+        os.rmdir(link)
+
+
 def test_symlink_pointing_outside_root_is_rejected(tmp_path: Path) -> None:
     root = _root(tmp_path)
-    target = tmp_path / "outside.txt"
-    target.write_text("secret", encoding="utf-8")
-    link = root / "link.txt"
+    outside_dir = tmp_path / "outside-dir"
+    outside_dir.mkdir()
+    (outside_dir / "outside.txt").write_text("secret", encoding="utf-8")
+    link = root / "link"
+    junction = _link_directory(link, outside_dir)
     try:
-        link.symlink_to(target)
-    except (OSError, NotImplementedError):  # pragma: no cover - platform dependent
-        pytest.skip("symlink creation unavailable on this platform/privilege level")
-
-    with pytest.raises(ValueError, match="escapes confined root"):
-        resolve_within_root("link.txt", root)
+        with pytest.raises(ValueError, match="escapes confined root"):
+            resolve_within_root("link/outside.txt", root)
+    finally:
+        _remove_directory_link(link, junction=junction)
 
 
 def test_root_itself_is_not_treated_as_an_escape(tmp_path: Path) -> None:

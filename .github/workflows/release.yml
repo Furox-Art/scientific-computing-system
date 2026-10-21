@@ -16,18 +16,32 @@ on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
+  # Recovery-only path. It never publishes to PyPI: it tags an already-published
+  # version and creates the metadata-only GitHub Release that the post-publish
+  # step may have missed. Dispatching it for an unpublished version fails closed.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Already-published version to tag, without the v prefix (e.g. 2.2.6)"
+        required: true
+        type: string
+      release_sha:
+        description: "Optional commit SHA for the tag; must be on main and contain that version"
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.event.workflow_run.head_branch }}
+  group: release-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   gate:
     name: Verify successful main CI release candidate
     if: >-
+      github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main' &&
@@ -79,7 +93,7 @@ jobs:
   publish:
     name: Build + verify + publish to PyPI + metadata-only GitHub Release
     needs: gate
-    if: needs.gate.outputs.should_release == 'true'
+    if: github.event_name == 'workflow_run' && needs.gate.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: pypi
@@ -97,6 +111,10 @@ jobs:
           # Full history + tags: the version-discipline base must be the previous
           # *release*, not the parent commit.
           fetch-depth: 0
+          # The tag step pushes an annotated tag with this token. contents:write
+          # is granted at job level; persisting the credential is what makes the
+          # push possible.
+          persist-credentials: true
 
       - name: Re-verify checkout identity
         shell: bash
@@ -367,23 +385,58 @@ jobs:
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
 
       - name: Create or verify release tag after successful PyPI state
+        # The tag is created only after PyPI accepted the upload. An existing tag
+        # is never rewritten: release tags are immutable. A tag that points at a
+        # different commit is accepted when both commits carry the same tree,
+        # which is the normal result of rebasing or squash-merging the release
+        # branch after an earlier run created the tag. The 2.2.6 failure was
+        # exactly this case: v2.2.6 pointed at the pre-rebase commit d73f6fa
+        # while the workflow ran at its identical-tree squash commit a10cd8b,
+        # and the step failed the release after PyPI had already accepted it.
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           set -euo pipefail
-          if git rev-parse -q --verify "refs/tags/$RELEASE_TAG" >/dev/null; then
+          # A tag may have been created by an earlier attempt (or another
+          # runner) after this checkout. Fetch tags first so the existence check
+          # sees the current remote state instead of attempting a push that can
+          # only be rejected.
+          git fetch --force --tags origin
+
+          assert_tag_matches_release_commit() {
+            local tag_target
             tag_target="$(git rev-list -n 1 "$RELEASE_TAG")"
-            if [ "$tag_target" != "$RELEASE_SHA" ]; then
-              echo "::error::Existing $RELEASE_TAG points to $tag_target, expected $RELEASE_SHA. Refusing to rewrite a release tag."
-              exit 1
+            if [ "$tag_target" = "$RELEASE_SHA" ]; then
+              return 0
             fi
-            echo "Existing $RELEASE_TAG already resolves to the authorized release commit; recovery is safe."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a "$RELEASE_TAG" "$RELEASE_SHA" -m "Release $RELEASE_TAG"
-            git push origin "$RELEASE_TAG"
+            if git diff --quiet "$tag_target" "$RELEASE_SHA" --; then
+              echo "::warning::Existing $RELEASE_TAG points to $tag_target, not $RELEASE_SHA, but both commits have identical trees (rebased/squashed release). Keeping the immutable tag."
+              return 0
+            fi
+            echo "::error::Existing $RELEASE_TAG points to $tag_target, expected $RELEASE_SHA, and the trees differ. Refusing to rewrite a release tag."
+            return 1
+          }
+
+          if git rev-parse -q --verify "refs/tags/$RELEASE_TAG" >/dev/null; then
+            assert_tag_matches_release_commit
+            echo "Existing $RELEASE_TAG already marks an equivalent release commit; recovery is safe."
+            exit 0
           fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RELEASE_TAG" "$RELEASE_SHA" -m "Release $RELEASE_TAG"
+
+          if git push origin "$RELEASE_TAG"; then
+            echo "Created and pushed $RELEASE_TAG at $RELEASE_SHA."
+            exit 0
+          fi
+
+          # Losing a race to create the same tag is not a release failure if the
+          # tag that won points at an equivalent commit. Re-fetch and verify.
+          git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          assert_tag_matches_release_commit
+          echo "Another run created $RELEASE_TAG concurrently; verified it is equivalent."
 
       - name: Create metadata-only GitHub Release
         env:
@@ -426,3 +479,154 @@ jobs:
               description: `Release pipeline ${state}`
             });
             core.info(`Deployment #${{ steps.deployment.outputs.id }} marked ${state}`);
+
+  # Recovery for a version that already reached PyPI but whose post-publish tag
+  # or GitHub Release step failed. This job never builds and never uploads: it
+  # refuses versions that are not already on PyPI, so it cannot publish.
+  recover_release_metadata:
+    name: Recover tag and GitHub Release for a published version
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PACKAGE: scientific-computing-system
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Validate inputs and resolve the release commit
+        id: target
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_SHA: ${{ inputs.release_sha }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Recovery must be dispatched from refs/heads/main; got $GITHUB_REF."
+            exit 1
+          fi
+
+          version="${INPUT_VERSION#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid version '$INPUT_VERSION'; expected X.Y.Z."
+            exit 1
+          fi
+          tag="v${version}"
+
+          # The whole point of this path is that the release already exists.
+          # A non-200 here means the normal release workflow must publish it.
+          if ! curl --retry 3 --retry-delay 2 --fail --silent --show-error --location \
+              "https://pypi.org/pypi/${PACKAGE}/${version}/json" > /dev/null; then
+            echo "::error::${PACKAGE} ${version} is not published on PyPI; use the normal release path, not recovery."
+            exit 1
+          fi
+
+          git fetch --force --tags origin
+
+          if [ -n "$INPUT_SHA" ]; then
+            if ! git cat-file -e "${INPUT_SHA}^{commit}" 2>/dev/null; then
+              git fetch --force origin "$INPUT_SHA"
+            fi
+            target="$(git rev-parse --verify "${INPUT_SHA}^{commit}")"
+            if ! git merge-base --is-ancestor "$target" origin/main; then
+              echo "::error::$target is not on origin/main; refusing to tag an unreviewed commit."
+              exit 1
+            fi
+          else
+            target=""
+            # The bump commit is the first first-parent commit on main whose
+            # static version file declares the requested version. Later commits
+            # keep that value until the next bump, so the first match is the one
+            # that landed the release.
+            while read -r commit; do
+              [ -n "$commit" ] || continue
+              declared="$(git show "${commit}:src/cds/_version.py" | sed -n 's/^__version__ = version = "\([^"]*\)"$/\1/p')"
+              if [ "$declared" = "$version" ]; then
+                target="$commit"
+                break
+              fi
+            done < <(git log --first-parent --reverse --format=%H origin/main -- src/cds/_version.py)
+            if [ -z "$target" ]; then
+              echo "::error::Could not find the commit on main that introduced ${version}."
+              exit 1
+            fi
+          fi
+
+          declared="$(git show "${target}:src/cds/_version.py" | sed -n 's/^__version__ = version = "\([^"]*\)"$/\1/p')"
+          if [ "$declared" != "$version" ]; then
+            echo "::error::$target declares version '${declared}', not '${version}'."
+            exit 1
+          fi
+
+          echo "Resolved $tag -> $target ($(git show -s --format=%s "$target"))"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "sha=$target" >> "$GITHUB_OUTPUT"
+
+      - name: Create the missing tag, or verify the existing one
+        env:
+          RELEASE_TAG: ${{ steps.target.outputs.tag }}
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          set -euo pipefail
+
+          assert_tag_matches() {
+            local tag_target
+            tag_target="$(git rev-list -n 1 "$RELEASE_TAG")"
+            if [ "$tag_target" = "$TARGET_SHA" ]; then
+              return 0
+            fi
+            if git diff --quiet "$tag_target" "$TARGET_SHA" --; then
+              echo "::warning::$RELEASE_TAG points to $tag_target, not $TARGET_SHA, but both commits have identical trees. Keeping the immutable tag."
+              return 0
+            fi
+            echo "::error::$RELEASE_TAG points to $tag_target and its tree differs from $TARGET_SHA. Refusing to rewrite a release tag."
+            return 1
+          }
+
+          if git rev-parse -q --verify "refs/tags/$RELEASE_TAG" >/dev/null; then
+            assert_tag_matches
+            echo "$RELEASE_TAG already exists; no tag created."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RELEASE_TAG" "$TARGET_SHA" -m "Release $RELEASE_TAG"
+
+          if git push origin "$RELEASE_TAG"; then
+            echo "Created $RELEASE_TAG at $TARGET_SHA."
+            exit 0
+          fi
+
+          git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          assert_tag_matches
+          echo "Another run created $RELEASE_TAG concurrently; verified it is equivalent."
+
+      - name: Create the metadata-only GitHub Release
+        env:
+          RELEASE_TAG: ${{ steps.target.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; preserving it."
+          else
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+              --verify-tag --generate-notes --title "$RELEASE_TAG"
+            echo "Created metadata-only release $RELEASE_TAG."
+          fi
+
+      - name: Verify the recovered release is public and asset-free
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ steps.target.outputs.version }}
+        run: >-
+          python scripts/verify_release_integrity.py
+          --version "$RELEASE_VERSION"
+          --repository "$GITHUB_REPOSITORY"

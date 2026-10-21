@@ -28,7 +28,7 @@ git clone https://github.com/Furox-Art/scientific-computing-system.git
 cd scientific-computing-system
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev,test]"
+pip install -e ".[dev,test,docs]"   # dev + test + docs tooling; ".[all]" adds the optional backends
 
 # Install pre-commit hooks (run on every commit)
 pip install pre-commit
