@@ -5,6 +5,20 @@ All notable changes to **scientific-computing-system** will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Release metadata note - 2026-10-21
+
+The 2.2.6 and 2.2.7 sections below describe published releases, but neither version has
+a git tag in this repository or on `origin` (checked with `git ls-remote --tags` on
+2026-10-21). Their verified commit anchors are:
+
+- **2.2.6** (2026-10-13): version metadata set in `d73f6fa`, merged as `a10cd8b`
+  (PR #167); PyPI lists a 2.2.6 release.
+- **2.2.7** (2026-10-15): version metadata set in `af4e21e`, merged as `ad3bbb4`
+  (PR #169); PyPI lists a 2.2.7 release.
+
+Any retroactive `v2.2.6` or `v2.2.7` tag should point at those commits. This note records
+what the history supports; it does not claim that a tag exists.
+
 ## [v2.2.12] - 2026-10-20
 
 ### Tooling reproducibility

@@ -19,7 +19,7 @@ git clone https://github.com/Furox-Art/scientific-computing-system.git
 cd scientific-computing-system
 python -m venv .venv
 source .venv/bin/activate   # Windows PowerShell: .\.venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
+pip install -e ".[dev,test,docs]"   # ".[all]" adds the optional backends
 ```
 
 Requires Python 3.10 or newer.
