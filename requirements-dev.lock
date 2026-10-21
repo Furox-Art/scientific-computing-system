@@ -36,7 +36,7 @@ bleach[css]==6.4.0
     # via nbconvert
 build==1.5.0
     # via scientific-computing-system (pyproject.toml)
-certifi==2026.5.20
+certifi==2026.10.19
     # via
     #   httpcore
     #   httpx
@@ -237,7 +237,7 @@ numpy==2.4.6
     # via
     #   scientific-computing-system (pyproject.toml)
     #   pandas-stubs
-packaging==26.2
+packaging==26.3
     # via
     #   build
     #   ipykernel
@@ -408,7 +408,7 @@ uri-template==1.3.0
     # via jsonschema
 urllib3==2.8.0
     # via requests
-virtualenv==21.7.13
+virtualenv==21.14.7
     # via pre-commit
 watchdog==6.0.0
     # via mkdocs
