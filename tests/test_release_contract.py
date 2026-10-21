@@ -40,6 +40,20 @@ def test_dashboard_ships_inside_the_wheel() -> None:
     assert force["dashboard/app.py"] == "cds/dashboard/app.py"
 
 
+def test_release_gate_self_heals_a_stranded_version() -> None:
+    release = _text(RELEASE_WORKFLOW)
+    bind = release.index("Bind release to the exact CI-tested commit")
+    gate = release[bind : release.index("publish:")]
+    # A version bump whose first main CI run failed must not stay stranded
+    # behind a later fix commit. Whenever the tested commit did not itself
+    # change the version source, the gate releases the tree version if PyPI
+    # does not serve it yet. The publish job re-checks PyPI before uploading.
+    assert "pypi.org/pypi/scientific-computing-system/${version}/json" in gate
+    assert "Self-healing" in gate
+    assert "should_release=true" in gate
+    assert "if: steps.pypi_state.outputs.already_published != 'true'" in release
+
+
 def test_release_workflow_keeps_distribution_assets_off_github() -> None:
     release = _text(RELEASE_WORKFLOW)
     assert "Create metadata-only GitHub Release" in release

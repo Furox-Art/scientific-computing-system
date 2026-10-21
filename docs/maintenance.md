@@ -70,7 +70,11 @@ greater than the previous release tag.
      artifacts live on PyPI);
    - verifies the result with `scripts/verify_release_integrity.py`.
 
-A push to `main` that does not touch `src/cds/_version.py` does not release.
+A push to `main` that does not touch `src/cds/_version.py` does not release —
+unless the version in `pyproject.toml` is not yet on PyPI. That self-healing
+path releases the tree version from the CI-tested commit, so a version bump
+whose first main CI run failed cannot stay stranded behind a later fix. The
+publish job re-checks PyPI before uploading, so it cannot duplicate a release.
 
 ### One-time PyPI setup
 
