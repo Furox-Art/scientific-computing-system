@@ -120,6 +120,9 @@ def determinant(m: Matrix) -> float:
     n = len(m)
     if n == 0:
         return 1.0
+    rows, cols = _require_rectangular(m, "matrix")
+    if rows != cols:
+        raise ValueError(f"determinant requires a square matrix (got {rows}x{cols})")
     if n == 1:
         return m[0][0]
 

@@ -226,7 +226,12 @@ def newton_method(
         dfx = _compute_gradient(f, x, h_base)
 
         if abs(dfx) < NEAR_ZERO:
-            break
+            return OptResult(
+                x=x,
+                value=f(x),
+                iterations=i,
+                converged=False,
+            )
         x -= fx / dfx
     return OptResult(
         x=x,
@@ -401,6 +406,8 @@ def line_search(
         max_iter: iteration limit
     """
     phi = (math.sqrt(5) - 1) / 2
+    if a > b:
+        raise ValueError(f"line_search requires a <= b (got a={a}, b={b})")
     for i in range(max_iter):
         if abs(b - a) < tol:
             mid = (a + b) / 2

@@ -267,6 +267,17 @@ def rk45(
     return ODESolution(t=t_vals, y=y_vals, method="rk45", steps=steps)
 
 
+def _checked_derivative(
+    f: Callable[[float, list[float]], list[float]], t: float, y: list[float], n: int
+) -> list[float]:
+    dy = f(t, y)
+    if len(dy) != n:
+        raise ValueError(
+            f"ODE right-hand side returned {len(dy)} derivative(s) for a state of length {n}"
+        )
+    return dy
+
+
 def solve_system(
     f: Callable[[float, list[float]], list[float]],
     t0: float,
@@ -296,13 +307,13 @@ def solve_system(
     while (t_end - t) * direction > LOOP_EPSILON:
         h = direction * min(dt, abs(t_end - t))
 
-        k1 = f(t, y)
+        k1 = _checked_derivative(f, t, y, n)
         y_tmp = [y[i] + h * k1[i] / 2 for i in range(n)]
-        k2 = f(t + h / 2, y_tmp)
+        k2 = _checked_derivative(f, t + h / 2, y_tmp, n)
         y_tmp = [y[i] + h * k2[i] / 2 for i in range(n)]
-        k3 = f(t + h / 2, y_tmp)
+        k3 = _checked_derivative(f, t + h / 2, y_tmp, n)
         y_tmp = [y[i] + h * k3[i] for i in range(n)]
-        k4 = f(t + h, y_tmp)
+        k4 = _checked_derivative(f, t + h, y_tmp, n)
 
         y = [y[i] + (h / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) for i in range(n)]
         t = t + h
