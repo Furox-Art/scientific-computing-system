@@ -115,7 +115,7 @@ The authoritative per-module list is the [API reference](https://furox-art.githu
 
 ### Runnable examples and the dashboard
 
-- **[`examples/`](examples/)** — 35 runnable scripts and notebooks (33 `.py`, 2
+- **[`examples/`](examples/)** — 34 runnable scripts and notebooks (32 `.py`, 2
   `.ipynb`), each self-contained and dependency-free unless noted. Every tutorial
   page in the docs has a matching example.
 - **[`dashboard/app.py`](dashboard/app.py)** — a Streamlit dashboard:
