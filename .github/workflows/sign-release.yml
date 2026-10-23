@@ -1,0 +1,166 @@
+name: Sign release
+
+# Attach a signed source archive plus a cosign keyless signature bundle to the
+# GitHub Release that the publish workflows already created. OpenSSF Scorecard's
+# Signed-Releases check looks for a release asset whose name ends in
+# `.sigstore`, and this workflow is the only producer of one.
+#
+# Security: the workflow_run payload is untrusted input. The run is re-read from
+# the Actions API, validated against this repository, the allowed event types
+# and the exact release workflow paths, and only then is its head_sha checked
+# out. The checkout never consumes a raw event expression.
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to sign (e.g. v1.2.3)"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sign-release-${{ github.event.workflow_run.head_sha || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository)
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Resolve the trusted release commit
+        id: resolve
+        shell: bash
+        env:
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          data="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
+            --jq '[.head_sha, .event, .conclusion, .repository.full_name, .path] | @tsv')"
+          IFS=$'\t' read -r sha event conclusion repo path <<<"${data}"
+          case "${event}" in
+            push|release|workflow_dispatch) ;;
+            *) echo "::error::Run ${RUN_ID} has unsupported event ${event}."; exit 1 ;;
+          esac
+          case "${path}" in
+            .github/workflows/release.yml) ;;
+            *) echo "::error::Run ${RUN_ID} is not a release workflow (${path})."; exit 1 ;;
+          esac
+          if [[ "${conclusion}" != "success" || "${repo}" != "${GITHUB_REPOSITORY}" ]]; then
+            echo "::error::Run ${RUN_ID} is not a successful release run on ${GITHUB_REPOSITORY}."
+            exit 1
+          fi
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the released commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.resolve.outputs.sha }}
+
+      - name: Resolve the release tag
+        id: tag
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          HEAD_SHA: ${{ steps.resolve.outputs.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && -n "$INPUT_TAG" ]]; then
+            TAG="$INPUT_TAG"
+          else
+            git fetch --tags --force origin
+            refs="$(git for-each-ref --format='%(refname:short) %(objectname) %(*objectname)' refs/tags)"
+            TAG="$(printf '%s\n' "$refs" | awk -v sha="$HEAD_SHA" '$2==sha || $3==sha {print $1; exit}')"
+          fi
+          if [[ -z "$TAG" ]]; then
+            echo "::notice::No tag points at ${HEAD_SHA}; nothing to sign."
+            exit 0
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag: $TAG"
+
+      - name: Check the GitHub Release exists
+        id: release
+        if: steps.tag.outputs.tag != ''
+        shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GitHub Release $TAG does not exist; nothing to sign."
+          fi
+
+      - name: Check the release is not signed yet
+        id: signature
+        if: steps.release.outputs.exists == 'true'
+        shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          names="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
+          if grep -q '\.sigstore$' <<<"$names"; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release $TAG already has a .sigstore asset; skipping."
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build the source archive
+        id: archive
+        if: steps.signature.outputs.signed == 'false'
+        shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force origin
+          repo="${GITHUB_REPOSITORY##*/}"
+          asset="${repo}-${TAG}.tar.gz"
+          git archive --format=tar.gz --prefix="${repo}-${TAG}/" -o "$asset" "$TAG"
+          echo "asset=$asset" >> "$GITHUB_OUTPUT"
+          echo "Built $asset from $TAG"
+
+      - name: Install cosign
+        if: steps.signature.outputs.signed == 'false'
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign the archive with a keyless identity
+        if: steps.signature.outputs.signed == 'false'
+        shell: bash
+        env:
+          ASSET: ${{ steps.archive.outputs.asset }}
+        run: |
+          set -euo pipefail
+          cosign sign-blob --yes --bundle "${ASSET}.sigstore" "$ASSET"
+
+      - name: Upload the archive and the signature bundle
+        if: steps.signature.outputs.signed == 'false'
+        shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          ASSET: ${{ steps.archive.outputs.asset }}
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" "$ASSET" "${ASSET}.sigstore" --clobber
