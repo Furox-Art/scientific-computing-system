@@ -45,8 +45,10 @@ from cds.stats import linear_regression
 result = svd([[1.0, 2.0], [3.0, 4.0]])
 print(result.singular_values)
 
+
 def rhs(t, y):
     return [y[1], -y[0] - 0.1 * y[1]]
+
 
 t, y = solve_system(rhs, 0.0, [1.0, 0.0], 50.0, dt=0.01)
 fit = linear_regression([1.0, 2.0, 3.0, 4.0, 5.0], [2.1, 3.9, 6.2, 7.8, 10.1])
