@@ -49,12 +49,20 @@ jobs:
         run: |
           set -euo pipefail
           if [ "${EVENT_NAME}" = "workflow_run" ]; then
+            # This workflow triggers on the Release workflow, which is itself a
+            # workflow_run consumer, so the triggering run's event is
+            # `workflow_run`, not `push`. The Release gate already verified its
+            # own upstream CI run through the Actions API; here we only need to
+            # prove the trigger came from this repository's Release workflow on
+            # the default branch before trusting its head SHA.
             data="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
-              --jq '[.head_sha, .event, .head_branch, .conclusion, .repository.full_name] | @tsv')"
-            IFS=$'\t' read -r sha event branch conclusion repo <<<"${data}"
-            if [ "${event}" != "push" ] || [ "${branch}" != "main" ] || \
+              --jq '[.head_sha, .event, .head_branch, .conclusion, .repository.full_name, .path] | @tsv')"
+            IFS=$'\t' read -r sha event branch conclusion repo path <<<"${data}"
+            if [ "${event}" != "workflow_run" ] || \
+               [ "${path}" != ".github/workflows/release.yml" ] || \
+               [ "${branch}" != "main" ] || \
                [ "${conclusion}" != "success" ] || [ "${repo}" != "${GITHUB_REPOSITORY}" ]; then
-              echo "::error::Run ${RUN_ID} is not a successful push on ${GITHUB_REPOSITORY} main."
+              echo "::error::Run ${RUN_ID} is not a successful Release run on ${GITHUB_REPOSITORY} main."
               exit 1
             fi
           else
