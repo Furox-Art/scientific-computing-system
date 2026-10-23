@@ -19,6 +19,16 @@ a git tag in this repository or on `origin` (checked with `git ls-remote --tags`
 Any retroactive `v2.2.6` or `v2.2.7` tag should point at those commits. This note records
 what the history supports; it does not claim that a tag exists.
 
+## [v2.2.14] - 2026-10-23
+
+### Input validation and supply-chain transparency
+
+- Reject non-square and non-rectangular matrices in `determinant` with a normalised `ValueError` instead of leaking an index error from the elimination loop.
+- Report a vanishing Newton gradient as `converged=False` instead of silently returning success.
+- Require every ODE right-hand-side derivative to match the initial-state length, and report the expected and actual lengths instead of letting an implicit broadcast hide the bug.
+- Add Dependabot, OpenSSF Scorecard and dependency review workflows with SHA-pinned actions, and add a citation file so tooling can resolve package metadata.
+- Bump synchronized package metadata to 2.2.14 as required by the version-discipline gate for `src/cds/` changes.
+
 ## [v2.2.13] - 2026-10-21
 
 ### Release packaging, CI and documentation accuracy

@@ -1,4 +1,5 @@
 """Regressions for shape/iteration/length validation in numerical primitives."""
+
 from __future__ import annotations
 
 import pytest
