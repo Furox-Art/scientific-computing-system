@@ -37,11 +37,35 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write
+      actions: read
     steps:
+      - name: Resolve the source commit
+        id: target
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          if [ "${EVENT_NAME}" = "workflow_run" ]; then
+            data="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
+              --jq '[.head_sha, .event, .head_branch, .conclusion, .repository.full_name] | @tsv')"
+            IFS=$'\t' read -r sha event branch conclusion repo <<<"${data}"
+            if [ "${event}" != "push" ] || [ "${branch}" != "main" ] || \
+               [ "${conclusion}" != "success" ] || [ "${repo}" != "${GITHUB_REPOSITORY}" ]; then
+              echo "::error::Run ${RUN_ID} is not a successful push on ${GITHUB_REPOSITORY} main."
+              exit 1
+            fi
+          else
+            sha="${GITHUB_SHA}"
+          fi
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+
       - name: Check out released source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ steps.target.outputs.sha }}
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
