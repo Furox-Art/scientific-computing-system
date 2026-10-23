@@ -19,6 +19,13 @@ a git tag in this repository or on `origin` (checked with `git ls-remote --tags`
 Any retroactive `v2.2.6` or `v2.2.7` tag should point at those commits. This note records
 what the history supports; it does not claim that a tag exists.
 
+## [v2.2.15] - 2026-10-23
+
+### Dependency security floors
+
+- Raise the test and documentation dependency floors to versions that carry security fixes: `pytest>=9.0.3` (PYSEC-2026-1845) and `mkdocs-material>=9.7.7` (PYSEC-2026-3864). The locked development environment already resolved these versions; the manifests now state the same minimum.
+- Bump synchronized package metadata to 2.2.15 as required by the version-discipline gate for the `[project]` dependency change.
+
 ## [v2.2.14] - 2026-10-23
 
 ### Input validation and supply-chain transparency
