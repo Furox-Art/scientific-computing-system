@@ -38,7 +38,7 @@ dependencies = []
 all = [
     "streamlit>=1.30.0",
     "matplotlib>=3.8.0",
-    "pytest>=8.0",
+    "pytest>=9.0.3",
     "pytest-cov",
     "ruff==0.15.17",
     "mypy>=1.10",
@@ -47,7 +47,7 @@ all = [
     "ipykernel",
     "notebook",
     "mkdocs>=1.5.0",
-    "mkdocs-material>=9.0.0",
+    "mkdocs-material>=9.7.7",
     "mkdocstrings[python]>=0.24.0",
     "hypothesis>=6.100",
     "pandas>=2.0",
@@ -93,7 +93,7 @@ plot = [
     "matplotlib>=3.8.0",
 ]
 test = [
-    "pytest>=8.0",
+    "pytest>=9.0.3",
     "pytest-cov",
 ]
 # Property-based testing. Used only by tests/test_property_invariants.py and
@@ -127,7 +127,7 @@ dev = [
 ]
 docs = [
     "mkdocs>=1.5.0",
-    "mkdocs-material>=9.0.0",
+    "mkdocs-material>=9.7.7",
     "mkdocstrings[python]>=0.24.0",
 ]
 # Promo/asset build tooling. Used only by scripts/build_gif.py,

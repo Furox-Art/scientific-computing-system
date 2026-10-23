@@ -29,11 +29,13 @@ pandas-stubs>=2.0
 numpy>=2.0,<2.5
 
 # Testing (maps to the `test` + `property` extras)
-pytest>=8.0
+# Floor 9.0.3: PYSEC-2026-1845 (tmpdir handling).
+pytest>=9.0.3
 pytest-cov
 hypothesis>=6.100
 
 # Docs site (maps to the `docs` extra)
 mkdocs>=1.5.0
-mkdocs-material>=9.0.0
+# Floor 9.7.7: PYSEC-2026-3864 (search-suggestion DOM XSS).
+mkdocs-material>=9.7.7
 mkdocstrings[python]>=0.24.0
