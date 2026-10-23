@@ -29,8 +29,7 @@ on:
         type: string
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 # Serialize dispatches: two concurrent runs would both regenerate CHANGELOG.md
 # and force-push the single shared branch, racing each other. The fixed
