@@ -130,9 +130,24 @@ jobs:
           esac
           if [ "${path}" != ".github/workflows/release.yml" ] || \
              [ "${branch}" != "main" ] || \
-             [ "${conclusion}" != "success" ] || [ "${repo}" != "${GITHUB_REPOSITORY}" ]; then
-            echo "::error::Run ${RUN_ID} is not a successful Release run on ${GITHUB_REPOSITORY} main."
+             [ "${repo}" != "${GITHUB_REPOSITORY}" ]; then
+            echo "::error::Run ${RUN_ID} is not a Release run on ${GITHUB_REPOSITORY} main."
             exit 1
+          fi
+          # A Release run whose jobs all skip (the version is already released)
+          # concludes `skipped`. That is an ordinary push, not a release, so the
+          # npm job must skip too. A failed or cancelled release stays loud.
+          case "${conclusion}" in
+            success|skipped) ;;
+            *)
+              echo "::error::Release run ${RUN_ID} concluded ${conclusion}."
+              exit 1
+              ;;
+          esac
+          if [ "${conclusion}" != "success" ]; then
+            echo "Release run was ${conclusion}; no release was published."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           publish_conclusion="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/jobs?per_page=100" \
             --jq '[.jobs[] | select(.name == "Build + verify + publish to PyPI + metadata-only GitHub Release") | .conclusion] | first // "missing"')"
