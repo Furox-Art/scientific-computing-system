@@ -109,13 +109,20 @@ jobs:
           RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           set -euo pipefail
+          # The trigger is the Release workflow, which is itself a workflow_run
+          # consumer: its event is `workflow_run`, not `push`. Release already
+          # verified its upstream CI run through the Actions API, so trust the
+          # head SHA only after proving the run belongs to this repository's
+          # release.yml on the default branch.
           data="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
-            --jq '[.head_sha, .event, .head_branch, .conclusion, .repository.full_name] | @tsv')"
-          IFS=$'\t' read -r sha event branch conclusion repo <<<"${data}"
+            --jq '[.head_sha, .event, .head_branch, .conclusion, .repository.full_name, .path] | @tsv')"
+          IFS=$'\t' read -r sha event branch conclusion repo path <<<"${data}"
           echo "head_sha=${sha}" >> "$GITHUB_OUTPUT"
-          if [ "${event}" != "push" ] || [ "${branch}" != "main" ] || \
+          if [ "${event}" != "workflow_run" ] || \
+             [ "${path}" != ".github/workflows/release.yml" ] || \
+             [ "${branch}" != "main" ] || \
              [ "${conclusion}" != "success" ] || [ "${repo}" != "${GITHUB_REPOSITORY}" ]; then
-            echo "::error::Run ${RUN_ID} is not a successful push on ${GITHUB_REPOSITORY} main."
+            echo "::error::Run ${RUN_ID} is not a successful Release run on ${GITHUB_REPOSITORY} main."
             exit 1
           fi
           publish_conclusion="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/jobs?per_page=100" \
