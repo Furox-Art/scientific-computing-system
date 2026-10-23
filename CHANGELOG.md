@@ -19,6 +19,13 @@ a git tag in this repository or on `origin` (checked with `git ls-remote --tags`
 Any retroactive `v2.2.6` or `v2.2.7` tag should point at those commits. This note records
 what the history supports; it does not claim that a tag exists.
 
+## [v2.2.16] - 2026-10-24
+
+### Dependency hygiene
+
+- Update the locked `ruff` development pin from 0.15.17 to 0.17.1 (Dependabot routine update).
+- Bump synchronized package metadata to 2.2.16 as required by the version-discipline gate for the `[project]` dev-extra change.
+
 ## [v2.2.15] - 2026-10-23
 
 ### Dependency security floors
