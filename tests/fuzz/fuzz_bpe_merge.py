@@ -9,7 +9,7 @@ from cds.nlp.bpe import BPEMerge
 
 
 def TestOneInput(data: bytes) -> None:
-    fdp = atheris.FuzzDataProvider(data)
+    fdp = atheris.FuzzedDataProvider(data)
     document = fdp.ConsumeUnicodeNoSurrogates(4096)
     try:
         record = json.loads(document)
