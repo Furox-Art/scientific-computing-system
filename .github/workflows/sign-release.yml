@@ -53,8 +53,12 @@ jobs:
           data="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
             --jq '[.head_sha, .event, .conclusion, .repository.full_name, .path] | @tsv')"
           IFS=$'\t' read -r sha event conclusion repo path <<<"${data}"
+          # The Release workflow here is itself a workflow_run consumer that
+          # waits for CI, so the run this workflow follows has event
+          # `workflow_run`. All of these are accepted; the path, repository and
+          # conclusion checks below still have to pass.
           case "${event}" in
-            push|release|workflow_dispatch) ;;
+            push|release|workflow_run|workflow_dispatch) ;;
             *) echo "::error::Run ${RUN_ID} has unsupported event ${event}."; exit 1 ;;
           esac
           case "${path}" in
