@@ -109,17 +109,26 @@ jobs:
           RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           set -euo pipefail
-          # The trigger is the Release workflow, which is itself a workflow_run
-          # consumer: its event is `workflow_run`, not `push`. Release already
-          # verified its upstream CI run through the Actions API, so trust the
-          # head SHA only after proving the run belongs to this repository's
-          # release.yml on the default branch.
+          # The trigger is the Release workflow, which normally is itself a
+          # workflow_run consumer: its event is `workflow_run`. The Release
+          # recovery path is dispatched manually and never publishes to PyPI,
+          # so a `workflow_dispatch` run is accepted too; its publish job is
+          # declared workflow_run-only, so it cannot set published=true.
+          # Release already verified its upstream CI run through the Actions
+          # API, so trust the head SHA only after proving the run belongs to
+          # this repository's release.yml on the default branch.
           data="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
             --jq '[.head_sha, .event, .head_branch, .conclusion, .repository.full_name, .path] | @tsv')"
           IFS=$'\t' read -r sha event branch conclusion repo path <<<"${data}"
           echo "head_sha=${sha}" >> "$GITHUB_OUTPUT"
-          if [ "${event}" != "workflow_run" ] || \
-             [ "${path}" != ".github/workflows/release.yml" ] || \
+          case "${event}" in
+            workflow_run|workflow_dispatch) ;;
+            *)
+              echo "::error::Run ${RUN_ID} has unsupported event ${event}."
+              exit 1
+              ;;
+          esac
+          if [ "${path}" != ".github/workflows/release.yml" ] || \
              [ "${branch}" != "main" ] || \
              [ "${conclusion}" != "success" ] || [ "${repo}" != "${GITHUB_REPOSITORY}" ]; then
             echo "::error::Run ${RUN_ID} is not a successful Release run on ${GITHUB_REPOSITORY} main."
