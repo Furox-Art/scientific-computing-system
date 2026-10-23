@@ -50,13 +50,32 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+      actions: read
     outputs:
       release_sha: ${{ steps.candidate.outputs.release_sha }}
       should_release: ${{ steps.candidate.outputs.should_release }}
     steps:
+      - name: Resolve and verify the triggering CI run
+        id: target
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          data="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}" \
+            --jq '[.head_sha, .event, .head_branch, .conclusion, .repository.full_name] | @tsv')"
+          IFS=$'\t' read -r sha event branch conclusion repo <<<"${data}"
+          if [ "${event}" != "push" ] || [ "${branch}" != "main" ] || \
+             [ "${conclusion}" != "success" ] || [ "${repo}" != "${GITHUB_REPOSITORY}" ]; then
+            echo "::error::Run ${RUN_ID} is not a successful push on ${GITHUB_REPOSITORY} main."
+            exit 1
+          fi
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ steps.target.outputs.sha }}
           fetch-depth: 2
 
       - name: Bind release to the exact CI-tested commit
