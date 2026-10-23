@@ -67,7 +67,14 @@ executing==2.2.1
     # via stack-data
 fastjsonschema==2.21.2
     # via nbformat
-filelock==3.29.4
+filelock==4.2.4 ; python_version >= "3.11"
+    # via
+    #   python-discovery
+    #   virtualenv
+# CVE-2026-112940 (GHSA-v4x8-3wr5-3wq8) is fixed only in filelock>=4.2.1, and every
+# fixed release requires Python >=3.11. Python 3.10 therefore keeps the last
+# installable version; filelock is dev-only here (requirements.lock is empty).
+filelock==3.29.4 ; python_version < "3.11"
     # via
     #   python-discovery
     #   virtualenv
@@ -356,7 +363,7 @@ rpds-py==2026.5.1
     # via
     #   jsonschema
     #   referencing
-ruff==0.15.17
+ruff==0.17.1
     # via scientific-computing-system (pyproject.toml)
 send2trash==2.1.0
     # via jupyter-server

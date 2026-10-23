@@ -19,6 +19,14 @@ a git tag in this repository or on `origin` (checked with `git ls-remote --tags`
 Any retroactive `v2.2.6` or `v2.2.7` tag should point at those commits. This note records
 what the history supports; it does not claim that a tag exists.
 
+## [v2.2.16] - 2026-10-24
+
+### Dependency hygiene
+
+- Update the locked `ruff` development pin from 0.15.17 to 0.17.1 (Dependabot routine update), in both `pyproject.toml` and `requirements-dev.lock`.
+- Refresh `requirements-dev.lock` to `filelock==4.2.4` on Python 3.11+, clearing CVE-2026-112940 reported by the `pip-audit` lock gate. No fixed release supports Python 3.10, so the dev-only 3.10 pin stays at 3.29.4 (marker split).
+- Bump synchronized package metadata to 2.2.16 as required by the version-discipline gate for the `[project]` dev-extra change.
+
 ## [v2.2.15] - 2026-10-23
 
 ### Dependency security floors
