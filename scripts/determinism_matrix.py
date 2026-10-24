@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-TOOL_VERSION = "0.2.0"
+TOOL_VERSION = "0.2.1"
 EXIT_OK = 0
 EXIT_USAGE = 2
 EXIT_GATE_FAILED = 3
@@ -77,6 +77,11 @@ def variant_key(run: dict[str, Any]) -> str:
 def comparison_digest(run: dict[str, Any]) -> str:
     material = f"{run['stdout_sha256']}\n{run.get('artifacts_sha256', '')}"
     return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def normalized_stdout_digest(payload: bytes) -> str:
+    normalized = payload.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return hashlib.sha256(normalized).hexdigest()
 
 
 def hash_artifacts(root: Path) -> list[dict[str, Any]]:
@@ -170,7 +175,8 @@ def run_variant(
         "timed_out": timed_out,
         "duration_seconds": round(time.perf_counter() - started, 3),
         "stdout_bytes": len(stdout),
-        "stdout_sha256": hashlib.sha256(stdout).hexdigest(),
+        "stdout_sha256": normalized_stdout_digest(stdout),
+        "stdout_raw_sha256": hashlib.sha256(stdout).hexdigest(),
         "artifacts": artifacts,
         "artifacts_sha256": artifacts_digest(artifacts),
     }
@@ -224,6 +230,7 @@ def command_run(args: argparse.Namespace) -> int:
         "audit": "determinism-matrix",
         "tool_version": TOOL_VERSION,
         "generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "digest_normalization": "stdout newlines normalized to LF",
         "host": host_metadata(),
         "workload": {
             "path": str(workload),

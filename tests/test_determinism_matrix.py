@@ -56,6 +56,24 @@ def test_matrix_output_is_identical_across_seeds_and_threads(tmp_path: Path) -> 
     assert data["runs"][0]["artifacts"][0]["bytes"] > 0
 
 
+def test_stdout_newlines_are_normalized_before_hashing(tmp_path: Path) -> None:
+    crlf = tmp_path / "crlf.py"
+    crlf.write_text("import sys\nsys.stdout.buffer.write(b'a\\r\\nb\\n')\n", encoding="utf-8")
+    lf = tmp_path / "lf.py"
+    lf.write_text("import sys\nsys.stdout.buffer.write(b'a\\nb\\n')\n", encoding="utf-8")
+    crlf_out = tmp_path / "crlf.json"
+    lf_out = tmp_path / "lf.json"
+    for workload, out in ((crlf, crlf_out), (lf, lf_out)):
+        completed = _run_engine(
+            "run", "--workload", workload, "--out", out, "--seeds", "0", "--threads", 1
+        )
+        assert completed.returncode == 0, completed.stderr
+    crlf_run = _manifest(crlf_out)["runs"][0]
+    lf_run = _manifest(lf_out)["runs"][0]
+    assert crlf_run["stdout_sha256"] == lf_run["stdout_sha256"]
+    assert crlf_run["stdout_raw_sha256"] != lf_run["stdout_raw_sha256"]
+
+
 def test_matrix_records_the_requested_thread_environment(tmp_path: Path) -> None:
     out = tmp_path / "probe.json"
     completed = _run_engine(
