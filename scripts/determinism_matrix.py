@@ -256,9 +256,7 @@ def command_run(args: argparse.Namespace) -> int:
     }
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    output.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(
         f"runs={summary['run_count']} distinct_digests={summary['distinct_digests']} "
         f"manifest={output}"
@@ -283,12 +281,8 @@ def command_compare(args: argparse.Namespace) -> int:
     if workload_identity(baseline) != workload_identity(candidate):
         print("manifests describe different workloads", file=sys.stderr)
         return EXIT_USAGE
-    baseline_runs = {
-        variant_key(run): comparison_digest(run) for run in baseline["runs"]
-    }
-    candidate_runs = {
-        variant_key(run): comparison_digest(run) for run in candidate["runs"]
-    }
+    baseline_runs = {variant_key(run): comparison_digest(run) for run in baseline["runs"]}
+    candidate_runs = {variant_key(run): comparison_digest(run) for run in candidate["runs"]}
     shared = sorted(set(baseline_runs) & set(candidate_runs))
     mismatches = [
         {
