@@ -187,6 +187,11 @@ only-include = [
   # in the sdist the suite fails to *collect* when run from an unpacked sdist,
   # which is the same class of failure codemeta.json above was added for.
   "scripts/check_release_toolchain.py",
+  # tests/test_determinism_matrix.py executes both files by path, and the
+  # sdist-check CI job runs the whole suite from an unpacked sdist. Shipping
+  # them keeps the determinism matrix reproducible from the source artifact.
+  "scripts/determinism_matrix.py",
+  "scripts/determinism_workload.py",
   # tests/test_release_contract.py asserts the release/CI workflow contracts
   # and tests/test_hardening_privacy_provenance.py hashes the lock files. Both
   # used to fail with FileNotFoundError when the suite ran from an unpacked sdist
