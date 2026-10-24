@@ -11,10 +11,11 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-TOOL_VERSION = "0.2.1"
+TOOL_VERSION = "0.2.2"
 EXIT_OK = 0
 EXIT_USAGE = 2
 EXIT_GATE_FAILED = 3
@@ -79,7 +80,7 @@ def comparison_digest(run: dict[str, Any]) -> str:
     return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
 
-def normalized_stdout_digest(payload: bytes) -> str:
+def normalized_bytes_digest(payload: bytes) -> str:
     normalized = payload.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
     return hashlib.sha256(normalized).hexdigest()
 
@@ -129,7 +130,7 @@ def probe_threads(threads: int, timeout: float) -> dict[str, Any]:
             "requested_threads": threads,
             "error": completed.stderr.decode("utf-8", "replace")[-500:],
         }
-    report = json.loads(completed.stdout.decode("utf-8"))
+    report: dict[str, Any] = json.loads(completed.stdout.decode("utf-8"))
     report["requested_threads"] = threads
     report["environment_matches_request"] = all(
         report["environment"][name] == str(threads) for name in THREAD_VARIABLES
@@ -175,7 +176,7 @@ def run_variant(
         "timed_out": timed_out,
         "duration_seconds": round(time.perf_counter() - started, 3),
         "stdout_bytes": len(stdout),
-        "stdout_sha256": normalized_stdout_digest(stdout),
+        "stdout_sha256": normalized_bytes_digest(stdout),
         "stdout_raw_sha256": hashlib.sha256(stdout).hexdigest(),
         "artifacts": artifacts,
         "artifacts_sha256": artifacts_digest(artifacts),
@@ -230,12 +231,14 @@ def command_run(args: argparse.Namespace) -> int:
         "audit": "determinism-matrix",
         "tool_version": TOOL_VERSION,
         "generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "digest_normalization": "stdout newlines normalized to LF",
+        "digest_normalization": "stdout and workload source newlines normalized to LF",
         "host": host_metadata(),
         "workload": {
             "path": str(workload),
             "args": args.workload_args,
-            "sha256": hashlib.sha256(workload.read_bytes()).hexdigest(),
+            # Checkouts on Windows may use CRLF; normalize so identical
+            # sources compare equal across hosts.
+            "sha256": normalized_bytes_digest(workload.read_bytes()),
         },
         "variants": {
             "hash_seeds": args.seeds,
@@ -253,7 +256,9 @@ def command_run(args: argparse.Namespace) -> int:
     }
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    output.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     print(
         f"runs={summary['run_count']} distinct_digests={summary['distinct_digests']} "
         f"manifest={output}"
@@ -278,8 +283,12 @@ def command_compare(args: argparse.Namespace) -> int:
     if workload_identity(baseline) != workload_identity(candidate):
         print("manifests describe different workloads", file=sys.stderr)
         return EXIT_USAGE
-    baseline_runs = {variant_key(run): comparison_digest(run) for run in baseline["runs"]}
-    candidate_runs = {variant_key(run): comparison_digest(run) for run in candidate["runs"]}
+    baseline_runs = {
+        variant_key(run): comparison_digest(run) for run in baseline["runs"]
+    }
+    candidate_runs = {
+        variant_key(run): comparison_digest(run) for run in candidate["runs"]
+    }
     shared = sorted(set(baseline_runs) & set(candidate_runs))
     mismatches = [
         {
@@ -337,7 +346,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    return args.handler(args)
+    handler: Callable[[argparse.Namespace], int] = args.handler
+    return handler(args)
 
 
 if __name__ == "__main__":

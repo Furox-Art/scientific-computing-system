@@ -53,7 +53,9 @@ def main() -> None:
     artifact_dir = os.environ.get("DETERMINISM_ARTIFACT_DIR")
     if artifact_dir:
         Path(artifact_dir, "payload.json").write_text(
-            json.dumps(payload, ensure_ascii=False, sort_keys=True), encoding="utf-8"
+            json.dumps(payload, ensure_ascii=False, sort_keys=True),
+            encoding="utf-8",
+            newline="\n",
         )
     print(json.dumps(payload, ensure_ascii=False))
 
