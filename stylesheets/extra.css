@@ -1,0 +1,122 @@
+/* CDS docs theme polish.
+   Scoped additions only - everything else inherits Material defaults so a
+   theme upgrade cannot break the site. */
+
+:root {
+  --cds-accent: #38bdf8;
+  --cds-accent-alt: #818cf8;
+}
+
+/* Slightly tighter, more readable content column. Material's default is
+   generous on ultrawide monitors, which hurts scan-ability for the long
+   API/tutorial pages. */
+.md-grid {
+  max-width: 68rem;
+}
+
+/* Landing-page hero used by docs/index.md */
+.cds-hero {
+  margin: 0 0 2rem;
+  padding: 2rem 2rem 1.75rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: #e2e8f0;
+}
+
+.cds-hero h1,
+.cds-hero p {
+  color: #f8fafc;
+}
+
+.cds-hero__title {
+  margin: 0;
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.cds-hero__tagline {
+  margin: 0.6rem 0 0;
+  font-size: 0.95rem;
+  color: #cbd5e1;
+  max-width: 46rem;
+}
+
+.cds-hero__actions {
+  margin-top: 1.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+/* Buttons inherit Material's .md-button but need readable contrast on the
+   dark hero panel in both colour schemes. */
+.cds-hero__actions .md-button {
+  color: #f8fafc;
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+.cds-hero__actions .md-button--primary {
+  background: var(--cds-accent);
+  border-color: var(--cds-accent);
+  color: #0f172a;
+}
+
+.cds-hero__actions .md-button:hover {
+  background: var(--cds-accent-alt);
+  border-color: var(--cds-accent-alt);
+  color: #0f172a;
+}
+
+/* Card grid for the "start here" links. Uses the same markup shape as
+   Material's grid cards so it degrades gracefully if the extension changes. */
+.cds-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.9rem;
+  margin: 1.5rem 0 2rem;
+}
+
+.cds-card {
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  background: var(--md-default-bg-color);
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.cds-card:hover {
+  border-color: var(--cds-accent);
+  transform: translateY(-2px);
+}
+
+.cds-card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.cds-card p {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--md-default-fg-color--light);
+}
+
+/* Module tables on the home page are wide; let them scroll rather than
+   forcing the whole page horizontal. */
+.md-typeset table:not([class]) {
+  font-size: 0.72rem;
+}
+
+.md-typeset table:not([class]) code {
+  white-space: nowrap;
+}
+
+/* Wider logo in the header: the CDS wordmark is 4:1, so Material's square
+   slot squashes it. */
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 1.5rem;
+  width: auto;
+}
