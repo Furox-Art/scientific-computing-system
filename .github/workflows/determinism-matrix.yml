@@ -85,16 +85,24 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
           files=(manifests/*.json)
+          failures=0
           printf 'manifest files: %s\n' "${#files[@]}"
           for ((i = 0; i < ${#files[@]}; i++)); do
             for ((j = i + 1; j < ${#files[@]}; j++)); do
               left=$(basename "${files[$i]}" .json)
               right=$(basename "${files[$j]}" .json)
               echo "=== ${left} vs ${right} ==="
-              python scripts/determinism_matrix.py compare \
-                "${files[$i]}" "${files[$j]}" > "compare-${left}-${right}.json"
+              if ! python scripts/determinism_matrix.py compare \
+                "${files[$i]}" "${files[$j]}" > "compare-${left}-${right}.json"; then
+                failures=$((failures + 1))
+                rm -f "compare-${left}-${right}.json"
+                echo "::warning::could not compare ${left} vs ${right}"
+              fi
             done
           done
+          if [ "$failures" -ne 0 ]; then
+            echo "::warning::${failures} manifest pair(s) could not be compared"
+          fi
       - name: Write comparison summary
         shell: bash
         run: |
