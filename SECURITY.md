@@ -129,7 +129,8 @@ repository's publish workflows mints an attestation on each channel:
   `scientific-computing-system`, workflow `release.yml`, environment `pypi`.
   Exercised since 2.2.1. The per-file provenance endpoint returned 200 for the
   published files of 2.2.1–2.2.6, 2.2.8, 2.2.11, 2.2.12 and 2.2.13 on 2026-10-22;
-  2.2.7 returns 404 for both its wheel and sdist.
+  2.2.7 returns 404 for both its wheel and sdist. Re-checked on 2026-10-25:
+  2.2.14, 2.2.15 and 2.2.17 also return 200, and 2.2.16 was never published.
 - **npm** — Trusted Publisher: owner `Furox-Art`, repository
   `scientific-computing-system`, workflow `npm-publish.yml`, environment `npm`.
   Registered before 2.2.3, which is the first npm release published through it
