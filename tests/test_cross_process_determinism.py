@@ -17,7 +17,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-CHILD = r'''
+CHILD = r"""
 import json
 import sys
 from pathlib import Path
@@ -69,7 +69,7 @@ payload = {
     "triangle": sierpinski_triangle(40, seed=20261024),
 }
 print(json.dumps(payload, ensure_ascii=False))
-'''
+"""
 
 
 @cache
