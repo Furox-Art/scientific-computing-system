@@ -19,6 +19,14 @@ a git tag in this repository or on `origin` (checked with `git ls-remote --tags`
 Any retroactive `v2.2.6` or `v2.2.7` tag should point at those commits. This note records
 what the history supports; it does not claim that a tag exists.
 
+## [v2.2.18] - 2026-10-25
+
+### Deterministic ML initialisation
+
+- Give `cds.ml.Layer` an optional `seed`, so weight initialisation draws from a private RNG stream that no other caller can perturb. The default (`seed=None`) keeps the historical behaviour, so `random.seed(...)` still makes a whole model reproducible.
+- Add regression coverage for same-seed reproducibility under different global RNG states, independence of the global stream, and end-to-end MLP training reproducibility.
+- Bump synchronized package metadata to 2.2.18 as required by the version-discipline gate for the `src/cds/` change.
+
 ## [v2.2.17] - 2026-10-24
 
 ### Dependency hygiene
