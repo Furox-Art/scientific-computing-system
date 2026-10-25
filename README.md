@@ -183,7 +183,7 @@ The package installs a `cds` command with 13 subcommands:
 
 ```console
 $ cds --version
-System version 2.2.19
+System version 2.2.20
 $ cds constants        # physical constants table
 ```
 

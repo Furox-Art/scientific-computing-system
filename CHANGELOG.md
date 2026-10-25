@@ -19,6 +19,14 @@ a git tag in this repository or on `origin` (checked with `git ls-remote --tags`
 Any retroactive `v2.2.6` or `v2.2.7` tag should point at those commits. This note records
 what the history supports; it does not claim that a tag exists.
 
+## [v2.2.20] - 2026-10-25
+
+### Deterministic offline hypothesis ids
+
+- `SimpleOfflineGenerator.generate` used `uuid.uuid4()` for `Hypothesis.id`, so `cds hypothesis --output` wrote different ids on every run even though the generator is documented as deterministic. Ids now derive from a SHA-256 digest of domain, question, rank and statement, preserving the `H-xxxxxxxx` format so generated content repeats exactly. `created_at` remains wall-clock metadata and is excluded from the determinism workload's content digest.
+- The determinism test now compares full `to_dict()` payloads (minus `created_at`) across two runs and requires distinct ids for distinct questions. The determinism workload also generates hypotheses twice and fails if the content payloads differ.
+- Bump synchronized package metadata to 2.2.20 as required by the version-discipline gate for the `src/cds/` change.
+
 ## [v2.2.19] - 2026-10-25
 
 ### Reproducible figure exports
