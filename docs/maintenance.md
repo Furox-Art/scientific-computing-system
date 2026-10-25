@@ -66,8 +66,9 @@ greater than the previous release tag.
    - publishes to PyPI through **Trusted Publishing** (OIDC, `pypi`
      environment) — no API token secret is used or needed;
    - creates the annotated `vX.Y.Z` tag only after PyPI accepted the upload;
-   - creates a **metadata-only** GitHub Release (no distribution assets; the
-     artifacts live on PyPI);
+   - creates a GitHub Release without PyPI wheel/sdist assets (the artifacts
+     live on PyPI); the signing workflow may attach one source archive plus its
+     `.sigstore` bundle;
    - verifies the result with `scripts/verify_release_integrity.py`.
 
 A push to `main` that does not touch `src/cds/_version.py` does not release —

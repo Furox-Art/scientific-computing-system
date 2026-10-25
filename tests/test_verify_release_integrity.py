@@ -166,6 +166,60 @@ def test_the_two_directions_a_containment_check_gets_wrong() -> None:
         assert check(url) is expected, f"{url}: {why}"
 
 
+# --- distribution-asset policy ---------------------------------------------
+#
+# The sign-release workflow attaches one git-archive snapshot plus its sigstore
+# bundle. The policy must keep rejecting PyPI wheels and sdists without treating
+# that signed snapshot as a distribution.
+
+SIGNED_SOURCE_ARCHIVE = "scientific-computing-system-v2.2.18.tar.gz"
+
+
+def _is_distribution() -> Callable[..., bool]:
+    predicate: Callable[..., bool] = getattr(_load(), "_is_distribution")
+    return predicate
+
+
+def test_signed_source_archive_is_not_a_distribution() -> None:
+    check = _is_distribution()
+    assert check(SIGNED_SOURCE_ARCHIVE, signed_source_archive=SIGNED_SOURCE_ARCHIVE) is False
+    assert (
+        check(f"{SIGNED_SOURCE_ARCHIVE}.sigstore", signed_source_archive=SIGNED_SOURCE_ARCHIVE)
+        is False
+    )
+
+
+def test_other_tarballs_and_every_wheel_remain_forbidden() -> None:
+    check = _is_distribution()
+    for filename in (
+        "scientific_computing_system-2.2.18.tar.gz",
+        "scientific-computing-system-v2.2.17.tar.gz",
+        "scientific_computing_system-2.2.18-py3-none-any.whl",
+    ):
+        assert check(filename, signed_source_archive=SIGNED_SOURCE_ARCHIVE) is True, filename
+
+
+def test_github_asset_filter_permits_only_the_repository_source_archive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load()
+    payload = {
+        "tag_name": "v2.2.18",
+        "assets": [
+            {"name": SIGNED_SOURCE_ARCHIVE},
+            {"name": f"{SIGNED_SOURCE_ARCHIVE}.sigstore"},
+            {"name": "scientific_computing_system-2.2.18.tar.gz"},
+        ],
+    }
+    monkeypatch.setattr(module, "_read_json", lambda url, token=None: payload)
+
+    forbidden = module.github_distribution_assets(
+        "Furox-Art/scientific-computing-system", "v2.2.18"
+    )
+
+    assert forbidden == ("scientific_computing_system-2.2.18.tar.gz",)
+
+
 def test_read_json_selects_the_accept_header_by_host(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

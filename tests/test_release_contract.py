@@ -220,7 +220,7 @@ def test_runtime_lock_gate_does_not_claim_to_audit_an_empty_lock() -> None:
 def test_release_workflow_verifies_asset_free_policy() -> None:
     release = _text(RELEASE_WORKFLOW)
     assert "scripts/verify_release_integrity.py" in release
-    assert "Verify PyPI release and asset-free GitHub Release policy" in release
+    assert "Verify PyPI release and distribution-free GitHub Release policy" in release
 
 
 def test_release_order_is_publish_then_tag_then_metadata_release_then_integrity() -> None:
@@ -228,7 +228,7 @@ def test_release_order_is_publish_then_tag_then_metadata_release_then_integrity(
     publish = release.index("Publish to PyPI (Trusted Publishing)")
     tag = release.index("Create or verify release tag after successful PyPI state")
     github_release = release.index("Create metadata-only GitHub Release")
-    integrity = release.index("Verify PyPI release and asset-free GitHub Release policy")
+    integrity = release.index("Verify PyPI release and distribution-free GitHub Release policy")
     assert publish < tag < github_release < integrity
 
 
@@ -269,7 +269,7 @@ def test_release_policy_removes_forbidden_distribution_assets() -> None:
     assert "gh api --method DELETE" in registry
     assert "releases/assets/$asset_id" in registry
     assert "scripts/verify_release_integrity.py" in registry
-    assert "Verify public PyPI and asset-free GitHub Release policy" in registry
+    assert "Verify public PyPI and distribution-free GitHub Release policy" in registry
 
 
 def test_release_policy_does_not_copy_pypi_distributions_to_github() -> None:

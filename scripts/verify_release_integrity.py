@@ -90,7 +90,16 @@ def _read_json(url: str, *, token: str | None = None) -> dict[str, object]:
     return payload
 
 
-def _is_distribution(filename: str) -> bool:
+def _is_distribution(filename: str, *, signed_source_archive: str) -> bool:
+    """Is this a PyPI distribution asset attached to a GitHub Release?
+
+    The sign-release workflow deliberately attaches a git-archive snapshot named
+    ``<repository>-<tag>.tar.gz`` and the matching ``.sigstore`` bundle. That
+    snapshot is not a PyPI distribution, so it is the one permitted tarball; any
+    other tarball and every wheel remain forbidden.
+    """
+    if filename == signed_source_archive:
+        return False
     return filename.endswith(".whl") or filename.endswith(".tar.gz")
 
 
@@ -148,11 +157,14 @@ def github_distribution_assets(
         raise TypeError("GitHub release response does not contain an assets list")
 
     forbidden: list[str] = []
+    signed_source_archive = f"{repository.rsplit('/', 1)[-1]}-{tag}.tar.gz"
     for raw in assets:
         if not isinstance(raw, dict):
             continue
         filename = raw.get("name")
-        if isinstance(filename, str) and _is_distribution(filename):
+        if isinstance(filename, str) and _is_distribution(
+            filename, signed_source_archive=signed_source_archive
+        ):
             forbidden.append(filename)
     return tuple(sorted(forbidden))
 
