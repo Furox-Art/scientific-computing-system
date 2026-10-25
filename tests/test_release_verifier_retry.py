@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import time
 import urllib.error
 from collections.abc import Callable
 from email.message import Message
@@ -91,10 +92,10 @@ def test_a_missing_pypi_release_is_retried_until_it_appears(
     monkeypatch.setattr(module, "github_distribution_assets", _no_forbidden_assets)
     monkeypatch.setattr(module.time, "sleep", _recording_sleep(delays))
 
-    _verifier(module)(VERSION, REPOSITORY, attempts=4, delay_seconds=0.5)
+    _verifier(module)(VERSION, REPOSITORY, attempts=4, delay_seconds=1.0)
 
     assert seen == [VERSION] * 3
-    assert delays == [0.5, 0.5]
+    assert delays == [1.0, 1.0]
 
 
 def test_the_budget_exhausts_without_sleeping_after_the_last_attempt(
@@ -112,10 +113,10 @@ def test_the_budget_exhausts_without_sleeping_after_the_last_attempt(
     monkeypatch.setattr(module.time, "sleep", _recording_sleep(delays))
 
     with pytest.raises(RuntimeError, match="release integrity could not be verified"):
-        _verifier(module)(VERSION, REPOSITORY, attempts=3, delay_seconds=0.25)
+        _verifier(module)(VERSION, REPOSITORY, attempts=3, delay_seconds=1.0)
 
     assert seen == [VERSION] * 3
-    assert delays == [0.25, 0.25]
+    assert delays == [1.0, 1.0]
 
 
 def test_a_distribution_asset_fails_immediately_without_retrying(
@@ -135,3 +136,15 @@ def test_a_distribution_asset_fails_immediately_without_retrying(
         _verifier(module)(VERSION, REPOSITORY, attempts=3, delay_seconds=0.1)
 
     assert delays == []
+
+
+def test_the_pause_never_runs_past_the_wall_clock_budget() -> None:
+    """Requests can each take 30 s, so the wait must be capped by a deadline."""
+    module = _load()
+    pause: Callable[[float, float], float | None] = getattr(module, "_retry_pause")
+    now = time.monotonic()
+
+    assert pause(now + 30.0, 5.0) == 5.0
+    partial = pause(now + 1.0, 5.0)
+    assert partial is not None and 0 < partial <= 1.0
+    assert pause(now - 1.0, 5.0) is None

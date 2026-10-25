@@ -173,6 +173,14 @@ def github_distribution_assets(
     return tuple(sorted(forbidden))
 
 
+def _retry_pause(deadline: float, delay_seconds: float) -> float | None:
+    """Seconds to pause before the next attempt, or None once the budget is spent."""
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        return None
+    return min(delay_seconds, remaining)
+
+
 def verify_release_integrity(
     version: str,
     repository: str,
@@ -189,6 +197,10 @@ def verify_release_integrity(
 
     tag = f"v{version}"
     last_error: Exception | None = None
+    # attempts x delay is the wall-clock budget, not just the sleep time: each
+    # request may itself take up to 30 s, so an unbounded loop of timeouts could
+    # outlast the release job instead of failing within the intended wait.
+    deadline = time.monotonic() + attempts * delay_seconds
     for attempt in range(1, attempts + 1):
         try:
             print(
@@ -213,7 +225,12 @@ def verify_release_integrity(
             last_error = exc
             if attempt == attempts:
                 break
-            time.sleep(delay_seconds)
+            if delay_seconds > 0:
+                pause = _retry_pause(deadline, delay_seconds)
+                if pause is None:
+                    print("Release integrity retry budget exhausted", flush=True)
+                    break
+                time.sleep(pause)
 
     if last_error is not None:
         raise RuntimeError(f"release integrity could not be verified: {last_error}") from last_error

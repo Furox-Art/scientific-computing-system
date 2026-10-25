@@ -24,6 +24,7 @@ what the history supports; it does not claim that a tag exists.
 ### Release verifier waits longer for PyPI propagation
 
 - `scripts/verify_release_integrity.py` now allows five minutes (60 attempts at a 5-second pause) for the PyPI JSON API to expose a freshly uploaded release, up from one minute. Release run 40231188282 (v2.2.20) failed on the old budget while the artifacts were already live, and a rerun verified the same release; the release job's 30-minute timeout leaves room for the wider wait.
+- That five minutes is a wall-clock deadline as well as a sleep total: each request may take up to 30 seconds, so the retry loop stops once the deadline passes instead of letting sixty slow requests outlast the release job.
 - Each attempt line is flushed as it is written. In that failed run the twelve attempts shared one buffered timestamp, which hid the retry spacing from the log; flushed writes make a future failure diagnosable directly.
 
 ### Determinism matrix covers figure artifacts
