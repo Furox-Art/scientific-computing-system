@@ -15,7 +15,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-TOOL_VERSION = "0.3.0"
+TOOL_VERSION = "0.3.1"
 SCHEMA_VERSION = 1
 EXIT_OK = 0
 EXIT_USAGE = 2
@@ -217,6 +217,54 @@ def probe_environment(locale: str, timezone: str, timeout: float) -> dict[str, A
     return report
 
 
+def axis_effectiveness(
+    environment_probes: dict[str, dict[str, Any]],
+    locales: list[str],
+    timezones: list[str],
+) -> dict[str, dict[str, Any]]:
+    """Report whether the requested variants changed the effective host state."""
+
+    def observed(locale: str, timezone: str, fields: tuple[str, ...]) -> str | None:
+        probe = environment_probes.get(f"locale={locale}|tz={timezone}", {})
+        if probe.get("error"):
+            return None
+        return json.dumps([probe.get(field) for field in fields], sort_keys=True)
+
+    def effective_states(values: list[str], fixed: list[str], axis: str) -> list[set[str]]:
+        fields = ("locale",) if axis == "locale" else ("tzname", "timezone", "altzone")
+        pages = []
+        for pinned in fixed:
+            states = set()
+            for value in values:
+                locale, timezone = (value, pinned) if axis == "locale" else (pinned, value)
+                state = observed(locale, timezone, fields)
+                if state is not None:
+                    states.add(state)
+            pages.append(states)
+        return pages
+
+    report: dict[str, dict[str, Any]] = {}
+    for axis, requested, fixed in (
+        ("locale", locales, timezones),
+        ("timezone", timezones, locales),
+    ):
+        pages = effective_states(requested, fixed, axis)
+        applied = len(requested) <= 1 or (bool(pages) and all(len(states) > 1 for states in pages))
+        report[axis] = {"requested": list(requested), "applied": applied}
+        if not applied:
+            report[axis]["note"] = (
+                "requested variants produced the same effective state on this host"
+            )
+    return report
+
+
+def axis_support() -> dict[str, bool]:
+    # The Windows runtime does not apply LC_ALL/LANG to its locale nor TZ to
+    # local time, so those axes cannot be exercised through the environment.
+    supported = platform.system() != "Windows"
+    return {"locale": supported, "timezone": supported}
+
+
 def run_variant(
     workload: Path,
     workload_args: list[str],
@@ -329,7 +377,15 @@ def command_run(args: argparse.Namespace) -> int:
         f"threads={threads}"
         for threads, probe in thread_probes.items()
         if probe.get("error") or not probe.get("environment_matches_request")
-    ] + [key for key, probe in environment_probes.items() if probe.get("error")]
+    ] + [
+        key
+        for key, probe in environment_probes.items()
+        if probe.get("error") or not probe.get("environment_matches_request")
+    ]
+    axes = axis_effectiveness(environment_probes, args.locales, args.timezones)
+    support = axis_support()
+    axis_failures = [name for name, info in axes.items() if not info["applied"] and support[name]]
+
     manifest = {
         "schema_version": SCHEMA_VERSION,
         "audit": "determinism-matrix",
@@ -359,12 +415,17 @@ def command_run(args: argparse.Namespace) -> int:
         },
         "thread_probe": thread_probes,
         "environment_probe": environment_probes,
+        "axes": axes,
         "runs": runs,
         "summary": summary,
         "gate": {
             "mode": args.gate,
-            "passed": summary["identical"] and not failures and not probe_failures,
+            "passed": summary["identical"]
+            and not failures
+            and not probe_failures
+            and not axis_failures,
             "probe_failures": probe_failures,
+            "inert_axes": [name for name, info in axes.items() if not info["applied"]],
         },
     }
     output = Path(args.out)
@@ -379,6 +440,12 @@ def command_run(args: argparse.Namespace) -> int:
         return EXIT_WORKLOAD_ERROR
     if probe_failures:
         print(f"environment probe failed: {', '.join(probe_failures)}", file=sys.stderr)
+        return EXIT_WORKLOAD_ERROR
+    if axis_failures:
+        print(
+            f"locale/timezone axis did not take effect: {', '.join(axis_failures)}",
+            file=sys.stderr,
+        )
         return EXIT_WORKLOAD_ERROR
     if args.gate == "within-host" and not summary["identical"]:
         print("gate failed: output digests differ across variants", file=sys.stderr)
