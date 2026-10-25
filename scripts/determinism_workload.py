@@ -20,6 +20,7 @@ def main() -> None:
     from cds.knowledge import KnowledgeGraph, Notebook
     from cds.knowledge.retrieval import rank_tfidf, search
     from cds.montecarlo import estimate_pi
+    from cds.plot.charts import plot_series, save_figure
 
     graph = KnowledgeGraph("det-graph")
     for name, description in [
@@ -68,11 +69,26 @@ def main() -> None:
         raise SystemExit("workload produced empty results; it is vacuous")
     artifact_dir = os.environ.get("DETERMINISM_ARTIFACT_DIR")
     if artifact_dir:
-        Path(artifact_dir, "payload.json").write_text(
+        artifacts = Path(artifact_dir)
+        for suffix in (".pdf", ".svg"):
+            save_figure(
+                plot_series(
+                    [3.0, 1.0, 2.0, 5.0, 4.0, 2.5],
+                    title="Determinism",
+                    xlabel="x",
+                    ylabel="y",
+                ),
+                str(artifacts / f"series{suffix}"),
+                close=True,
+            )
+        artifacts.joinpath("payload.json").write_text(
             json.dumps(payload, ensure_ascii=False, sort_keys=True),
             encoding="utf-8",
             newline="\n",
         )
+        for name in ("payload.json", "series.pdf", "series.svg"):
+            if artifacts.joinpath(name).stat().st_size == 0:
+                raise SystemExit(f"artifact {name} is empty")
     print(json.dumps(payload, ensure_ascii=False))
 
 

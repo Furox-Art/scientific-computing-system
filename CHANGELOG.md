@@ -19,6 +19,13 @@ a git tag in this repository or on `origin` (checked with `git ls-remote --tags`
 Any retroactive `v2.2.6` or `v2.2.7` tag should point at those commits. This note records
 what the history supports; it does not claim that a tag exists.
 
+## [Unreleased]
+
+### Determinism matrix covers figure artifacts
+
+- The determinism workload now writes `series.pdf` and `series.svg` through `cds.plot.charts.save_figure` whenever `DETERMINISM_ARTIFACT_DIR` is set, so the matrix records and hashes the figure exports on every seed, thread count, locale, timezone and OS variant instead of only `payload.json`. The workload fails when any artifact is empty.
+- The determinism matrix job installs the `plot` extra, because the workload now renders figures. PDFs compare byte-for-byte; SVG line endings are normalized by the engine, so the Windows CRLF copy matches the POSIX LF copy.
+
 ## [v2.2.20] - 2026-10-25
 
 ### Deterministic offline hypothesis ids
