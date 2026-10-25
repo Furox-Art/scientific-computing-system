@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
 from cds.plot._backend import require_matplotlib
@@ -446,17 +447,36 @@ def plot_optimization_path(
     return fig
 
 
+def _save_metadata(suffix: str) -> dict[str, Any] | None:
+    """Drop writer-injected timestamps so a figure saves to identical bytes."""
+    if suffix == ".pdf":
+        return {"CreationDate": None, "ModDate": None}
+    if suffix == ".svg":
+        return {"Date": None}
+    return None
+
+
 def save_figure(fig: Any, path: str, *, dpi: int = 120, close: bool = False) -> str:
     """Save a figure to ``path`` and return ``path``.
 
     Convenience wrapper so demos/CLI do not need to call matplotlib APIs.
     When ``close`` is True, the figure is closed after save (frees memory in
     long demos / test suites).
+
+    PDF and SVG exports are byte-reproducible: writer-injected timestamps are
+    dropped and SVG element ids derive from a fixed hash salt, so saving the
+    same figure twice yields identical bytes.
     """
     if dpi < 1:
         raise ValueError("dpi must be >= 1")
-    fig.savefig(path, dpi=dpi)
+    plt = require_matplotlib()
+    suffix = Path(path).suffix.lower()
+    metadata = _save_metadata(suffix)
+    with plt.rc_context({"svg.hashsalt": "cds"} if suffix == ".svg" else None):
+        if metadata is None:
+            fig.savefig(path, dpi=dpi)
+        else:
+            fig.savefig(path, dpi=dpi, metadata=metadata)
     if close:
-        plt = require_matplotlib()
         plt.close(fig)
     return path

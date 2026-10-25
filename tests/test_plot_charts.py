@@ -231,6 +231,27 @@ def test_save_figure_bad_dpi() -> None:
         save_figure(fig, "x.png", dpi=0)
 
 
+def test_save_figure_pdf_has_no_write_timestamps(tmp_path: Path) -> None:
+    first = tmp_path / "first.pdf"
+    second = tmp_path / "second.pdf"
+    save_figure(plot_series([1.0, 2.0, 3.0]), str(first), close=True)
+    save_figure(plot_series([1.0, 2.0, 3.0]), str(second), close=True)
+    first_bytes = first.read_bytes()
+    assert b"CreationDate" not in first_bytes
+    assert b"ModDate" not in first_bytes
+    assert first_bytes == second.read_bytes()
+
+
+def test_save_figure_svg_is_byte_reproducible(tmp_path: Path) -> None:
+    first = tmp_path / "first.svg"
+    second = tmp_path / "second.svg"
+    save_figure(plot_series([1.0, 2.0, 3.0]), str(first), close=True)
+    save_figure(plot_series([1.0, 2.0, 3.0]), str(second), close=True)
+    first_text = first.read_text(encoding="utf-8")
+    assert "dc:date" not in first_text
+    assert first_text == second.read_text(encoding="utf-8")
+
+
 def test_require_matplotlib_respects_mplbackend(monkeypatch: pytest.MonkeyPatch) -> None:
     import cds.plot._backend as backend
 

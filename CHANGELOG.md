@@ -19,6 +19,14 @@ a git tag in this repository or on `origin` (checked with `git ls-remote --tags`
 Any retroactive `v2.2.6` or `v2.2.7` tag should point at those commits. This note records
 what the history supports; it does not claim that a tag exists.
 
+## [v2.2.19] - 2026-10-25
+
+### Reproducible figure exports
+
+- Make `cds.plot.save_figure` write byte-reproducible PDF and SVG files: PDF `CreationDate`/`ModDate` and SVG `Date` metadata are omitted, and SVG element ids derive from a fixed `svg.hashsalt`, so saving the same figure twice no longer yields different bytes.
+- Add regression tests asserting the timestamps are absent and that repeated PDF/SVG saves are byte-identical.
+- Bump synchronized package metadata to 2.2.19 as required by the version-discipline gate for the `src/cds/` change.
+
 ## [v2.2.18] - 2026-10-25
 
 ### Deterministic ML initialisation
