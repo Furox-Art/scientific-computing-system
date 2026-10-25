@@ -21,7 +21,7 @@ provide a custom generator.
 
 from __future__ import annotations
 
-import uuid
+import hashlib
 from typing import Protocol
 
 from cds.core.models import Domain, Hypothesis, HypothesisStatus
@@ -245,8 +245,14 @@ class SimpleOfflineGenerator:
             # le=1.0 constraint for n >= 12 (raising ValidationError); the
             # clamp keeps confidence in-range for any n.
             confidence = min(0.9, 0.4 + i * 0.05)
+            # A content-derived id keeps repeated runs byte-identical. The
+            # previous uuid4 made ``--output`` JSON differ on every run even
+            # though this generator is documented as deterministic.
+            digest = hashlib.sha256(
+                f"{domain.value}|{research_question}|{i}|{idea}".encode()
+            ).hexdigest()[:8]
             h = Hypothesis(
-                id=f"H-{uuid.uuid4().hex[:8]}",
+                id=f"H-{digest}",
                 statement=idea,
                 domain=domain,
                 research_question=research_question,

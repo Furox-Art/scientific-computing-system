@@ -30,12 +30,19 @@ def test_prompt_template_renders() -> None:
     assert "Generate 3 distinct hypotheses" in prompt
 
 
-def test_offline_generator_is_deterministic_enough() -> None:
+def test_offline_generator_is_deterministic() -> None:
     gen = SimpleOfflineGenerator()
     h1 = gen.generate("foo", domain=Domain.COSMOLOGY, n=1)
     h2 = gen.generate("foo", domain=Domain.COSMOLOGY, n=1)
     assert len(h1) == 1 and len(h2) == 1
     assert h1[0].domain == Domain.COSMOLOGY
+    # created_at records when the hypothesis was made, not what it says.
+    first = {k: v for k, v in h1[0].to_dict().items() if k != "created_at"}
+    second = {k: v for k, v in h2[0].to_dict().items() if k != "created_at"}
+    assert first == second
+    assert h1[0].id.startswith("H-")
+    other = gen.generate("bar", domain=Domain.COSMOLOGY, n=1)
+    assert other[0].id != h1[0].id
 
 
 def test_generate_single_hypothesis() -> None:

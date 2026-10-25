@@ -5,5 +5,5 @@ from __future__ import annotations
 
 __all__ = ["__version__", "version", "__version_tuple__", "version_tuple"]
 
-__version__ = version = "2.2.19"
-__version_tuple__ = version_tuple = (2, 2, 19)
+__version__ = version = "2.2.20"
+__version_tuple__ = version_tuple = (2, 2, 20)
