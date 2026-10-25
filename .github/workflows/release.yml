@@ -489,7 +489,7 @@ jobs:
               --generate-notes --title "$RELEASE_TAG"
           fi
 
-      - name: Verify PyPI release and asset-free GitHub Release policy
+      - name: Verify PyPI release and distribution-free GitHub Release policy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
@@ -660,7 +660,7 @@ jobs:
             echo "Created metadata-only release $RELEASE_TAG."
           fi
 
-      - name: Verify the recovered release is public and asset-free
+      - name: Verify the recovered release is public and distribution-free
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ steps.target.outputs.version }}
