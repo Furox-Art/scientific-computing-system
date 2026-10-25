@@ -96,8 +96,9 @@ def test_matrix_output_is_identical_across_seeds_and_threads(tmp_path: Path) -> 
         "inert_axes": [],
     }
     assert all(run["exit_code"] == 0 for run in data["runs"])
-    assert [item["path"] for item in data["runs"][0]["artifacts"]] == ["payload.json"]
-    assert data["runs"][0]["artifacts"][0]["bytes"] > 0
+    artifacts = data["runs"][0]["artifacts"]
+    assert [item["path"] for item in artifacts] == ["payload.json", "series.pdf", "series.svg"]
+    assert all(item["bytes"] > 0 for item in artifacts)
 
 
 def test_stdout_newlines_are_normalized_before_hashing(tmp_path: Path) -> None:
