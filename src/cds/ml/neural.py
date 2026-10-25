@@ -12,7 +12,13 @@ from cds.optimization.minimize import AdamState, adam
 class Layer:
     """A basic dense (fully-connected) neural network layer."""
 
-    def __init__(self, input_size: int, output_size: int, activation: str = "relu"):
+    def __init__(
+        self,
+        input_size: int,
+        output_size: int,
+        activation: str = "relu",
+        seed: int | None = None,
+    ):
         """Initialise Xavier/Glorot weights, zero biases, and backprop state buffers.
 
         Args:
@@ -20,11 +26,17 @@ class Layer:
             output_size: Number of neurons in this layer.
             activation: Nonlinearity name — ``"relu"``, ``"sigmoid"``,
                 or ``"identity"`` (passthrough).
+            seed: RNG seed for the weight initialisation. ``None`` keeps the
+                historical behaviour of drawing from the process-global
+                :mod:`random` stream, so ``random.seed(...)`` still makes a
+                whole model reproducible; an explicit seed gives this layer a
+                private stream that other callers cannot perturb.
         """
         # Xavier/Glorot initialization for weights
         limit = (6.0 / (input_size + output_size)) ** 0.5
+        rng = random if seed is None else random.Random(seed)
         self.weights = [
-            [random.uniform(-limit, limit) for _ in range(input_size)] for _ in range(output_size)
+            [rng.uniform(-limit, limit) for _ in range(input_size)] for _ in range(output_size)
         ]
         self.biases = [0.0] * output_size
         self.activation = activation
