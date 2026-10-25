@@ -24,7 +24,11 @@ except ModuleNotFoundError:  # Python 3.10 release compatibility
 
 DIST_NAME = "scientific-computing-system"
 DEFAULT_REPOSITORY = "Furox-Art/scientific-computing-system"
-DEFAULT_ATTEMPTS = 12
+# The PyPI JSON API can lag well behind a successful upload: the v2.2.20 release
+# failed on main after the twelve-attempt (60 s) budget while the files were
+# already live, and a rerun minutes later passed. The release job allows 30
+# minutes, so the gate waits five.
+DEFAULT_ATTEMPTS = 60
 DEFAULT_DELAY_SECONDS = 5.0
 
 
@@ -187,7 +191,10 @@ def verify_release_integrity(
     last_error: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
-            print(f"Release integrity attempt {attempt}/{attempts}: {repository} {tag}")
+            print(
+                f"Release integrity attempt {attempt}/{attempts}: {repository} {tag}",
+                flush=True,
+            )
             artifacts = pypi_manifest(version)
             forbidden = github_distribution_assets(repository, tag, token=token)
             if forbidden:
