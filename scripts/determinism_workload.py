@@ -32,6 +32,7 @@ def main() -> None:
     notebook = Notebook("det-notes")
     notebook.add_note("n1", "Lab log", "quantum tunneling observed today", tags=["spectroscopy"])
     notebook.add_note("n2", "Optics lab", "telescope reading", tags=["optics"])
+
     def content(rows: list[dict]) -> list[dict]:
         # created_at records when the run happened, not what was generated.
         return [{key: value for key, value in row.items() if key != "created_at"} for row in rows]
