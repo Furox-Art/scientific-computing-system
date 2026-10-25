@@ -49,6 +49,8 @@ jobs:
           --out determinism-manifest-${{ matrix.os }}.json
           --seeds 0 12345 random
           --threads 1 4
+          --locales inherit C
+          --timezones UTC Europe/Istanbul
           --gate within-host
       - name: Upload manifest
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -59,7 +61,7 @@ jobs:
           retention-days: 14
 
   compare:
-    name: Cross-OS digest comparison (report only)
+    name: Cross-OS digest comparison
     needs: matrix
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -87,23 +89,28 @@ jobs:
           files=(manifests/*.json)
           failures=0
           printf 'manifest files: %s\n' "${#files[@]}"
+          if [ "${#files[@]}" -lt 2 ]; then
+            echo "::error::expected a manifest from every operating system, found ${#files[@]}"
+            exit 1
+          fi
           for ((i = 0; i < ${#files[@]}; i++)); do
             for ((j = i + 1; j < ${#files[@]}; j++)); do
               left=$(basename "${files[$i]}" .json)
               right=$(basename "${files[$j]}" .json)
               echo "=== ${left} vs ${right} ==="
               if ! python scripts/determinism_matrix.py compare \
-                "${files[$i]}" "${files[$j]}" > "compare-${left}-${right}.json"; then
+                "${files[$i]}" "${files[$j]}" --gate > "compare-${left}-${right}.json"; then
                 failures=$((failures + 1))
-                rm -f "compare-${left}-${right}.json"
-                echo "::warning::could not compare ${left} vs ${right}"
+                echo "::error::cross-OS determinism failed or could not be compared: ${left} vs ${right}"
               fi
             done
           done
           if [ "$failures" -ne 0 ]; then
-            echo "::warning::${failures} manifest pair(s) could not be compared"
+            echo "::error::${failures} manifest pair(s) mismatched or could not be compared"
+            exit 1
           fi
       - name: Write comparison summary
+        if: always()
         shell: bash
         run: |
           python - <<'PY'
@@ -111,17 +118,34 @@ jobs:
           import json
           import os
 
-          rows = ["| baseline | candidate | shared | identical | mismatches |",
-                  "| --- | --- | --- | --- | --- |"]
+          rows = [
+              "| baseline | candidate | shared | identical | mismatches | errors |",
+              "| --- | --- | --- | --- | --- | --- |",
+          ]
           for path in sorted(glob.glob("compare-*.json")):
-              data = json.load(open(path, encoding="utf-8"))
+              try:
+                  with open(path, encoding="utf-8") as handle:
+                      data = json.load(handle)
+                  if not isinstance(data, dict):
+                      raise ValueError("compare report is not an object")
+              except (OSError, ValueError) as error:
+                  rows.append(f"| {path} | unreadable | - | False | - | {error} |")
+                  continue
+              baseline = (data.get("baseline_host") or {}).get("system", "unknown")
+              candidate = (data.get("candidate_host") or {}).get("system", "unknown")
+              mismatches = data.get("mismatches") or []
+              errors = data.get("errors") or []
               rows.append(
-                  f"| {data['baseline_host']['system']} | "
-                  f"{data['candidate_host']['system']} | "
-                  f"{data['shared_variants']} | {data['identical']} | "
-                  f"{len(data['mismatches'])} |"
+                  f"| {baseline} | {candidate} | {data.get('shared_variants', 0)} | "
+                  f"{data.get('identical', False)} | {len(mismatches)} | {len(errors)} |"
               )
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as handle:
+          if len(rows) == 2:
+              rows.append("| no comparison reports | - | 0 | False | 0 | 1 |")
+          with open(
+              os.environ.get("GITHUB_STEP_SUMMARY", os.devnull),
+              "a",
+              encoding="utf-8",
+          ) as handle:
               handle.write("## Cross-OS determinism\n\n" + "\n".join(rows) + "\n")
           print("\n".join(rows))
           PY
