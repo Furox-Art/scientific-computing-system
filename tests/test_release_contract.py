@@ -293,3 +293,46 @@ def test_release_workflow_changes_trigger_release_policy_check() -> None:
     registry = _text(REGISTRY_WORKFLOW)
     assert '".github/workflows/release.yml"' in registry
     assert '"scripts/verify_release_integrity.py"' in registry
+
+
+NPM_WORKFLOW = ROOT / ".github" / "workflows" / "npm-publish.yml"
+
+
+def _step_block(text: str, header: str) -> str:
+    lines = text.splitlines()
+    start = next(i for i, line in enumerate(lines) if header in line)
+    indent = len(lines[start]) - len(lines[start].lstrip())
+    end = start + 1
+    while end < len(lines):
+        line = lines[end]
+        if line.strip() and len(line) - len(line.lstrip()) <= indent:
+            break
+        end += 1
+    return "\n".join(lines[start:end])
+
+
+def test_npm_publish_checkout_keeps_history_for_the_content_guard() -> None:
+    block = _step_block(_text(NPM_WORKFLOW), "- uses: actions/checkout@")
+    assert "fetch-depth: 0" in block, (
+        "the guard walks back to the version-bump commit; a depth-1 clone has no such history"
+    )
+
+
+def test_npm_publish_refuses_content_newer_than_the_version_bump() -> None:
+    text = _text(NPM_WORKFLOW)
+    name = "- name: Refuse to publish content newer than the version bump"
+    block = _step_block(text, name)
+    assert '"rev-list", "--first-parent", "HEAD"' in block
+    assert '"pack", "--dry-run", "--json"' in block
+    assert "packed files differ from" in block
+    assert "Bump the version and release the new content instead." in block
+
+    assert text.index("- name: Assert the version is not already published") < text.index(name), (
+        "the guard must run after the existence gate"
+    )
+    assert text.index(name) < text.index("npm publish --provenance --access public"), (
+        "the guard must run before the OIDC publish"
+    )
+    assert text.index(name) < text.index("npm publish --access public\n"), (
+        "the guard must run before the token publish"
+    )
