@@ -183,6 +183,10 @@ jobs:
           # Release-triggered runs must publish the exact commit that was released,
           # not whatever main points at when the follow-up workflow starts.
           ref: ${{ github.event_name == 'workflow_run' && needs.release_gate.outputs.head_sha || github.ref }}
+          # The version-content guard below walks back to the commit that
+          # introduced the version being published; a depth-1 clone has no such
+          # history.
+          fetch-depth: 0
 
       # GATE: bind each trigger to the version it is allowed to publish.
       #
@@ -468,6 +472,78 @@ jobs:
           echo "NOTE: authorized to publish: an unregistered trusted publisher also reads as 404. If"
           echo "NOTE: 'npm publish' below fails with E404, the cause is the publisher registration,"
           echo "NOTE: not the version."
+
+      # The gate above proved the version is new. The upload must also be exactly
+      # the content the version bump released: no SCS publish has shipped
+      # divergent content (2.2.20's tarball matches its tag byte-for-byte even
+      # though it was built from a later commit), but the same gate-only shape
+      # shipped post-tag trees for three sibling packages (QRS 1.2.0,
+      # plan-auditor 2.6.3, SCS2 5.4.5). npm versions are immutable, so the
+      # check runs before any upload: every packed file must match the commit
+      # that introduced this version. The automatic path's checkout is the
+      # Release run head, which can also carry post-bump commits.
+      - name: Refuse to publish content newer than the version bump
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          export VERSION
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          version = os.environ["VERSION"]
+
+          def run(*args):
+              return subprocess.run(args, capture_output=True)
+
+          def version_at(rev):
+              raw = run("git", "show", f"{rev}:package.json")
+              if raw.returncode != 0:
+                  return None
+              try:
+                  return json.loads(raw.stdout.decode("utf-8"))["version"]
+              except (UnicodeDecodeError, ValueError, KeyError, TypeError):
+                  return None
+
+          head = run("git", "rev-parse", "HEAD").stdout.decode().strip()
+          if version_at(head) != version:
+              raise SystemExit(f"HEAD does not declare package.json version {version}")
+
+          release = None
+          for rev in run("git", "rev-list", "--first-parent", "HEAD").stdout.decode().split():
+              if version_at(rev) != version:
+                  break
+              release = rev
+          if release is None:
+              raise SystemExit(f"cannot find the commit that introduced version {version}")
+          if release == head:
+              print(f"PASS: publishing {version} from its own version-bump commit {head[:9]}")
+              raise SystemExit(0)
+
+          packed = json.loads(
+              run("npm", "pack", "--dry-run", "--json").stdout.decode("utf-8")
+          )[0]["files"]
+          differing = []
+          for item in packed:
+              path = item["path"]
+              expected = run("git", "show", f"{release}:{path}")
+              actual = run("git", "show", f"HEAD:{path}")
+              if (
+                  expected.returncode != 0
+                  or actual.returncode != 0
+                  or expected.stdout != actual.stdout
+              ):
+                  differing.append(path)
+          if differing:
+              raise SystemExit(
+                  f"refusing to publish {version} from {head[:9]}: packed files differ from "
+                  f"the version-bump commit {release[:9]} ({', '.join(differing)}). "
+                  f"Bump the version and release the new content instead."
+              )
+          print(f"PASS: packed content matches the version-bump commit {release[:9]}")
+          PY
 
       # Two supported modes, selected by the `use_token_fallback` dispatch input.
       #
