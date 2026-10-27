@@ -333,6 +333,6 @@ def test_npm_publish_refuses_content_newer_than_the_version_bump() -> None:
     assert text.index(name) < text.index("npm publish --provenance --access public"), (
         "the guard must run before the OIDC publish"
     )
-    assert text.index(name) < text.index('npm publish --access public\n'), (
+    assert text.index(name) < text.index("npm publish --access public\n"), (
         "the guard must run before the token publish"
     )
