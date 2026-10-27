@@ -137,17 +137,34 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          asset_ids="$(
+          # sign-release.yml attaches <repository>-<tag>.tar.gz together with
+          # its .sigstore bundle. Deleting the snapshot would leave the
+          # signature bundle without the subject it attests, so that exact
+          # file is kept; every other wheel and tarball is forbidden.
+          snapshot="${GITHUB_REPOSITORY#*/}-${RELEASE_TAG}.tar.gz"
+          asset_rows="$(
             gh api --paginate "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" \
-              --jq '.[] | select((.name | endswith(".whl")) or (.name | endswith(".tar.gz"))) | .id'
+              --jq '.[] | [.id, .name] | @tsv'
           )"
-          if [ -z "$asset_ids" ]; then
+          removed=0
+          while IFS=$'\t' read -r asset_id asset_name; do
+            if [ -z "$asset_id" ]; then
+              continue
+            fi
+            if [ "$asset_name" = "$snapshot" ]; then
+              echo "Keeping signed source snapshot $asset_name"
+              continue
+            fi
+            case "$asset_name" in
+              *.whl|*.tar.gz) ;;
+              *) continue ;;
+            esac
+            echo "Deleting forbidden GitHub Release distribution asset $asset_name (id=$asset_id)"
+            gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id"
+            removed=$((removed + 1))
+          done <<<"$asset_rows"
+          if [ "$removed" -eq 0 ]; then
             echo "No forbidden distribution assets found on $RELEASE_TAG."
-          else
-            for asset_id in $asset_ids; do
-              echo "Deleting forbidden GitHub Release distribution asset id=$asset_id"
-              gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id"
-            done
           fi
 
       - name: Verify public PyPI and distribution-free GitHub Release policy

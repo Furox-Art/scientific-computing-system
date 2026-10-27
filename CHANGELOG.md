@@ -21,6 +21,10 @@ what the history supports; it does not claim that a tag exists.
 
 ## [Unreleased]
 
+### Release policy keeps the signed source snapshot
+
+- The `PyPI Release Policy` workflow deleted every `.tar.gz` asset from the matching GitHub Release, including the `<repository>-<tag>.tar.gz` snapshot that `sign-release.yml` attaches together with its `.sigstore` bundle. The verifier in `scripts/verify_release_integrity.py` has permitted exactly that snapshot since 2.2.18, so the removal step contradicted the policy it enforces and left the signature without its subject. Releases `v2.2.18` and `v2.2.20` carry only the `.sigstore` bundle; the snapshot is gone. The removal step now keeps the signed snapshot and deletes only wheels and other tarballs.
+
 ### Release verifier waits longer for PyPI propagation
 
 - `scripts/verify_release_integrity.py` now allows five minutes (60 attempts at a 5-second pause) for the PyPI JSON API to expose a freshly uploaded release, up from one minute. Release run 40231188282 (v2.2.20) failed on the old budget while the artifacts were already live, and a rerun verified the same release; the release job's 30-minute timeout leaves room for the wider wait.
