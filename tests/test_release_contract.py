@@ -272,6 +272,16 @@ def test_release_policy_removes_forbidden_distribution_assets() -> None:
     assert "Verify public PyPI and distribution-free GitHub Release policy" in registry
 
 
+def test_release_policy_keeps_the_signed_source_snapshot() -> None:
+    registry = _text(REGISTRY_WORKFLOW)
+    # scripts/verify_release_integrity.py permits exactly
+    # <repository>-<tag>.tar.gz as the cosign subject. If the removal step
+    # deleted it, the .sigstore bundle would be left without its subject.
+    assert 'snapshot="${GITHUB_REPOSITORY#*/}-${RELEASE_TAG}.tar.gz"' in registry
+    assert 'if [ "$asset_name" = "$snapshot" ]' in registry
+    assert "Keeping signed source snapshot" in registry
+
+
 def test_release_policy_does_not_copy_pypi_distributions_to_github() -> None:
     registry = _text(REGISTRY_WORKFLOW)
     assert "Download exact wheel and sdist from public PyPI" not in registry
