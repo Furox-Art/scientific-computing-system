@@ -15,7 +15,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: fuzz-scientific-computing-system
+  # Per ref: a PR run must not cancel the main-branch run (or another PR's run),
+  # which otherwise reports a false red fuzz check; superseded runs still cancel.
+  group: fuzz-scientific-computing-system-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
