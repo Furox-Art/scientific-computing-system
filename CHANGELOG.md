@@ -32,6 +32,12 @@ what the history supports; it does not claim that a tag exists.
 - The determinism workload now writes `series.pdf` and `series.svg` through `cds.plot.charts.save_figure` whenever `DETERMINISM_ARTIFACT_DIR` is set, so the matrix records and hashes the figure exports on every seed, thread count, locale, timezone and OS variant instead of only `payload.json`. The workload fails when any artifact is empty.
 - The determinism matrix job installs the `plot` extra, because the workload now renders figures. PDFs compare byte-for-byte; SVG line endings are normalized by the engine, so the Windows CRLF copy matches the POSIX LF copy.
 
+### Determinism matrix covers the ML models
+
+- The determinism workload now fits `cds.ml.clustering.KMeans` and `cds.ml.ensemble.RandomForestClassifier` on integer-grid data with fixed seeds and records cluster labels, centroids, inertia, iteration count and forest predictions on every seed, thread, locale, timezone and OS variant. Both models are documented as reproducible for a fixed seed, but no matrix run executed the ML suite, so a seeding or tie-breaking regression would have passed every gate.
+- Centroids are rounded to 9 decimals and inertia to 6 before hashing, so compiler-level float noise cannot fail the cross-OS gate while a change in cluster assignments or split decisions still does.
+- The workload fails when the clustering leaves a cluster empty or the forest predicts a single label, which keeps the sampled payload meaningful.
+
 ## [v2.2.20] - 2026-10-25
 
 ### Deterministic offline hypothesis ids

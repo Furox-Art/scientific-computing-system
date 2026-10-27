@@ -19,6 +19,8 @@ def main() -> None:
     from cds.hypothesis.generator import generate_hypotheses
     from cds.knowledge import KnowledgeGraph, Notebook
     from cds.knowledge.retrieval import rank_tfidf, search
+    from cds.ml.clustering import KMeans
+    from cds.ml.ensemble import RandomForestClassifier
     from cds.montecarlo import estimate_pi
     from cds.plot.charts import plot_series, save_figure
 
@@ -46,6 +48,19 @@ def main() -> None:
     )
     if hypotheses != repeated:
         raise SystemExit("hypothesis output differs between runs in one process")
+    ml_points = [[float(index % 7), float((index * 3) % 5)] for index in range(40)]
+    ml_points += [[float(index % 5 + 9), float((index * 2) % 6 + 7)] for index in range(30)]
+    clusters = KMeans(3, max_iter=100, tol=1e-10, seed=20261027).fit(ml_points)
+    forest_features = [
+        [float(index % 11), float((index * 7) % 13), float((index * 3) % 5)] for index in range(60)
+    ]
+    forest_labels = [
+        "red" if (row[0] + row[1]) % 3 == 0 else "blue" if row[0] % 2 == 0 else "green"
+        for row in forest_features
+    ]
+    forest = RandomForestClassifier(n_trees=9, max_depth=5, seed=20261027).fit(
+        forest_features, forest_labels
+    )
     payload = {
         "hits": [
             {"source": hit.source, "key": hit.key, "title": hit.title, "score": hit.score}
@@ -64,9 +79,20 @@ def main() -> None:
         "fern": barnsley_fern(40, seed=20261024),
         "triangle": sierpinski_triangle(40, seed=20261024),
         "hypotheses": hypotheses,
+        "ml": {
+            "labels": clusters.labels,
+            "centroids": [[round(float(value), 9) for value in row] for row in clusters.centroids],
+            "inertia": round(float(clusters.inertia), 6),
+            "iterations": clusters.n_iter,
+            "forest": [forest.predict(row) for row in forest_features],
+        },
     }
     if not payload["hits"] or not payload["search"] or not payload["hypotheses"]:
         raise SystemExit("workload produced empty results; it is vacuous")
+    if len(set(payload["ml"]["labels"])) != 3:
+        raise SystemExit("kmeans did not assign every cluster; the workload is vacuous")
+    if len(set(payload["ml"]["forest"])) < 2:
+        raise SystemExit("forest predicted a single label; the workload is vacuous")
     artifact_dir = os.environ.get("DETERMINISM_ARTIFACT_DIR")
     if artifact_dir:
         artifacts = Path(artifact_dir)
