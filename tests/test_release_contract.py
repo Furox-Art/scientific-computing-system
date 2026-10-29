@@ -296,6 +296,7 @@ def test_release_workflow_changes_trigger_release_policy_check() -> None:
 
 
 NPM_WORKFLOW = ROOT / ".github" / "workflows" / "npm-publish.yml"
+SIGN_RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "sign-release.yml"
 
 
 def _step_block(text: str, header: str) -> str:
@@ -336,3 +337,21 @@ def test_npm_publish_refuses_content_newer_than_the_version_bump() -> None:
     assert text.index(name) < text.index("npm publish --access public\n"), (
         "the guard must run before the token publish"
     )
+
+
+def test_sign_release_requires_the_archive_before_skipping() -> None:
+    # A release that has only a .sigstore asset is incomplete: the bundle signs
+    # an archive that is not attached, so nothing can be verified. Treating it
+    # as "already signed" skips the repair forever; v2.2.15, v2.2.17, v2.2.18
+    # and v2.2.20 were found in exactly that state on 2026-10-29.
+    block = _step_block(
+        _text(SIGN_RELEASE_WORKFLOW),
+        "- name: Check whether the release already has a signed archive",
+    )
+    assert 'asset="${repo}-${TAG}.tar.gz"' in block
+    assert 'grep -qxF "$asset" <<<"$names"' in block, (
+        "the skip condition must require the source archive, not just a bundle"
+    )
+    assert "grep -q '\\.sigstore$' <<<\"$names\"" in block
+    assert "&&" in block, "both assets must be required for the skip"
+    assert 'echo "signed=false"' in block

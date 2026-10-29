@@ -115,7 +115,7 @@ jobs:
             echo "::notice::GitHub Release $TAG does not exist; nothing to sign."
           fi
 
-      - name: Check the release is not signed yet
+      - name: Check whether the release already has a signed archive
         id: signature
         if: steps.release.outputs.exists == 'true'
         shell: bash
@@ -124,11 +124,18 @@ jobs:
         run: |
           set -euo pipefail
           names="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
-          if grep -q '\.sigstore$' <<<"$names"; then
+          repo="${GITHUB_REPOSITORY##*/}"
+          asset="${repo}-${TAG}.tar.gz"
+          # Both halves must be present. A .sigstore asset whose archive is
+          # missing verifies nothing, and treating it as "already signed"
+          # permanently short-circuits this workflow; v2.2.15, v2.2.17,
+          # v2.2.18 and v2.2.20 were left in exactly that state.
+          if grep -qxF "$asset" <<<"$names" && grep -q '\.sigstore$' <<<"$names"; then
             echo "signed=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Release $TAG already has a .sigstore asset; skipping."
+            echo "::notice::Release $TAG already has ${asset} and its .sigstore bundle; skipping."
           else
             echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release $TAG is missing ${asset} or its .sigstore bundle; building and signing."
           fi
 
       - name: Build the source archive
