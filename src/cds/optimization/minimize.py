@@ -31,9 +31,9 @@ _T = TypeVar("_T", float, list[float])
 # The scalar and vector variants are tracked separately so callers that resume a
 # scalar run get a scalar back, and vice versa.
 #
-# Deliberately *not* generic: ``TypedDict`` + ``Generic`` inheritance raises
-# ``TypeError: metaclass conflict`` on Python 3.10 (fixed upstream only in
-# 3.11+, see CPython issue #89026), and CDS supports ``>=3.10``. The
+# Deliberately *not* generic: ``TypedDict`` + ``Generic`` inheritance raised
+# ``TypeError: metaclass conflict`` on Python 3.10 (fixed upstream in 3.11+,
+# see CPython issue #89026), and the class predates the 3.11 floor. The
 # ``m``/``v`` union is narrowed inside :func:`adam` via ``cast`` instead.
 class AdamState(TypedDict, total=False):
     """State checkpoint for resuming an Adam run.

@@ -2,12 +2,12 @@
 # Distribution name. Formerly published as "cognitive-discovery-system";
 # the import name stays `cds`. Keep the old PyPI project alive as an alias.
 name = "scientific-computing-system"
-version = "2.2.20"
+version = "2.2.21"
 description = "A pure-Python computational science platform for numerical methods, modeling, validation, uncertainty, scientific workflows, dimensional analysis, and optional research-data backends. Zero runtime dependencies."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     {name = "Furox-Art", email = "furkanarkn1451@gmail.com"}
 ]
@@ -18,7 +18,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -41,7 +40,7 @@ all = [
     "pytest>=9.0.3",
     "pytest-cov",
     "ruff==0.17.1",
-    "mypy>=1.10",
+    "mypy>=2.4.1",
     "pre-commit",
     "build",
     "ipykernel",
@@ -106,7 +105,11 @@ property = [
 ]
 dev = [
     "ruff==0.17.1",
-    "mypy>=1.10",
+    # 2.4.1 is the first mypy we verified to parse the PEP 695 `type` aliases in
+    # numpy >= 2.5's stubs under a 3.11/3.12 target; older mypy releases abort
+    # with a [syntax] error before type checking starts. Keep the floor and
+    # tests/test_type_check_toolchain_contract.py in sync.
+    "mypy>=2.4.1",
     "pre-commit",
     "build",
     "ipykernel",
@@ -116,14 +119,6 @@ dev = [
     # to type-check the lazy pandas import under `mypy src/`. Lives in [dev]
     # (not the runtime `[pandas]` extra) so end users never pull it in.
     "pandas-stubs>=2.0",
-    # Pin numpy under 2.5: pandas-stubs pulls numpy transitively, and the
-    # numpy 2.5 stub (numpy/__init__.pyi) uses `type` statement syntax that
-    # only parses under a Python 3.13+ target. With python_version = "3.10"
-    # that aborts `mypy --strict` with a [syntax] error before any real type
-    # checking happens. CDS never imports numpy; this pin only bounds the
-    # stub pandas-stubs drags into the dev environment. Drop the cap once
-    # mypy's default target advances to 3.13+.
-    "numpy>=2.0,<2.5",
 ]
 docs = [
     "mkdocs>=1.5.0",
@@ -240,14 +235,18 @@ only-include = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 # _version.py is excluded because it is deliberately tiny release metadata and
 # must stay byte-for-byte aligned with the static version source above.
 extend-exclude = ["src/cds/_version.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
-ignore = ["E501"]
+# UP042 recommends `enum.StrEnum` for `class X(str, Enum)`, which 3.11 can now
+# express. It also changes `str(member)` from "Class.MEMBER" to the bare value,
+# an observable output change for the CLI and JSON surfaces. That migration is
+# a behaviour decision, not a side effect of dropping 3.10.
+ignore = ["E501", "UP042"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -282,7 +281,7 @@ branch = true
 [tool.coverage.report]
 # Blended coverage (statement + branch) is the CI gate. CDS targets 100%
 # blended coverage across Linux + Python 3.12 (the reference cell). Other
-# matrix cells (3.10, 3.11, Windows, macOS) only report coverage to keep CI
+# matrix cells (3.11, 3.13, Windows, macOS) only report coverage to keep CI
 # fast and avoid redundant Codecov uploads; micro-differences in their stdlib
 # occasionally surface a 1-statement miss that the 3.12 baseline covers.
 fail_under = 100
@@ -297,7 +296,7 @@ exclude_lines = [
 ]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 strict = true

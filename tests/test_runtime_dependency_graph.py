@@ -21,10 +21,9 @@ What is asserted:
 * the built wheel emits no unconditional ``Requires-Dist``;
 * importing ``cds`` pulls in no third-party distribution.
 
-``pyproject.toml`` is read with the same regex approach as
-``tests/test_release_contract.py`` rather than :mod:`tomllib`: the project's
-mypy target is ``python_version = "3.10"`` and ``tomllib`` is 3.11+, so a
-``tomllib`` import would fail ``mypy --strict`` on the tests target.
+``pyproject.toml`` is read with the same small textual helpers as
+``tests/test_release_contract.py`` so each assertion targets the exact key it
+names instead of a re-serialized TOML table.
 """
 
 from __future__ import annotations
@@ -79,7 +78,7 @@ def _string_array(body: str, key: str) -> list[str]:
 def _requirement_name(requirement: str) -> str | None:
     """Normalize a requirement string to its distribution name, or ``None``.
 
-    ``None`` means the string is not requirement-shaped -- ``">=3.10"`` from
+    ``None`` means the string is not requirement-shaped -- ``">=3.11"`` from
     ``requires-python``, or a description field. Only requirement-shaped
     strings can name a distribution, so anything else is skipped rather than
     failing the guard.

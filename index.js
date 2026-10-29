@@ -76,7 +76,7 @@ function runSCS(args) {
     process.stderr.write(
       'scientific-computing-system: no usable Python interpreter found.\n' +
       'Tried: ' + PYTHON_CANDIDATES.join(', ') + '\n' +
-      'Install Python 3.10 or newer, or invoke the CLI directly with ' +
+      'Install Python 3.11 or newer, or invoke the CLI directly with ' +
       '`python -m cds` after `pip install scientific-computing-system`.\n'
     );
     return 1;

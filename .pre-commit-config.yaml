@@ -35,10 +35,7 @@ repos:
 
 # Type checking is deliberately NOT a hook. mypy needs a real environment: the
 # hook runs in an isolated venv where the optional-extra stubs are missing, so
-# `cds/data_analysis/pandas_io.py` fails on absent pandas stubs, and supplying
-# `pandas-stubs` instead drags in numpy's `.pyi` files, which use PEP 695
-# `type` statements that mypy rejects under this project's
-# `python_version = "3.10"` target (see issue #62).
+# `cds/data_analysis/pandas_io.py` fails on absent pandas stubs.
 #
 # It is covered where it works properly instead:
 #   * CI: the `test` matrix runs `mypy src/` and `mypy tests/` after installing

@@ -32,8 +32,6 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "verify_release_integrity.py"
 _MODULE_NAME = "_verify_release_integrity"
 
-# Release checks use tomli on Python 3.10 and tomllib on 3.11+.
-
 
 def _load() -> ModuleType:
     """Import the script by path.

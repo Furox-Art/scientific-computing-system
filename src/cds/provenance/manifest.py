@@ -10,7 +10,7 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import asdict, dataclass, field, is_dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import cast
@@ -171,7 +171,7 @@ class RunManifest:
         return cls(
             question=question,
             run_id=run_id or str(uuid4()),
-            created_utc=created_utc or datetime.now(timezone.utc).isoformat(),
+            created_utc=created_utc or datetime.now(UTC).isoformat(),
             seed=seed,
             environment={
                 "python": platform.python_version(),
