@@ -28,10 +28,9 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
-
-import tomllib
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 

@@ -42,7 +42,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -60,7 +60,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ".[test,dev,docs,pandas,plot,property,io]" "hatchling==1.32.4" "tomli>=2.0"
+          pip install ".[test,dev,docs,pandas,plot,property,io]" "hatchling==1.32.4"
       - name: Lint with Ruff
         run: ruff check .
       - name: Format check with Ruff
@@ -154,7 +154,7 @@ jobs:
       - name: Install the exact reference-CI dependency set
         run: |
           python -m pip install --upgrade pip
-          pip install ".[test,dev,docs,pandas,plot,property,io]" "hatchling==1.32.4" "tomli>=2.0" pip-audit
+          pip install ".[test,dev,docs,pandas,plot,property,io]" "hatchling==1.32.4" pip-audit
       - name: Audit the actually installed environment
         run: |
           # The project itself may be a new, not-yet-published release candidate,
@@ -260,7 +260,7 @@ jobs:
       - name: Install base extras only
         run: |
           python -m pip install --upgrade pip
-          pip install ".[test,dev,pandas,plot,property,io]" "hatchling==1.32.4" "tomli>=2.0"
+          pip install ".[test,dev,pandas,plot,property,io]" "hatchling==1.32.4"
       - name: Run tests and enforce core coverage at 100%
         shell: bash
         run: |
@@ -460,7 +460,7 @@ jobs:
       - name: Run the test suite from the unpacked sdist
         run: |
           set -euo pipefail
-          python -m pip install ".[test,dev,pandas,plot,property,io]" "hatchling==1.32.4" "tomli>=2.0"
+          python -m pip install ".[test,dev,pandas,plot,property,io]" "hatchling==1.32.4"
           mkdir -p /tmp/sdist-check
           tar -xzf dist/scientific_computing_system-*.tar.gz -C /tmp/sdist-check
           cd /tmp/sdist-check/scientific_computing_system-*

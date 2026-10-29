@@ -23,7 +23,7 @@ import time
 import timeit
 from collections import OrderedDict
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Try to import industry standards for comparison (Optional)
@@ -82,7 +82,7 @@ def _build_json_record(
     for category, metrics in results.items():
         numeric[category] = {k: _coerce_metric(v) for k, v in metrics.items()}
     return {
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "timestamp_utc": datetime.now(UTC).isoformat(timespec="seconds"),
         "git_sha": _git_sha(),
         "metrics": numeric,
     }
@@ -332,7 +332,7 @@ def run_all(output_dir: Path | None = None, json_dir: Path | None = None) -> Non
 
     # Generate Report Table with Visuals
     sha = _git_sha()
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     report = "# CDS Performance & Intelligence Report\n\n"
     report += (
         f"> **Last measured:** `{sha}` on {ts}. Regenerated automatically by "

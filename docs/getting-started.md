@@ -22,7 +22,7 @@ source .venv/bin/activate   # Windows PowerShell: .\.venv\Scripts\Activate.ps1
 pip install -e ".[dev,test,docs]"   # ".[all]" adds the optional backends
 ```
 
-Requires Python 3.10 or newer.
+Requires Python 3.11 or newer.
 
 ### The npm channel (Node launcher only)
 

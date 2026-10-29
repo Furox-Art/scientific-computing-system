@@ -31,8 +31,6 @@ def _action_refs(path: Path) -> tuple[str, ...]:
 
 
 def test_dashboard_ships_inside_the_wheel() -> None:
-    # Parsed with a regex, not tomllib: the tests target is mypy-checked at
-    # python_version = "3.10", where tomllib does not exist.
     pyproject = _text(ROOT / "pyproject.toml")
     match = re.search(r"^force-include\s*=\s*\{(.*)\}\s*$", pyproject, re.MULTILINE)
     assert match is not None, "the wheel force-include table is missing"

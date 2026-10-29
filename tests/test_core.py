@@ -14,7 +14,7 @@ Shared instances come from ``tests/conftest.py`` (``make_hypothesis``,
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import timezone
+from datetime import UTC
 
 import pytest
 
@@ -132,7 +132,7 @@ class TestHypothesisDefaults:
         """``created_at`` defaults to a timezone-aware UTC ``datetime``."""
         ts = minimal_hypothesis.created_at
         assert ts.tzinfo is not None
-        assert ts.utcoffset() == timezone.utc.utcoffset(ts)
+        assert ts.utcoffset() == UTC.utcoffset(ts)
 
     def test_list_defaults_are_not_shared(self, make_hypothesis: Callable[..., Hypothesis]) -> None:
         """``default_factory`` must give each instance its own list.

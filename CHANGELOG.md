@@ -42,6 +42,20 @@ what the history supports; it does not claim that a tag exists.
 - Centroids are rounded to 9 decimals and inertia to 6 before hashing, so compiler-level float noise cannot fail the cross-OS gate while a change in cluster assignments or split decisions still does.
 - The workload fails when the clustering leaves a cluster empty or the forest predicts a single label, which keeps the sampled payload meaningful.
 
+## [v2.2.21] - 2026-10-29
+
+### Python 3.10 support removed
+
+- `requires-python` is now `>=3.11`; the 3.10 classifier, the CI matrix entry, the ruff `target-version` and the mypy `python_version` all move together, so the three settings can no longer describe different support floors. CDS code and tests keep working unchanged on 3.11 through 3.13.
+- The `tomli` fallbacks in `scripts/check_version_lockstep.py` and `scripts/verify_release_integrity.py` are gone: `tomllib` is stdlib on every supported interpreter, and CI no longer installs `tomli` for the suite.
+- Documentation states the new floor: the README badge, `docs/getting-started.md`, `paper.md`, and the npm launcher's "no usable Python interpreter" message.
+
+### numpy dev cap removed (issue #62)
+
+- The `[dev]` extra no longer pins `numpy<2.5`. The cap existed because the numpy 2.5 stub (`numpy/__init__.pyi`) uses PEP 695 `type` aliases, which mypy releases before 2.4.1 reject whenever `python_version` is below 3.12. The mypy floor is now `>=2.4.1`, the first release verified to parse those aliases at the project's 3.11 target, so the uncapped stub type-checks.
+- `tests/test_type_check_toolchain_contract.py` replaces the cap guard: it requires the mypy and ruff targets to match `requires-python`, rejects any numpy upper bound in the extras, and rejects a mypy floor below 2.4.1. The previous test would have accepted the cap being silently reintroduced.
+- Bump synchronized package metadata to 2.2.21 as required by the version-discipline gate for the `[project]` change.
+
 ## [v2.2.20] - 2026-10-25
 
 ### Deterministic offline hypothesis ids

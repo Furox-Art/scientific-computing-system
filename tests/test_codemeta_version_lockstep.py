@@ -21,12 +21,6 @@ The tests below pin both halves of the contract:
 The second half is what makes the first meaningful. A test that only asserted
 "the files agree right now" would pass on a repository where the lockstep script
 had simply forgotten about codemeta.json.
-
-Python 3.10 compatibility
--------------------------
-
-The release checker uses tomli on Python 3.10 and tomllib on Python 3.11+.
-The complete positive and negative tests run on both interpreters.
 """
 
 from __future__ import annotations

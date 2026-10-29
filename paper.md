@@ -35,7 +35,7 @@ place to read a Runge-Kutta step or a small SVD. Students and reviewers who
 need the implementation itself end up rewriting a fragment, or trusting a
 notebook that no longer runs.
 
-This package is that readable layer. It installs with `pip` on Python 3.10
+This package is that readable layer. It installs with `pip` on Python 3.11
 or newer and imports no third-party module at runtime. Optional extras exist
 for tests, docs, and for users who want a NumPy or HDF5 bridge; the core
 does not require them. Algorithms are covered by automated tests in the
