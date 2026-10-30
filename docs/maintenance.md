@@ -104,9 +104,9 @@ when the tag matches the `package.json` version, and every path requires that
 exact version to already exist on PyPI. Publishing uses OIDC trusted publishing
 with a provenance attestation; dispatch with `use_token_fallback=true` only while
 the npm trusted publisher is unavailable, which publishes without provenance.
-One-time setup: npmjs.com → `scientific-computing-system` → Settings → Trusted
-Publisher (owner `Furox-Art`, workflow `npm-publish.yml`, environment `npm`, with
-`npm publish` allowed).
+The trusted publisher is registered: npmjs.com → `scientific-computing-system` →
+Settings → Trusted Publisher (owner `Furox-Art`, workflow `npm-publish.yml`,
+environment `npm`, with `npm publish` allowed).
 
 ## Documentation Deployment
 

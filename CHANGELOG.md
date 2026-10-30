@@ -196,16 +196,16 @@ what the history supports; it does not claim that a tag exists.
   paths, and pinned every doc claim to a test so it cannot silently
   drift again. Regression tests fail without the corresponding fix.
 
-## [Unreleased]
+## Post-release notes on v2.2.2 - 2026-10-05
 
 ### Distribution status of 2.2.2 — read this before assuming npm has it
 
-The two registries are **not** in the same state for 2.2.2.
+The two registries were **not** in the same state for 2.2.2.
 
 | Registry | `2.2.2` | Build attestation |
 |---|---|---|
 | **PyPI** `scientific-computing-system` | **published** | **PEP 740 provenance present** |
-| **npm** `scientific-computing-system` | **NOT published** | none — the version does not exist on npm |
+| **npm** `scientific-computing-system` | published later, without an attestation | none — the attestations endpoint returns 404 for `2.2.2` |
 
 PyPI 2.2.2 is live and carries a PEP 740 attestation. Verified against the live
 registries on 2026-10-05: the PEP 740 per-file provenance endpoint returns
@@ -218,18 +218,21 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
   https://pypi.org/integrity/scientific-computing-system/2.2.2/scientific_computing_system-2.2.2.tar.gz/provenance               # 200
 ```
 
-npm 2.2.2 does not exist. The published npm versions remain `1.0.0`, `2.2.0` and
-`2.2.1`. Nothing about the npm launcher is broken — the publish is blocked on a
-one-time npmjs.com registration, described next.
+At the time of this note npm `2.2.2` did not exist; it was published afterwards,
+without an attestation, because npm attestations begin at `2.2.3`. The npm line
+today runs `2.2.0` through `2.2.6`, `2.2.12` through `2.2.15` and `2.2.17`
+through `2.2.21`; `1.0.0` through `2.2.2` carry no attestation and cannot be
+backfilled.
 
-### Pending: register the npm trusted publisher (one-time, maintainer, in a browser)
+### Resolved: npm trusted publisher registration
 
-npmjs.com has **no trusted publisher** configured for the package
-`scientific-computing-system`. Until one exists, the OIDC path cannot complete a
-publish, and npm publishes no provenance for this package.
+npmjs.com had **no trusted publisher** configured for the package
+`scientific-computing-system`, so the OIDC path could not complete a publish and
+npm served no provenance for this package. The publisher was registered before
+`2.2.3`, and every npm release from `2.2.3` onward carries an attestation.
 
-The coordinates to enter on npmjs.com → package `scientific-computing-system` →
-**Settings → Trusted Publisher → GitHub Actions**:
+The registration that was applied — on npmjs.com → package
+`scientific-computing-system` → **Settings → Trusted Publisher → GitHub Actions**:
 
 | Field | Value |
 |---|---|
@@ -237,15 +240,14 @@ The coordinates to enter on npmjs.com → package `scientific-computing-system` 
 | Package | `scientific-computing-system` |
 | Workflow filename | `npm-publish.yml` |
 | Environment name | `npm` |
-| Allowed actions | **`npm publish`** — must be enabled, see the warning below |
+| Allowed actions | **`npm publish`** — must be enabled, see the note below |
 
-**The allowed-actions field is not optional in practice.** npm's current UI grants
-`npm stage publish` by default on newly created configurations and makes direct
+**The allowed-actions field was not optional in practice.** npm's UI granted
+`npm stage publish` by default on newly created configurations and made direct
 `npm publish` **opt-in**. This repository's workflow calls `npm publish` directly,
-so registering the publisher *without* also allowing `npm publish` will leave the
-publish failing — with a permission error this time rather than a 404.
+so the registration enables `npm publish` explicitly.
 
-The same registration from the CLI, using the maintainer's own npm login and 2FA:
+The same registration, applied from the CLI:
 
 ```
 npm trust github --file npm-publish.yml \
@@ -260,9 +262,9 @@ has **no Actions variables at all** (none at repository or organization scope), 
 `npm_publish_mode` appears nowhere in the tree. Nothing needs to be switched back:
 OIDC is already the default, and token mode remains an explicit per-run opt-in.
 
-`NPM_TOKEN` does still exist as a repository secret. It is what token mode would
-use, and it should be deleted once the trusted publisher is registered and the
-first OIDC publish has succeeded.
+`NPM_TOKEN` still exists as a repository secret. It is only read by a run that
+explicitly opts into token mode, so it is an unused fallback now that OIDC
+publishes succeed, and it can be deleted whenever convenient.
 
 ### Fixed: a 404 from npm no longer reads as "already published"
 

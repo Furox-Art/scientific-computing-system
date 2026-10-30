@@ -15,8 +15,10 @@ All six names are published on npm as of this writing. The npm channel is the
 real distribution path for each; for the two `*-2.0` names check the package
 page for which artifact a given version corresponds to.
 
-!!! warning "npm and PyPI are not equally verifiable for this project"
-    For `scientific-computing-system` specifically, the currently published npm
-    release carries **no** build provenance attestation, while the PyPI release
-    does. See [SECURITY.md](https://github.com/Furox-Art/scientific-computing-system/blob/main/SECURITY.md#distribution-channels-and-provenance)
-    for the details, and prefer PyPI for anything security-sensitive.
+!!! note "npm and PyPI histories differ for this project"
+    For `scientific-computing-system` specifically, PyPI releases carry PEP 740
+    provenance and npm releases carry attestations from `2.2.3` onward. npm
+    `1.0.0` through `2.2.2` have none, and neither registry attests `2.2.7`. The
+    current npm release, `2.2.21`, is attested. See
+    [SECURITY.md](https://github.com/Furox-Art/scientific-computing-system/blob/main/SECURITY.md#distribution-channels-and-provenance)
+    for the details.
