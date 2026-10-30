@@ -100,6 +100,30 @@ def test_readme_module_table_covers_every_feature_module() -> None:
     assert not missing, f"README module table omits: {missing}"
 
 
+def test_readme_cli_subcommand_count_and_table_match_parser() -> None:
+    """The CLI section's count and table must match cds.cli's real subcommands."""
+    from cds.cli import build_parser
+
+    parser = build_parser()
+    raw_choices = next(
+        (action.choices for action in parser._actions if getattr(action, "choices", None)),
+        None,
+    )
+    assert raw_choices is not None, "cds.cli parser exposes no subcommand choices"
+    choices = set(raw_choices)
+    readme = _readme()
+    match = re.search(r"`cds` command with (\d+) subcommands", readme)
+    assert match is not None, "README no longer states a CLI subcommand count"
+    assert int(match.group(1)) == len(choices), (
+        f"README says {match.group(1)} subcommands but the parser has {len(choices)}"
+    )
+    documented = set(re.findall(r"^\| `cds ([a-z]+)", readme, re.MULTILINE))
+    assert documented == choices, (
+        f"README CLI table mismatch: missing {sorted(choices - documented)}, "
+        f"unknown {sorted(documented - choices)}"
+    )
+
+
 def test_readme_does_not_call_cds_modules_a_live_list() -> None:
     """`cds modules` is a curated subset. Calling it live or authoritative is wrong."""
     readme = _readme()
