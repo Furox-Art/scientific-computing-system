@@ -105,10 +105,7 @@ def test_readme_cli_subcommand_count_and_table_match_parser() -> None:
     from cds.cli import build_parser
 
     parser = build_parser()
-    choices = next(
-        action.choices for action in parser._actions
-        if getattr(action, "choices", None)
-    )
+    choices = next(action.choices for action in parser._actions if getattr(action, "choices", None))
     readme = _readme()
     match = re.search(r"`cds` command with (\d+) subcommands", readme)
     assert match is not None, "README no longer states a CLI subcommand count"
