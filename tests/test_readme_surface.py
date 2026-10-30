@@ -105,7 +105,12 @@ def test_readme_cli_subcommand_count_and_table_match_parser() -> None:
     from cds.cli import build_parser
 
     parser = build_parser()
-    choices = next(action.choices for action in parser._actions if getattr(action, "choices", None))
+    raw_choices = next(
+        (action.choices for action in parser._actions if getattr(action, "choices", None)),
+        None,
+    )
+    assert raw_choices is not None, "cds.cli parser exposes no subcommand choices"
+    choices = set(raw_choices)
     readme = _readme()
     match = re.search(r"`cds` command with (\d+) subcommands", readme)
     assert match is not None, "README no longer states a CLI subcommand count"
@@ -113,9 +118,9 @@ def test_readme_cli_subcommand_count_and_table_match_parser() -> None:
         f"README says {match.group(1)} subcommands but the parser has {len(choices)}"
     )
     documented = set(re.findall(r"^\| `cds ([a-z]+)", readme, re.MULTILINE))
-    assert documented == set(choices), (
-        f"README CLI table mismatch: missing {sorted(set(choices) - documented)}, "
-        f"unknown {sorted(documented - set(choices))}"
+    assert documented == choices, (
+        f"README CLI table mismatch: missing {sorted(choices - documented)}, "
+        f"unknown {sorted(documented - choices)}"
     )
 
 
