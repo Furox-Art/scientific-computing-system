@@ -1,11 +1,20 @@
 # Linguist overrides for GitHub language statistics.
 #
-# `scripts/render_promo.mjs` is a local build/render helper (generates the
-# promo image), not part of the published package. Marking it as
-# `linguist-generated` keeps the repository listed as pure Python, which
-# matches the project's "pure Python scientific computing" positioning.
+# Everything shipped as library code is Python. The files below are
+# repository infrastructure rather than package source: index.js and
+# bin/scs.js are the dependency-free npm launcher that forwards to
+# `python -m cds`, npm.test.js is that launcher's contract test, paper.bib is
+# the JOSS bibliography, .binder/postBuild configures the demo environment,
+# and scripts/render_promo.mjs renders the promo image. They stay tracked but
+# are excluded from the language bar, so the Languages panel reports the
+# implementation language only: Python.
 
-scripts/render_promo.mjs linguist-generated=true
+index.js                linguist-detectable=false
+bin/scs.js              linguist-detectable=false
+npm.test.js             linguist-detectable=false
+scripts/render_promo.mjs linguist-detectable=false
+paper.bib               linguist-detectable=false
+.binder/postBuild       linguist-detectable=false
 
 # Line-ending normalization. Normalize all text to LF in the repo so the
 # same blob checks out identically on every platform; Git still hands the
