@@ -21,7 +21,7 @@ abstract: >-
 license: MIT
 repository-code: "https://github.com/Furox-Art/scientific-computing-system"
 url: "https://github.com/Furox-Art/scientific-computing-system"
-date-released: "2026-10-21"
+date-released: "2026-10-29"
 keywords:
   - "pure python"
   - "scientific computing"
