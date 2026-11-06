@@ -126,9 +126,16 @@ See `CHANGELOG.md` for full detail.
 ### Still open
 
 - [ ] **More Jupyter notebook templates**: additional Cookbook / Tour notebooks
-- [ ] **Issue #62**: lift the `numpy<2.5` dev-pin once `mypy`'s default
+
+### Resolved after this wave
+
+- [x] ~~**Issue #62**: lift the `numpy<2.5` dev-pin once `mypy`'s default
       `python_version` advances to 3.13+ (tracking issue; dev-only, no runtime
-      impact).
+      impact)~~: **resolved** by [#219](https://github.com/Furox-Art/scientific-computing-system/pull/219)
+      (squash-merged 2026-10-29, released as 2.2.21). The cap came off together with
+      dropping Python 3.10 support (`requires-python = ">=3.11"`), not by raising
+      mypy's target to 3.13, so the original precondition no longer applies. Guarded by
+      `tests/test_type_check_toolchain_contract.py`.
 
 ## Longer Term
 
