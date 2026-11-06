@@ -125,7 +125,7 @@ See `CHANGELOG.md` for full detail.
 
 ### Still open
 
-- [ ] **More Jupyter notebook templates**: additional Cookbook / Tour notebooks
+- [~] **More Jupyter notebook templates**: `examples/cookbook.ipynb` now covers one recipe per domain on the zero-dependency core; further Cookbook / Tour notebooks are still welcome
 
 ### Resolved after this wave
 
