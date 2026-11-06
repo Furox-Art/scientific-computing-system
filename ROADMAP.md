@@ -24,7 +24,7 @@ Planned direction for CDS. All work maintains the **zero-dependency, pure Python
 - [~] ~~Hatch-vcs dynamic versioning~~: **tried and abandoned**: hatch-vcs 0.5.0 silently ignored the `version-scheme = "release"` override, so static versioning (`version` in `pyproject.toml` mirrored in `src/cds/_version.py`) was shipped instead. See `pyproject.toml` release checklist.
 - [~] ~~Git-cliff auto-CHANGELOG on tag push~~: **rolled back to manual**: the tag-push trigger rewrote the entire `CHANGELOG.md` from commit history and discarded hand-curated narrative entries (see PR #24). `changelog.yml` is now `workflow_dispatch` only; `CHANGELOG.md` is hand-curated.
 - [x] ~~Sigstore release attestation~~ (`actions/attest-build-provenance@v2`)
-- [x] ~~Branch protection on main~~ (1 PR reviewer, linear history, no force push, no deletes)
+- [x] ~~Branch protection on main~~ (1 PR reviewer, linear history, no force push, no deletes): **superseded** by the "Protect main" repository ruleset (`22853801`, active, `~DEFAULT_BRANCH`): **0 required approvals**, review-thread resolution required, stale reviews dismissed on push, 9 strict required status checks, force pushes and deletions blocked. Linear history is *not* enforced (merge, squash and rebase all remain allowed). _Verified 2026-11-06 via the rulesets API._
 - [x] ~~Threat model in SECURITY.md~~ (in-scope vs out-of-scope, user best practices)
 - [x] ~~Türkçe başlangıç rehberi~~ (`docs/getting-started.tr.md`)
 - [x] ~~Signed commits guide in CONTRIBUTING.md~~ (SSH or GPG)
@@ -126,9 +126,16 @@ See `CHANGELOG.md` for full detail.
 ### Still open
 
 - [ ] **More Jupyter notebook templates**: additional Cookbook / Tour notebooks
-- [ ] **Issue #62**: lift the `numpy<2.5` dev-pin once `mypy`'s default
+
+### Resolved after this wave
+
+- [x] ~~**Issue #62**: lift the `numpy<2.5` dev-pin once `mypy`'s default
       `python_version` advances to 3.13+ (tracking issue; dev-only, no runtime
-      impact).
+      impact)~~: **resolved** by [#219](https://github.com/Furox-Art/scientific-computing-system/pull/219)
+      (squash-merged 2026-10-29, released as 2.2.21). The cap came off together with
+      dropping Python 3.10 support (`requires-python = ">=3.11"`), not by raising
+      mypy's target to 3.13, so the original precondition no longer applies. Guarded by
+      `tests/test_type_check_toolchain_contract.py`.
 
 ## Longer Term
 
