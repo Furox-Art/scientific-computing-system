@@ -308,11 +308,14 @@ def adaptive_simpson(
         max_depth: maximum recursion depth to bound cost on hard integrands
 
     Returns:
-        :class:`QuadratureResult` carrying the number of integrand evaluations.
+        :class:`QuadratureResult` carrying the number of integrand evaluations and
+        an accumulated Lyness error estimate for the accepted subintervals.
 
     Raises:
         ValueError: if ``max_depth < 1``.
-        RuntimeError: if ``max_depth`` is exhausted before convergence.
+        RuntimeError: if the integrand produces NaN, which signals a divergent or
+            otherwise undefined integrand. Exhausting ``max_depth`` does not raise:
+            the refinement simply stops and returns the current approximation.
     """
 
     def _simpson(fa: float, fm: float, fb: float, a: float, b: float) -> float:
@@ -322,6 +325,9 @@ def adaptive_simpson(
         raise ValueError("max_depth must be >= 1")
 
     counter = {"n": 0}
+    # Sum of the accepted 1/15-scaled Lyness estimates: a first-order estimate of
+    # the total truncation error, not of a single subinterval.
+    error_total = 0.0
 
     def _eval(x: float) -> float:
         counter["n"] += 1
@@ -330,6 +336,7 @@ def adaptive_simpson(
     def _recurse(
         a: float, b: float, fa: float, fb: float, fm: float, whole: float, depth: int, eps: float
     ) -> float:
+        nonlocal error_total
         m = 0.5 * (a + b)
         lm = 0.5 * (a + m)
         rm = 0.5 * (m + b)
@@ -346,6 +353,7 @@ def adaptive_simpson(
             return left + right + diff / 15.0
         # Standard Lyness error estimate (scaled by 1/15).
         if depth <= 0 or abs(diff) <= 15.0 * eps:
+            error_total += abs(diff) / 15.0
             return left + right + diff / 15.0
         return _recurse(a, m, fa, fm, flm, left, depth - 1, 0.5 * eps) + _recurse(
             m, b, fm, fb, frm, right, depth - 1, 0.5 * eps
@@ -364,7 +372,7 @@ def adaptive_simpson(
         value=value,
         method="adaptive_simpson",
         n_eval=counter["n"],
-        error_estimate=math.nan,
+        error_estimate=error_total,
     )
 
 

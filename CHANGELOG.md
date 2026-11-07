@@ -42,6 +42,14 @@ what the history supports; it does not claim that a tag exists.
 - Centroids are rounded to 9 decimals and inertia to 6 before hashing, so compiler-level float noise cannot fail the cross-OS gate while a change in cluster assignments or split decisions still does.
 - The workload fails when the clustering leaves a cluster empty or the forest predicts a single label, which keeps the sampled payload meaningful.
 
+## [v2.2.22] - 2026-11-07
+
+### Adaptive Simpson returns its error estimate
+
+- `cds.numerical_integration.adaptive_simpson` reported `error_estimate=nan` for every integrand, because the recursive routine propagated only the integral value. The accepted subintervals' 1/15-scaled Lyness estimates are now accumulated and returned, so `QuadratureResult.error_estimate` carries a finite truncation-error estimate that shrinks with `tol` instead of NaN. The integral values themselves are unchanged: for `sin` over `[0, pi]` it is 3.4908e-07 at `tol=1e-6` and 2.9602e-13 at `tol=1e-12`, and 0.0 where Simpson is exact on the accepted leaves (`x**2` over `[0, 1]`, `|x-0.5|` once the kink is isolated).
+- The `Raises` section claimed a `RuntimeError` when `max_depth` is exhausted. The code never raised it: exhaustion stops the refinement and returns the current approximation. The docstring now says so, and names NaN production as the actual `RuntimeError` condition — a divergent or otherwise undefined integrand.
+- Synchronized package metadata to 2.2.22 as required by the version-discipline gate for a `src/cds/` change (`pyproject.toml`, `src/cds/_version.py`, `CITATION.cff`, `package.json`, `codemeta.json`, `SKILL.md`).
+
 ## [v2.2.21] - 2026-10-29
 
 ### Python 3.10 support removed

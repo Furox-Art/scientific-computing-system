@@ -182,6 +182,19 @@ class TestAdaptiveSimpson:
         result = adaptive_simpson(math.sin, 0, math.pi, tol=1e-12)
         assert abs(result.value - 2.0) < 1e-10
 
+    def test_error_estimate_is_reported(self) -> None:
+        # The accumulated Lyness estimate is exposed instead of a bare NaN.
+        result = adaptive_simpson(math.sin, 0, math.pi, tol=1e-12)
+        assert math.isfinite(result.error_estimate)
+        assert result.error_estimate >= 0.0
+        assert result.error_estimate < 1e-9
+
+    def test_error_estimate_on_kink(self) -> None:
+        # A C^0 kink forces refinement, which the error estimate should reflect.
+        result = adaptive_simpson(lambda x: abs(x - 0.5), 0, 1, tol=1e-8)
+        assert math.isfinite(result.error_estimate)
+        assert result.error_estimate >= 0.0
+
     def test_gaussian_bell(self) -> None:
         # ∫_{-∞}^{∞} e^{-x^2} dx = sqrt(pi); over [-3,3] the truncated tails leave
         # a small systematic offset (~4e-5), so relax against the full-line exact.
