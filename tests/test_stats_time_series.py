@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import dataclasses
+import math
+
 import pytest
 
 from cds.stats.time_series import (
@@ -258,7 +261,7 @@ def test_kpss_stationary_white_noise() -> None:
     assert isinstance(res, StationarityResult)
     assert res.is_stationary is True
     assert res.lags >= 1
-    assert 0.0 <= res.p_value <= 1.0
+    assert 0.0 <= res.normal_tail_probability <= 1.0
 
 
 def test_kpss_random_walk_nonstationary() -> None:
@@ -284,6 +287,80 @@ def test_kpss_too_short() -> None:
 def test_kpss_explicit_lags() -> None:
     res = kpss_statistic([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], lags=2)
     assert res.lags == 2
+
+
+def test_kpss_normal_tail_matches_erfc_closed_form() -> None:
+    # Oracle: the indicator must be exactly P(Z > eta) = erfc(eta/sqrt(2))/2,
+    # computed independently from the returned statistic.
+    data = [0.1, -0.2, 0.15, -0.1, 0.2, -0.15] * 8
+    res = kpss_statistic(data)
+    expected = 0.5 * math.erfc(res.statistic / math.sqrt(2.0))
+    assert res.normal_tail_probability == pytest.approx(expected, rel=1e-12, abs=1e-15)
+
+
+def test_kpss_constant_series_tail_is_one() -> None:
+    res = kpss_statistic([5.0] * 10)
+    assert res.normal_tail_probability == 1.0
+
+
+def test_kpss_decision_uses_published_critical_value() -> None:
+    # is_stationary must track eta < 0.463 (KPSS 5% level-model critical
+    # value), not the normal-tail heuristic.
+    stationary = [0.1, -0.2, 0.15, -0.1, 0.2, -0.15] * 8
+    walk = [0.0]
+    for i in range(200):
+        walk.append(walk[-1] + (1.0 if i % 2 else -1.0) + 0.3)
+    for data in (stationary, walk):
+        res = kpss_statistic(data)
+        assert res.is_stationary == (res.statistic < 0.463)
+
+
+def test_kpss_deprecated_p_value_read_warns_and_matches() -> None:
+    res = kpss_statistic([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    with pytest.warns(DeprecationWarning, match="not a valid KPSS"):
+        legacy = res.p_value
+    assert legacy == res.normal_tail_probability
+
+
+def test_kpss_deprecated_p_value_write_warns_and_updates() -> None:
+    res = kpss_statistic([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    with pytest.warns(DeprecationWarning, match="deprecated"):
+        res.p_value = 0.25
+    assert res.normal_tail_probability == 0.25
+
+
+def test_kpss_deprecated_constructor_keyword_warns() -> None:
+    with pytest.warns(DeprecationWarning, match="p_value"):
+        res = StationarityResult(statistic=0.1, is_stationary=True, lags=1, p_value=0.4)
+    assert res.normal_tail_probability == 0.4
+
+
+def test_kpss_constructor_positional_and_new_keyword() -> None:
+    positional = StationarityResult(0.1, True, 1, 0.4)
+    keyword = StationarityResult(
+        statistic=0.1, is_stationary=True, lags=1, normal_tail_probability=0.4
+    )
+    assert positional == keyword
+    assert positional.normal_tail_probability == 0.4
+
+
+def test_kpss_constructor_requires_a_tail_value() -> None:
+    with pytest.raises(TypeError, match="normal_tail_probability"):
+        StationarityResult(0.1, True, 1)
+
+
+def test_kpss_constructor_rejects_both_keywords() -> None:
+    with pytest.warns(DeprecationWarning), pytest.raises(ValueError, match="not both"):
+        StationarityResult(0.1, True, 1, normal_tail_probability=0.4, p_value=0.4)
+
+
+def test_kpss_result_still_a_dataclass() -> None:
+    # dataclasses.replace must keep working after the field rename.
+    res = kpss_statistic([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    replaced = dataclasses.replace(res, lags=5)
+    assert replaced.lags == 5
+    assert replaced.normal_tail_probability == res.normal_tail_probability
+    assert "normal_tail_probability" in {f.name for f in dataclasses.fields(res)}
 
 
 # --------------------------------------------------------------------------- #

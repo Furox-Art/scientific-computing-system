@@ -133,10 +133,21 @@ class TestRankAndCondition:
 
 class TestSweepLimits:
     def test_max_sweeps_exhausted_still_valid(self) -> None:
-        result = svd(SQUARE, max_sweeps=1)
-        sigma = _embed_sigma(result.singular_values, 3, 3)
-        reconstructed = mat_mul(mat_mul(result.U, sigma), result.Vt)
-        _assert_close(reconstructed, SQUARE, atol=1.0)
+        # One-sided Jacobi needs a few sweeps on this matrix; an exhausted
+        # sweep budget must still return structurally valid factors with an
+        # approximate reconstruction, and more sweeps must tighten it.
+        one = svd(SQUARE, max_sweeps=1)
+        two = svd(SQUARE, max_sweeps=2)
+
+        def _err(result: SVDResult) -> float:
+            sigma = _embed_sigma(result.singular_values, 3, 3)
+            reconstructed = mat_mul(mat_mul(result.U, sigma), result.Vt)
+            return max(abs(reconstructed[i][j] - SQUARE[i][j]) for i in range(3) for j in range(3))
+
+        assert _err(one) < 2.0
+        assert _err(two) < 1e-3
+        assert _err(two) < _err(one)
+        _assert_orthogonal(one.Vt, atol=1e-9)
 
     def test_axis_aligned_rank_one_values(self) -> None:
         result = svd(AXIS_ALIGNED_RANK_ONE)

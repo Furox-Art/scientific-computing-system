@@ -8,10 +8,12 @@ from cds.diffeq._implicit import (
 )
 from cds.diffeq.solvers import (
     ODESolution,
+    ODESystemSolution,
     euler_method,
     midpoint_method,
     rk4,
     rk45,
+    rk45_system,
     solve_system,
 )
 from cds.diffeq.symplectic import (
@@ -22,12 +24,14 @@ from cds.diffeq.symplectic import (
 
 __all__ = [
     "ODESolution",
+    "ODESystemSolution",
     "backward_euler",
     "backward_euler_system",
     "euler_method",
     "midpoint_method",
     "rk4",
     "rk45",
+    "rk45_system",
     "solve_system",
     "trapezoid_method",
     "trapezoid_method_system",

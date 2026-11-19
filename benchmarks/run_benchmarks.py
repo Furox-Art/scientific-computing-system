@@ -209,7 +209,7 @@ def bench_montecarlo() -> OrderedDict[str, str]:
     )
 
 
-# --- Quantum Intelligence vs Brute Force ---
+# --- Quantum: O(1) sampling vs an extrapolated brute-force cost ---
 def bench_quantum() -> OrderedDict[str, str]:
     from cds.quantum.circuit import QuantumCircuit, hadamard
     from cds.quantum.simulator import simulate
@@ -220,23 +220,29 @@ def bench_quantum() -> OrderedDict[str, str]:
 
     shots = 100_000
 
-    # Intelligent O(1) Sampling
+    # O(1) sampling: one simulate() call draws all shots from the state vector.
     start = time.perf_counter()
     simulate(c, shots=shots)
     t_intelligent = time.perf_counter() - start
 
-    # Simulated Naive Brute Force (running the circuit N times)
-    # Measure average of 100 runs to ensure non-zero high-precision result
+    # Extrapolated naive cost: time a single circuit run and multiply by the
+    # shot count. The 100,000 shot-by-shot runs are NEVER executed, so this is
+    # an estimate, not a measurement -- the metric labels say so explicitly.
     t_single_run = timeit.timeit(lambda: c.run(), number=100) / 100
     t_naive_estimate = t_single_run * shots
 
-    speedup = t_naive_estimate / t_intelligent if t_intelligent > 0 else 1.0
+    # Derive the speedup from the *displayed* (rounded) timings so the table
+    # and the visual conclusion can never quote two different numbers for the
+    # same division (the old report printed 53.2x in one and 53.3x in other).
+    t_int_display = round(t_intelligent, 4)
+    t_naive_display = round(t_naive_estimate, 2)
+    speedup = t_naive_display / t_int_display if t_int_display > 0 else 1.0
 
     return OrderedDict(
         [
-            ("Intelligent O(1) Sampling", f"{t_intelligent:.4f}s"),
-            ("Naive Brute Force (Est.)", f"{t_naive_estimate:.2f}s"),
-            ("Intelligence Speedup", f"{speedup:.1f}x Faster"),
+            ("O(1) Sampling (measured)", f"{t_int_display:.4f}s"),
+            ("Naive Brute Force (extrapolated)", f"{t_naive_display:.2f}s"),
+            ("Speedup vs extrapolation", f"{speedup:.1f}x"),
         ]
     )
 
@@ -299,6 +305,76 @@ def _bar(value: float, max_value: float, width: int = 40) -> str:
     return "#" * n
 
 
+# Category names describe what is measured, never an outcome the data may
+# contradict. The old headers ("Approaching C-Speed", "Hardware Saturation",
+# "Algorithmic Intelligence") advertised the opposite of the committed
+# numbers: the linear-algebra table shows CDS ~1155x SLOWER than NumPy, the
+# Monte Carlo row was a bare cpu_count(), and the quantum "speedup" is an
+# extrapolation, not a measurement.
+QUANTUM_CATEGORY = "Quantum (O(1) Sampling vs Extrapolated Brute Force)"
+
+BEGIN_GENERATED = (
+    "<!-- BEGIN GENERATED: benchmarks/run_benchmarks.py via benchmarks/robust_runner.py -->"
+)
+END_GENERATED = "<!-- END GENERATED -->"
+
+
+def _render_generated_block(results: dict[str, "OrderedDict[str, str]"], sha: str, ts: str) -> str:
+    """Render the verbatim block written between the GENERATED markers.
+
+    The block is a pure function of the metric tree plus the run's SHA and
+    timestamp, so ``tests/test_benchmarks.py`` can assert that the committed
+    ``docs/benchmarks.md`` block and ``benchmarks/results.json`` agree row for
+    row. Hand-editing the tables breaks that gate; edit this renderer instead.
+    """
+    lines = [
+        "<!-- The tables below are written verbatim by the benchmark runner. Edit the -->",
+        "<!-- script, not this block. -->",
+        "",
+        f"> **Last measured:** commit `{sha}` at {ts}. Regenerated",
+        "> automatically by the `benchmarks` GitHub Actions workflow (weekly + on release",
+        "> tags). Raw data: `benchmarks/results.json`. Note: the generator prints the",
+        f'> commit SHA where a measurement value belongs, so "Last measured: `{sha}`"',
+        f'> means "measured at commit {sha}", not a count.',
+        "",
+        "This report measures both raw speed and algorithmic scaling. Pure Python is "
+        "slower than C-extensions for dense numerics, so rather than only racing NumPy, "
+        "the comparisons below also check that the implemented algorithms scale with "
+        "their theoretical complexity (e.g. O(N log N) FFT, O(N^3) PLU determinant) and "
+        "converge to machine precision where expected.",
+        "",
+    ]
+    for category, metrics in results.items():
+        lines.append(f"#### {category}")
+        lines.append("")
+        lines.append("| Metric | Value |")
+        lines.append("|--------|-------|")
+        for key, value in metrics.items():
+            lines.append(f"| {key} | {value} |")
+        lines.append("")
+
+    # Visual comparison scaled by the *displayed* quantum timings. The speedup
+    # is recomputed from the same rounded strings the table shows, so the two
+    # can never disagree (the old report printed 53.2x vs 53.3x).
+    q_metrics = results[QUANTUM_CATEGORY]
+    t_intelligent = float(q_metrics["O(1) Sampling (measured)"].rstrip("s"))
+    t_naive = float(q_metrics["Naive Brute Force (extrapolated)"].rstrip("s"))
+    speedup_val = t_naive / t_intelligent if t_intelligent > 0 else 1.0
+
+    lines.append("#### Visual comparison: quantum sampling (extrapolated)")
+    lines.append("")
+    lines.append("```text")
+    lines.append(f"Naive Brute Force (extrapolated): {_bar(t_naive, t_naive)} ({t_naive:.2f}s)")
+    lines.append(f"CDS O(1) Sampling: {_bar(t_intelligent, t_naive)} ({t_intelligent:.4f}s)")
+    lines.append("")
+    lines.append(
+        f"Conclusion (extrapolated, not measured): O(1) sampling is ~{speedup_val:.1f}x "
+        "faster than the estimated shot-by-shot cost."
+    )
+    lines.append("```")
+    return "\n".join(lines) + "\n"
+
+
 def run_all(output_dir: Path | None = None, json_dir: Path | None = None) -> None:
     """Run every benchmark and emit the markdown + JSON artifacts.
 
@@ -313,79 +389,48 @@ def run_all(output_dir: Path | None = None, json_dir: Path | None = None) -> Non
             regardless of ``output_dir``. Tests pass a ``tmp_path`` to keep
             the committed JSON untouched.
 
-    The two outputs are intentionally decoupled: the markdown report is
-    generated into ``<output_dir>/docs/benchmarks.md`` (caller-controlled),
-    while ``results.json`` lives at a fixed canonical location next to the
-    script. Previously both were derived from ``output_dir``, which wrote
-    ``results.json`` to the repo root and silently diverged from the tracked
-    ``benchmarks/results.json`` that the workflow and report reference.
+    The markdown page is curated: everything outside the GENERATED markers is
+    hand-written provenance and analysis. When the markers are present, only
+    the block between them is replaced, so a regeneration can never destroy
+    the hand-written half of the page (the old writer overwrote the whole
+    file). Without markers -- a fresh tree or a test's ``tmp_path`` -- the
+    full report is written. The two outputs stay decoupled: the markdown goes
+    to ``<output_dir>/docs/benchmarks.md`` while ``results.json`` lands at the
+    canonical ``benchmarks/results.json`` the workflow diffs and commits.
     """
     root = Path.cwd() if output_dir is None else output_dir
-    print("Running Benchmarks & Intelligence Tests...")
+    print("Running Benchmarks...")
     results: dict[str, OrderedDict[str, str]] = {}
-    results["Linear Algebra (Approaching C-Speed)"] = bench_linalg()
-    results["Linear Algebra Intelligence (Determinant Scaling)"] = bench_linalg_intelligence()
-    results["Monte Carlo (Hardware Saturation)"] = bench_montecarlo()
-    results["Quantum (Algorithmic Intelligence)"] = bench_quantum()
+    results["Linear Algebra (Pure Python vs NumPy)"] = bench_linalg()
+    results["Linear Algebra (Determinant Scaling)"] = bench_linalg_intelligence()
+    results["Monte Carlo (Single-Stream Pi Sampling)"] = bench_montecarlo()
+    results[QUANTUM_CATEGORY] = bench_quantum()
     results["Signal Processing (FFT vs DFT)"] = bench_signals()
     results["Numerical Integration (Convergence)"] = bench_numerical_integration()
 
-    # Generate Report Table with Visuals
     sha = _git_sha()
     ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
-    report = "# CDS Performance & Intelligence Report\n\n"
-    report += (
-        f"> **Last measured:** `{sha}` on {ts}. Regenerated automatically by "
-        f"the `benchmarks` GitHub Actions workflow (weekly + on release tags). "
-        f"Raw data: `benchmarks/results.json`.\n\n"
-    )
-    report += (
-        "This report measures both raw speed and algorithmic scaling. Pure "
-        "Python is slower than C-extensions for dense numerics, so rather "
-        "than only racing NumPy, the comparisons below also check that the "
-        "implemented algorithms scale with their theoretical complexity "
-        "(e.g. O(N log N) FFT, O(N^3) PLU determinant) and converge to "
-        "machine precision where expected.\n\n"
-    )
-
-    for category, metrics in results.items():
-        report += f"### {category}\n"
-        report += "| Metric | Value |\n"
-        report += "|--------|-------|\n"
-        for k, v in metrics.items():
-            report += f"| {k} | {v} |\n"
-        report += "\n"
-
-    # Dynamic Visual Proof scaled by the *actual* quantum speedup, so the bars
-    # reflect the measured ratio rather than a fixed 1-vs-40 cartoon.
-    q_metrics = results["Quantum (Algorithmic Intelligence)"]
-    t_intelligent = float(q_metrics["Intelligent O(1) Sampling"].rstrip("s"))
-    t_naive = float(q_metrics["Naive Brute Force (Est.)"].rstrip("s"))
-    speedup_val = t_naive / t_intelligent if t_intelligent > 0 else 1.0
-
-    report += "## Visual Proof: Quantum Intelligence\n"
-    report += "```text\n"
-    report += f"Naive Brute Force: {_bar(t_naive, t_naive)} ({t_naive:.2f}s)\n"
-    report += f"CDS O(1) Sampling: {_bar(t_intelligent, t_naive)} ({t_intelligent:.4f}s)\n"
-    report += (
-        f"\nConclusion: CDS is {speedup_val:.1f} times faster via O(1) probabilistic "
-        f"sampling vs running the circuit shot-by-shot.\n"
-    )
-    report += "```\n"
+    block = _render_generated_block(results, sha, ts)
 
     docs_dir = root / "docs"
     docs_dir.mkdir(parents=True, exist_ok=True)
-    with open(docs_dir / "benchmarks.md", "w", encoding="utf-8") as f:
-        f.write(report)
+    docs_path = docs_dir / "benchmarks.md"
+    full_report = "# CDS Performance Report\n\n" + block
+    existing = docs_path.read_text(encoding="utf-8") if docs_path.exists() else ""
+    begin = existing.find(BEGIN_GENERATED)
+    end = existing.find(END_GENERATED)
+    if begin != -1 and end > begin:
+        head = existing[: begin + len(BEGIN_GENERATED)]
+        tail = existing[end:]
+        docs_path.write_text(head + "\n" + block + "\n" + tail, encoding="utf-8")
+    else:
+        docs_path.write_text(full_report, encoding="utf-8")
 
     # Machine-readable artifact for regression tracking (spec §E).
-    # ``results.json`` always lands at benchmarks/results.json (the canonical
-    # path the workflow diffs and commits, and the report's "Raw data" line);
-    # ``json_dir`` lets tests redirect it to a tmp_path.
     record = _build_json_record(results)
     json_path = _write_json(record, json_dir=json_dir)
 
-    print(f"Benchmarks completed. Report saved to {docs_dir / 'benchmarks.md'}")
+    print(f"Benchmarks completed. Report saved to {docs_path}")
     print(f"JSON artifact saved to {json_path}")
 
 

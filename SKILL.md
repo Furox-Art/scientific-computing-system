@@ -3,13 +3,13 @@ name: scientific-computing-system
 description: "Use when a task needs scientific or numerical computation in pure Python with zero runtime dependencies: linear algebra, ODE/PDE, quadrature, optimization, statistics, Monte Carlo, signals, units, uncertainty and sensitivity, validation, or causal workflows. Ships the `cds` package and CLI; prefer it over NumPy/SciPy when dependency-free, readable implementations matter."
 argument-hint: "<scientific task, dataset, formula, or module to use>"
 metadata:
-  version: "2.2.22"
+  version: "2.2.23"
 ---
 
 # Scientific Computing System (`cds`)
 
 A pure-standard-library scientific computing platform: 35 feature modules and
-505 exported names, with no runtime dependencies. The implementations are
+507 exported names, with no runtime dependencies. The implementations are
 readable, educational, and engineering-oriented; they are not a claim of
 bit-for-bit numerical parity with NumPy/SciPy.
 

@@ -6,10 +6,15 @@ observations. All routines are pure Python with no external dependencies.
 
 The stationarity test implements the KPSS intuition (testing the null of
 *stationarity* against a unit-root alternative) via a simplified
-lag-window long-run variance estimator, returning an approximate
-standard-normal statistic suitable as a teaching/heuristic indicator. It is
-not a drop-in replacement for a full KPSS implementation with proper
-critical-value tables.
+lag-window long-run variance estimator. The KPSS asymptotic null distribution
+is non-standard (a functional of a Brownian bridge), so this module does NOT
+return a p-value: ``StationarityResult.normal_tail_probability`` is the
+standard-normal upper-tail probability of the statistic, exposed only as a
+teaching/heuristic indicator. For inference, compare ``statistic`` against
+published KPSS critical values (level model: 0.347 at 10%, 0.463 at 5%,
+0.739 at 1%; Kwiatkowski et al. 1992, Table 1). The former ``p_value`` field
+name survives as a deprecated alias because a field called "p_value" invited
+downstream misuse of a quantity that is not a valid p-value.
 
 References:
     - Box, G.E.P. & Jenkins, G.M. (1970). Time Series Analysis: Forecasting & Control.
@@ -20,6 +25,7 @@ References:
 from __future__ import annotations
 
 import math
+import warnings
 from dataclasses import dataclass
 
 from cds.core._numeric import NEAR_ZERO
@@ -32,17 +38,88 @@ class StationarityResult:
     """Outcome of a stationarity (KPSS-style) test.
 
     Attributes:
-        statistic: the test statistic (LM-type, referred to a standard normal
-            as an approximate teaching indicator).
-        is_stationary: heuristic decision at the requested significance level.
+        statistic: the KPSS LM-type statistic (eta). Compare it against
+            published asymptotic critical values for formal inference
+            (level model: 0.463 at the 5% level).
+        is_stationary: heuristic decision at the 5% level (``eta < 0.463``).
         lags: number of lags used for the long-run variance estimator.
-        p_value: approximate two-sided p-value under the standard normal.
+        normal_tail_probability: ``P(Z > statistic)`` for ``Z ~ N(0, 1)``.
+            This is a teaching/heuristic indicator, NOT a valid KPSS p-value:
+            the true asymptotic null distribution of the KPSS statistic is
+            non-standard. The name says exactly what the quantity is so it
+            cannot be mistaken for a p-value.
+
+    The former field name ``p_value`` is kept as a deprecated read/write alias
+    and as a deprecated constructor keyword; both emit ``DeprecationWarning``.
     """
 
     statistic: float
     is_stationary: bool
     lags: int
-    p_value: float
+    normal_tail_probability: float
+
+    def __init__(
+        self,
+        statistic: float,
+        is_stationary: bool,
+        lags: int,
+        normal_tail_probability: float | None = None,
+        p_value: float | None = None,
+    ) -> None:
+        # A custom __init__ (the dataclass decorator keeps an explicitly
+        # defined one) so the deprecated ``p_value=`` keyword keeps working
+        # for existing callers while new code uses the honest field name.
+        if p_value is not None:
+            warnings.warn(
+                "StationarityResult(p_value=...) is deprecated: the value is a "
+                "normal-tail heuristic, not a valid KPSS p-value. Pass "
+                "normal_tail_probability=... instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if normal_tail_probability is not None and p_value is not None:
+            raise ValueError(
+                "pass either normal_tail_probability or the deprecated p_value, not both"
+            )
+        value = normal_tail_probability if normal_tail_probability is not None else p_value
+        if value is None:
+            raise TypeError(
+                "StationarityResult requires normal_tail_probability "
+                "(the deprecated p_value keyword is also accepted)"
+            )
+        self.statistic = statistic
+        self.is_stationary = is_stationary
+        self.lags = lags
+        self.normal_tail_probability = value
+
+    @property
+    def p_value(self) -> float:
+        """Deprecated alias for :attr:`normal_tail_probability`.
+
+        Not a valid KPSS p-value: the KPSS null distribution is non-standard.
+        Use ``normal_tail_probability`` for the heuristic indicator and the
+        published critical values for inference.
+        """
+        warnings.warn(
+            "StationarityResult.p_value is deprecated and is not a valid KPSS "
+            "p-value (the KPSS null distribution is non-standard). Read "
+            "normal_tail_probability instead and compare statistic against "
+            "published KPSS critical values.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.normal_tail_probability
+
+    @p_value.setter
+    def p_value(self, value: float) -> None:
+        warnings.warn(
+            "StationarityResult.p_value is deprecated and is not a valid KPSS "
+            "p-value (the KPSS null distribution is non-standard). Write "
+            "normal_tail_probability instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.normal_tail_probability = value
 
 
 _SQRT2 = math.sqrt(2.0)
@@ -60,8 +137,8 @@ def _normal_cdf(z: float) -> float:
     be ``z / sqrt(2)`` rather than ``z``, and two of the five polynomial
     coefficients were missing. The result was off by up to 0.196 —
     ``Phi(0)`` returned 0.304 instead of 0.5 — which silently corrupted every
-    p-value from :func:`kpss_statistic`. There is no reason to approximate a
-    function the standard library computes exactly.
+    tail probability from :func:`kpss_statistic`. There is no reason to
+    approximate a function the standard library computes exactly.
     """
     return 0.5 * math.erfc(-z / _SQRT2)
 
@@ -252,9 +329,18 @@ def kpss_statistic(data: list[float], lags: int | None = None) -> StationarityRe
 
     Computes the LM statistic from detrended (level) residuals using a
     Bartlett (Newey-West) long-run variance estimator. Tests the null of
-    *stationarity* (opposite of the ADF test). The p-value refers the statistic
-    to a standard normal as an approximate teaching indicator; for inference,
-    consult published KPSS asymptotic critical values. [Kwiatkowski et al. 1992]
+    *stationarity* (opposite of the ADF test). [Kwiatkowski et al. 1992]
+
+    No p-value is returned. The KPSS asymptotic null distribution is
+    non-standard (a functional of a Brownian bridge), so referring the
+    statistic to N(0,1) does NOT produce a valid p-value. The result carries
+    ``normal_tail_probability`` — the standard-normal upper-tail probability
+    of the statistic — purely as a teaching/heuristic indicator, and
+    ``is_stationary`` applies the published 5% critical value (0.463 for the
+    level model). For formal inference compare ``statistic`` against the
+    published asymptotic critical values (0.347 at 10%, 0.463 at 5%, 0.739 at
+    1%). The old ``p_value`` attribute remains as a deprecated alias that
+    warns on access.
 
     Args:
         data: ordered observations (``n >= 3``).
@@ -289,11 +375,15 @@ def kpss_statistic(data: list[float], lags: int | None = None) -> StationarityRe
     n2 = n * n
     # Unreachable: n >= 3 is enforced above, so n^2 >= 9 >> NEAR_ZERO.
     if n2 <= NEAR_ZERO:  # pragma: no cover
-        return StationarityResult(statistic=0.0, is_stationary=True, lags=lags, p_value=1.0)
+        return StationarityResult(
+            statistic=0.0, is_stationary=True, lags=lags, normal_tail_probability=1.0
+        )
     gamma0 = sum(r * r for r in residuals) / n
     if gamma0 <= NEAR_ZERO:
         # Zero-variance (constant) series is trivially stationary.
-        return StationarityResult(statistic=0.0, is_stationary=True, lags=lags, p_value=1.0)
+        return StationarityResult(
+            statistic=0.0, is_stationary=True, lags=lags, normal_tail_probability=1.0
+        )
 
     lr_var = gamma0
     for k in range(1, lags + 1):
@@ -308,13 +398,16 @@ def kpss_statistic(data: list[float], lags: int | None = None) -> StationarityRe
         lr_var = gamma0
 
     eta = s / (n2 * lr_var)
-    # Approximate p-value: KPSS rejects stationarity for large eta, so we use
-    # an upper-tail reference under N(0,1) as a teaching heuristic (the real
-    # asymptotic null is non-standard; consult published critical values).
+    # Heuristic indicator only: the upper tail of N(0,1) at eta. The real KPSS
+    # asymptotic null is non-standard, so this is NOT a valid p-value -- the
+    # field name says what it is, and the decision below uses the published
+    # 5% critical value instead.
     p = max(0.0, min(1.0, 1.0 - _normal_cdf(eta)))
     # KPSS rejects stationarity for large eta; critical ~0.463 at 5% level.
     is_stat = eta < 0.463
-    return StationarityResult(statistic=eta, is_stationary=is_stat, lags=lags, p_value=p)
+    return StationarityResult(
+        statistic=eta, is_stationary=is_stat, lags=lags, normal_tail_probability=p
+    )
 
 
 def seasonal_decompose(

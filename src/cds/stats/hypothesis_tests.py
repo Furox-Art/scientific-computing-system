@@ -11,22 +11,48 @@ import math
 from dataclasses import dataclass
 
 from cds.stats._distributions import (  # re-exported for compatibility
-    _EPS,
-    _FPMIN,
-    _MAXIT,
-    _betacf,
-    _betai,
-    _gammln,
-    _gammp,
-    _gammq,
-    _gcf,
-    _gser,
+    _EPS as _EPS,
+)
+from cds.stats._distributions import (
+    _FPMIN as _FPMIN,
+)
+from cds.stats._distributions import (
+    _MAXIT as _MAXIT,
+)
+from cds.stats._distributions import (
+    _betacf as _betacf,
+)
+from cds.stats._distributions import (
+    _betai as _betai,
+)
+from cds.stats._distributions import (
+    _gammln as _gammln,
+)
+from cds.stats._distributions import (
+    _gammp as _gammp,
+)
+from cds.stats._distributions import (
+    _gammq as _gammq,
+)
+from cds.stats._distributions import (
+    _gcf as _gcf,
+)
+from cds.stats._distributions import (
+    _gser as _gser,
+)
+from cds.stats._distributions import (
     chi2_sf,
     f_sf,
     t_sf,
 )
 from cds.stats.descriptive import mean, variance
 
+# The private Numerical-Recipes helpers above stay importable from this module
+# for backward compatibility (existing code and the edge-case tests import
+# them directly); the explicit `X as X` aliases mark them as deliberate
+# re-exports. They are implementation internals, not public API: they are
+# deliberately absent from __all__, so `from ... import *` no longer
+# advertises them as part of the statistical surface.
 __all__ = [
     "TestResult",
     "one_sample_ttest",
@@ -43,16 +69,6 @@ __all__ = [
     "t_sf",
     "chi2_sf",
     "f_sf",
-    "_EPS",
-    "_FPMIN",
-    "_MAXIT",
-    "_betacf",
-    "_betai",
-    "_gammln",
-    "_gammp",
-    "_gammq",
-    "_gcf",
-    "_gser",
 ]
 
 

@@ -79,7 +79,7 @@ and what to register to close the npm gap.
 
 `src/cds/` holds **34 subpackages plus `causal.py` and `sensitivity.py`**. That is
 35 public feature modules — the `cds` CLI entry point is the 36th subpackage —
-exporting **505 names** (342 functions, 163 classes), all pure standard library.
+exporting **507 names** (343 functions, 164 classes), all pure standard library.
 `tests/test_readme_surface.py` derives these numbers from the package, so they
 cannot drift silently.
 
@@ -87,7 +87,7 @@ cannot drift silently.
 |---|---|---|
 | Core models | `cds.core` | Shared `Domain`, `Hypothesis`, `HypothesisStatus` types |
 | Linear algebra & calculus | `cds.math_utils`, `cds.interpolate` | SVD, QR, Cholesky, LU, power iteration, derivatives, integrals |
-| ODE / PDE | `cds.diffeq`, `cds.pde` | Euler, RK4, adaptive RK45, implicit stiff methods, symplectic integrators; 1-D heat & wave equations |
+| ODE / PDE | `cds.diffeq`, `cds.pde` | Euler, RK4, adaptive RK45 (scalar + systems), implicit stiff methods, symplectic integrators; 1-D heat & wave equations |
 | Quadrature | `cds.numerical_integration` | Trapezoid, Simpson 1/3 & 3/8, Romberg, Gauss-Legendre, adaptive Simpson, 2-D tensor rules |
 | Optimization | `cds.optimization` | Gradient descent, Newton, Adam, Nelder-Mead, annealing, constrained search |
 | Statistics | `cds.stats`, `cds.probability`, `cds.bayes` | Descriptive stats, regression, t/chi-square/ANOVA, effect sizes, nonparametric ranks, time series, multiple testing, Bayesian conjugate updates |
@@ -118,7 +118,7 @@ The authoritative per-module list is the [API reference](https://furox-art.githu
 
 ### Runnable examples and the dashboard
 
-- **[`examples/`](examples/)** — 34 runnable scripts and notebooks (32 `.py`, 2
+- **[`examples/`](examples/)** — 35 runnable scripts and notebooks (32 `.py`, 3
   `.ipynb`), each self-contained and dependency-free unless noted. Every tutorial
   page in the docs has a matching example.
 - **[`dashboard/app.py`](dashboard/app.py)** — a Streamlit dashboard:
@@ -214,14 +214,17 @@ NumPy or the 2.0 build instead.
 ## Contributing
 
 ```bash
-pip install -e ".[dev,test,docs]"   # lint/type, test, and docs tooling
+pip install -e ".[test,dev,docs,pandas,plot,property,io]" "hatchling==1.32.4"
 pytest            # CI also enforces 100% blended coverage (statement + branch)
 mkdocs serve      # docs at http://127.0.0.1:8000/
 ```
 
-`.[dev,test,docs]` is the smallest environment for the default test suite and the docs.
-Add `.[property]` for the Hypothesis invariants, or `.[all]` for the dashboard,
-HDF5/NetCDF, plotting and scientific backends together.
+That is the same environment CI installs, and it is the smallest one that
+passes the full suite: `tests/conftest.py` counts every skipped test as a
+failure, so the optional backends the suite exercises (matplotlib, pandas,
+h5py/netCDF4, Hypothesis) must be present, and `hatchling` is required by the
+editable install and the release-toolchain tests. `.[all]` adds the dashboard
+and the scientific backends on top.
 
 Issues and PRs welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) and
 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).

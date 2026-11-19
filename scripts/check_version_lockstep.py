@@ -14,6 +14,10 @@ Release surfaces checked
 ``package.json``           ``version`` for the Node launcher package.
 ``codemeta.json``          ``version`` for the CodeMeta metadata record.
 ``src/cds/_version.py``    ``__version__`` -- re-exported as ``cds.__version__``.
+``src/cds/_version.py``    ``__version_tuple__`` -- the integer-tuple form of the
+                           same version; it is a public export and must not lag
+                           the string (it sat at ``(2, 2, 21)`` while every
+                           string surface said ``2.2.22``).
 ``CITATION.cff``           top-level and ``preferred-citation`` version fields.
 ``CHANGELOG.md``           must carry a ``## [vX.Y.Z]`` heading for that version.
 =========================  =========================================================
@@ -73,6 +77,9 @@ WHEEL_DIST = "scientific_computing_system"
 
 SEMVER = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 PY_VERSION = re.compile(r'^__version__\s*=\s*version\s*=\s*["\']([^"\']+)["\']', re.MULTILINE)
+PY_VERSION_TUPLE = re.compile(
+    r"^__version_tuple__\s*=\s*version_tuple\s*=\s*\(([^)]*)\)", re.MULTILINE
+)
 CFF_VERSION = re.compile(r"^\s*version:\s*[\"']?([^\s\"']+)[\"']?\s*$", re.MULTILINE)
 CHANGELOG_HEADING = re.compile(r"^## \[v?(\d+\.\d+\.\d+)\]", re.MULTILINE)
 
@@ -122,6 +129,30 @@ def _python_version() -> str:
     return match.group(1)
 
 
+def _python_version_tuple() -> tuple[int, int, int]:
+    """Parse ``__version_tuple__ = version_tuple = (X, Y, Z)`` from _version.py.
+
+    The tuple is a public export (``cds._version.__all__``) and drifted a full
+    patch release behind ``__version__`` while the lockstep gate only read the
+    string. It is now a locked surface: the three components must be
+    non-negative integers and must spell out the same X.Y.Z version.
+    """
+    match = PY_VERSION_TUPLE.search(
+        (ROOT / "src" / "cds" / "_version.py").read_text(encoding="utf-8-sig")
+    )
+    if match is None:
+        raise VersionDriftError(
+            "src/cds/_version.py must define __version_tuple__ = version_tuple = (X, Y, Z)"
+        )
+    parts = [part.strip() for part in match.group(1).split(",")]
+    if len(parts) != 3 or any(not (part.isascii() and part.isdigit()) for part in parts):
+        raise VersionDriftError(
+            "src/cds/_version.py __version_tuple__ must hold exactly three "
+            f"non-negative integers, got ({match.group(1)})"
+        )
+    return int(parts[0]), int(parts[1]), int(parts[2])
+
+
 def _citation_versions() -> tuple[str, str]:
     matches = CFF_VERSION.findall((ROOT / "CITATION.cff").read_text(encoding="utf-8"))
     if len(matches) != 2:
@@ -150,16 +181,26 @@ def collected_versions() -> dict[str, str]:
         "package.json version": _package_json_version(),
         "codemeta.json version": _codemeta_version(),
         "src/cds/_version.py __version__": _python_version(),
+        "src/cds/_version.py __version_tuple__": ".".join(
+            str(part) for part in _python_version_tuple()
+        ),
         "CITATION.cff top-level version": citation,
         "CITATION.cff preferred-citation version": preferred,
     }
 
 
 def check_importable_version(expected: str) -> None:
-    """Assert ``cds.__version__`` really equals the declared version."""
+    """Assert ``cds.__version__`` and ``cds._version.__version_tuple__`` agree.
+
+    Both are checked behaviourally rather than textually: a purely textual
+    grep would happily pass while the re-export is deleted, renamed or pointed
+    at a stale constant, leaving downstream users with an ``AttributeError``
+    or a version tuple that contradicts the version string.
+    """
     sys.path.insert(0, str(ROOT / "src"))
     try:
         import cds  # noqa: PLC0415
+        from cds import _version as cds_version  # noqa: PLC0415
     except ImportError as exc:  # pragma: no cover - import failure is the bug
         raise VersionDriftError(f"cannot import the cds package: {exc}") from exc
     actual = getattr(cds, "__version__", None)
@@ -167,6 +208,14 @@ def check_importable_version(expected: str) -> None:
         raise VersionDriftError(
             f"cds.__version__ is {actual!r} but pyproject declares {expected!r}; "
             "the re-export in src/cds/__init__.py is stale or missing"
+        )
+    expected_tuple = tuple(int(part) for part in expected.split("."))
+    actual_tuple = getattr(cds_version, "__version_tuple__", None)
+    if actual_tuple != expected_tuple:
+        raise VersionDriftError(
+            f"cds._version.__version_tuple__ is {actual_tuple!r} but pyproject "
+            f"declares {expected!r} (expected {expected_tuple!r}); the tuple "
+            "must stay in lockstep with the version string"
         )
 
 
@@ -279,6 +328,7 @@ def main(argv: list[str] | None = None) -> int:
         for source in sorted(versions):
             print(f"  {source} = {versions[source]}")
         print("  cds.__version__ (runtime import) = " + declared)
+        print("  cds._version.__version_tuple__ (runtime import) = " + declared)
         print("  CHANGELOG.md documents v" + declared)
 
         if args.dist_dir is not None:

@@ -52,27 +52,38 @@ number from this page.**
 
 **Not supported — read with care:**
 
-- **"Naive Brute Force (Est.)" and the speedup derived from it are an
+- **"Naive Brute Force (extrapolated)" and the speedup derived from it are an
   extrapolation, not a measurement.** The script times a single `circuit.run()`
   call and multiplies by the 100,000-shot count; it never executes 100,000
   circuits. Treat the resulting speedup as an order-of-magnitude illustration
-  of why O(1) sampling is the right design, not as a benchmark result.
-- **"CPU Cores Saturated" is a core count, not a saturation measurement.** It
-  reports `multiprocessing.cpu_count()`. Nothing here verifies that every core
-  stayed busy or that the workload actually scaled. The Monte Carlo table no
-  longer carries that row: `estimate_pi` samples on one in-process stream, so
-  a core count would be meaningless there.
-- **The generated section headers describe algorithms, not outcomes.** Strings
-  like "Algorithmic Intelligence", "Approaching C-Speed" and "Hardware
-  Saturation" come from the generator, not from the data. The first table's
-  honest reading is the opposite of its own header: on that run CDS was
-  **1154.8× slower** than NumPy on dense matrix multiplication.
-- **Two different numbers for the same division.** The quantum table reports
-  "53.2x Faster" while the conclusion line below it prints "53.3 times faster".
-  Both come from the same ratio at different rounding points; neither is a
-  measurement of 100,000 full circuit runs.
+  of why O(1) sampling is the right design, not as a benchmark result. The
+  table and the visual conclusion now derive the ratio from the same rounded
+  timings, so both quote one number (53.3x) instead of the old 53.2x/53.3x
+  pair — but that number is still an extrapolation.
+- **The Monte Carlo table records a sampling mode, not hardware saturation.**
+  The artifact used to carry a "CPU Cores Saturated" row that was nothing but
+  `multiprocessing.cpu_count()` — no measurement of core utilization. That row
+  is gone: `estimate_pi` samples on one in-process stream, so the generator
+  records `Sampling mode | single in-process random.Random stream` instead.
+- **The section headers describe algorithms, not outcomes.** They used to
+  advertise the opposite of the data ("Approaching C-Speed" above a table
+  showing CDS **1154.8× slower** than NumPy, "Hardware Saturation" above a bare
+  core count, "Algorithmic Intelligence" above an extrapolation). The headers
+  are now descriptive; the honest reading of the first table is unchanged: on
+  that run CDS was 1154.8× slower than NumPy on dense matrix multiplication.
 - **Single-run dispersion is not shown.** Best-of-N hides variance, and this
   artifact carries no MAD or p95.
+
+**Why the Monte Carlo timing is kept unchanged.** The committed Pi timing is
+the pre-change measurement and is kept rather than re-measured, because
+re-running the generator would replace it with a number from a different
+machine. `estimate_pi` no longer fans its samples out to a process pool: on
+the pooled path, Windows `spawn` cost ≈1.4 s of interpreter start-up and module
+re-import per default call against ≈0.014 s of actual sampling — about 100×
+the work it was meant to accelerate. The estimator now draws its whole sample
+from one `random.Random(seed)` stream in a single in-process pass, which also
+makes a *seeded* call machine-independent (the old chunk boundaries were
+derived from `cpu_count()`, so the result differed between hosts).
 
 ## Raw generator output
 
@@ -88,7 +99,7 @@ number from this page.**
 
 This report measures both raw speed and algorithmic scaling. Pure Python is slower than C-extensions for dense numerics, so rather than only racing NumPy, the comparisons below also check that the implemented algorithms scale with their theoretical complexity (e.g. O(N log N) FFT, O(N^3) PLU determinant) and converge to machine precision where expected.
 
-#### Linear algebra vs. NumPy
+#### Linear Algebra (Pure Python vs NumPy)
 
 | Metric | Value |
 |--------|-------|
@@ -97,7 +108,7 @@ This report measures both raw speed and algorithmic scaling. Pure Python is slow
 | NumPy Matrix Mul (Baseline) | 0.000060s |
 | Speed Status | CDS is 1154.8x slower than NumPy (pure Python vs C) |
 
-#### Determinant scaling
+#### Linear Algebra (Determinant Scaling)
 
 | Metric | Value |
 |--------|-------|
@@ -107,35 +118,23 @@ This report measures both raw speed and algorithmic scaling. Pure Python is slow
 | Expected for O(N^3) | 8.0x |
 | Complexity | O(N^3) PLU |
 
-#### Monte Carlo
+#### Monte Carlo (Single-Stream Pi Sampling)
 
 | Metric | Value |
 |--------|-------|
 | Pi (100k samples) | 0.0388s |
+| Sampling mode | single in-process random.Random stream |
 | Estimate error vs π | 0.00791 |
 
-The timing above is the committed pre-change measurement and is kept
-unchanged rather than re-measured, because re-running the generator would
-overwrite the hand-written analysis on this page. `estimate_pi` no longer fans
-its samples out to a process pool: on the pooled path, Windows `spawn` cost
-≈1.4 s of interpreter start-up and module re-import per default call against
-≈0.014 s of actual sampling — about 100× the work it was meant to accelerate.
-The estimator now draws its whole sample from one `random.Random(seed)`
-stream in a single in-process pass, which also makes a *seeded* call
-machine-independent (the old chunk boundaries were derived from
-`cpu_count()`, so the result differed between hosts). The row the generator
-emits is now `Sampling mode | single in-process random.Random stream` in
-place of `CPU Cores Saturated`.
-
-#### Quantum sampling (estimated)
+#### Quantum (O(1) Sampling vs Extrapolated Brute Force)
 
 | Metric | Value |
 |--------|-------|
-| Intelligent O(1) Sampling | 0.0152s |
-| Naive Brute Force (Est.) | 0.81s |
-| Intelligence Speedup | 53.2x Faster |
+| O(1) Sampling (measured) | 0.0152s |
+| Naive Brute Force (extrapolated) | 0.81s |
+| Speedup vs extrapolation | 53.3x |
 
-#### Signal processing: FFT vs. DFT
+#### Signal Processing (FFT vs DFT)
 
 | Metric | Value |
 |--------|-------|
@@ -144,7 +143,7 @@ place of `CPU Cores Saturated`.
 | Naive DFT (O(N^2)) | 0.351954s |
 | Algorithmic speedup | 128x |
 
-#### Numerical integration (convergence errors)
+#### Numerical Integration (Convergence)
 
 | Metric | Value |
 |--------|-------|
@@ -155,13 +154,13 @@ place of `CPU Cores Saturated`.
 | Romberg (auto tol) | 8.88e-16 |
 | Adaptive Simpson | 6.66e-16 |
 
-#### Visual comparison: quantum sampling
+#### Visual comparison: quantum sampling (extrapolated)
 
 ```text
-Naive Brute Force: ######################################## (0.81s)
+Naive Brute Force (extrapolated): ######################################## (0.81s)
 CDS O(1) Sampling: # (0.0152s)
 
-Conclusion: CDS is 53.3 times faster via O(1) probabilistic sampling vs running the circuit shot-by-shot.
+Conclusion (extrapolated, not measured): O(1) sampling is ~53.3x faster than the estimated shot-by-shot cost.
 ```
 
 <!-- END GENERATED -->
@@ -173,7 +172,9 @@ pip install "scientific-computing-system[all]"
 python benchmarks/robust_runner.py
 ```
 
-This rewrites `docs/benchmarks.md` and `benchmarks/results.json` in place. The
+This regenerates `benchmarks/results.json` and replaces the generated block of
+`docs/benchmarks.md` in place: everything outside the `BEGIN/END GENERATED`
+markers — the provenance and analysis you are reading — is preserved. The
 current `robust_runner.py` records the package version, full commit SHA, Python
 build, platform, CPU, warmup count, seed policy, and per-workload median / MAD /
 p95 in the JSON — so a fresh run gives a fully attributable report. The numbers

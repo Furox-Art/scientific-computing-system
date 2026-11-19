@@ -42,6 +42,27 @@ what the history supports; it does not claim that a tag exists.
 - Centroids are rounded to 9 decimals and inertia to 6 before hashing, so compiler-level float noise cannot fail the cross-OS gate while a change in cluster assignments or split decisions still does.
 - The workload fails when the clustering leaves a cluster empty or the forest predicts a single label, which keeps the sampled payload meaningful.
 
+## [v2.2.23] - 2026-11-19
+
+### Numerical kernels
+
+- `math_utils.svd` now runs Hestenes' one-sided Jacobi method on the columns of `A` itself instead of diagonalizing the Gram matrix `AᵀA`. The condition number is no longer squared, so small singular values keep relative accuracy: closed-form oracles pin a ~1e-12 singular value to machine relative error where the Gram approach lost it under ~1e-8 absolute noise. The `svd` / `rank` / `condition_number` API is unchanged; the docstrings now state the condition-number limit (~1/eps) explicitly.
+- `diffeq.rk45_system` adds the adaptive Dormand-Prince integrator for ODE systems: the same embedded 4th/5th-order pair as the scalar `rk45`, with a per-component scaled RMS error norm, step rejection/growth control, backward integration and endpoint snap. It returns the new `ODESystemSolution` dataclass. The scalar `rk45` and fixed-step `solve_system` are unchanged; both RK45 variants share one tableau.
+- `math_utils.determinant` classifies "nearly singular" columns with a scale-relative threshold per column (`NEAR_ZERO` × the column's original largest entry) instead of inheriting LU's global-scale cutoff. Well-conditioned mixed-scale matrices such as `diag(1e-20, 1e20)` now return their true determinant (1) instead of 0; the classification rule and its accuracy limits are documented.
+
+### Statistics
+
+- `stats.kpss_statistic` no longer labels its N(0,1) upper-tail heuristic as a p-value: `StationarityResult.p_value` is renamed to `normal_tail_probability`, because the KPSS asymptotic null distribution is non-standard and the old field was not a valid p-value. The old name survives as a deprecated read/write alias and constructor keyword that emit `DeprecationWarning`; `is_stationary` still applies the published 5% critical value (0.463).
+- `stats.hypothesis_tests.__all__` no longer advertises the private Numerical-Recipes helpers (`_betacf`, `_gser`, `_EPS`, ...). They remain directly importable for backward compatibility; the star-import surface is now the 15 public statistical names.
+
+### Documentation and release metadata
+
+- `src/cds/_version.py`'s `__version_tuple__` is back in lockstep with `__version__`, and `scripts/check_version_lockstep.py` now audits the tuple textually and at runtime (7 locked surfaces).
+- README and CONTRIBUTING document the environment that actually passes the suite: `.[test,dev,docs,pandas,plot,property,io]` plus `hatchling==1.32.4` — the zero-skip gate in `tests/conftest.py` counts every skipped test as a failure. Verified by running the documented install and the full suite.
+- README example count corrected to 35 (32 `.py`, 3 `.ipynb`) and pinned to `examples/` by a new surface test; export-count pins updated to 507 names (343 functions, 164 classes).
+- Benchmark artifact headers now describe the data: "Approaching C-Speed", "Hardware Saturation" and "Algorithmic Intelligence" replaced with descriptive labels, the bare `CPU Cores Saturated` cpu_count row replaced by the sampling-mode row the generator actually emits, and the quantum speedup labelled as an extrapolation derived once from the displayed timings (53.3x in both the table and the conclusion). The `docs/benchmarks.md` generated block is re-rendered verbatim from `benchmarks/results.json`, a new gate compares them row for row, and regeneration now splices between the GENERATED markers instead of overwriting the hand-written analysis.
+- `docs/ml_reference.md` consistently names scikit-learn 1.9.0 (the version the frozen reference constants were computed with); a new test pins doc/script agreement.
+
 ## [v2.2.22] - 2026-11-07
 
 ### Adaptive Simpson returns its error estimate

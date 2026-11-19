@@ -113,9 +113,29 @@ def transpose(m: Matrix) -> Matrix:
 
 
 def determinant(m: Matrix) -> float:
-    """Compute matrix determinant using PLU decomposition (O(N^3)).
+    """Compute the determinant via PLU elimination with partial pivoting (O(N^3)).
 
     Avoids the O(N!) complexity of minor expansion.
+
+    The "nearly singular" classification is scale-relative *per column*:
+    after partial pivoting, a column is treated as numerically zero only
+    when its largest remaining entry is exactly ``0.0`` or falls below
+    ``NEAR_ZERO`` (1e-15) times the largest absolute entry of that column in
+    the original matrix. Because the threshold tracks each column's own
+    scale, multiplying the whole matrix — or any single column — by a
+    constant never changes the classification, and a well-conditioned
+    matrix with widely differing entry magnitudes (e.g. ``diag(1e-20, 1e20)``,
+    whose determinant is 1) is not misclassified as singular.
+
+    Returns:
+        The signed product of the pivots, or ``0.0`` when a column is
+        classified as numerically zero. For ill-conditioned matrices
+        (condition number approaching ``1/eps``) the product loses relative
+        accuracy: a non-zero result is then an estimate, not a certificate
+        of non-singularity.
+
+    Raises:
+        ValueError: if the matrix is ragged or not square.
     """
     n = len(m)
     if n == 0:
@@ -126,32 +146,38 @@ def determinant(m: Matrix) -> float:
     if n == 1:
         return m[0][0]
 
-    try:
-        P, L, U = lu_decomposition(m)
-    except ValueError:
-        # If matrix is singular, determinant is 0
-        return 0.0
-
-    # Determinant of LU is product of diag(U)
-    # (diag(L) is all 1s).
+    u = [row[:] for row in m]
+    # Per-column scale reference from the ORIGINAL matrix: the relative
+    # pivot threshold adapts to each column's magnitude instead of a single
+    # global cutoff (which misreads mixed-scale matrices like diag(1e-20,1e20)).
+    col_scale = [max(abs(m[i][j]) for i in range(n)) for j in range(n)]
+    sign = 1.0
     det = 1.0
-    for i in range(n):
-        det *= U[i][i]
-
-    # Determinant of P is (-1)^s where s is number of row swaps.
-    # We compute it using cycle decomposition: s = n - number_of_cycles.
-    num_cycles = 0
-    p_indices = [row.index(1.0) for row in P]
-    visited = [False] * n
-    for i in range(n):
-        if not visited[i]:
-            num_cycles += 1
-            curr = i
-            while not visited[curr]:
-                visited[curr] = True
-                curr = p_indices[curr]
-
-    return float(det * ((-1) ** (n - num_cycles)))
+    for k in range(n):
+        # Partial pivoting: largest-magnitude entry in the remaining column.
+        pivot_idx = k
+        max_val = abs(u[k][k])
+        for i in range(k + 1, n):
+            if abs(u[i][k]) > max_val:
+                max_val = abs(u[i][k])
+                pivot_idx = i
+        # Scale-relative singularity test. The exact-zero arm also covers
+        # sub-normal column scales, where NEAR_ZERO * col_scale underflows
+        # to 0.0 and a literal zero pivot must still be rejected.
+        threshold = NEAR_ZERO * col_scale[k]
+        if max_val == 0.0 or max_val < threshold:
+            return 0.0
+        if pivot_idx != k:
+            u[k], u[pivot_idx] = u[pivot_idx], u[k]
+            sign = -sign
+        pivot = u[k][k]
+        det *= pivot
+        for i in range(k + 1, n):
+            factor = u[i][k] / pivot
+            if factor != 0.0:
+                for j in range(k + 1, n):
+                    u[i][j] -= factor * u[k][j]
+    return float(sign * det)
 
 
 def identity(n: int) -> Matrix:

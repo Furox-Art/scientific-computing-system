@@ -27,11 +27,16 @@ Thank you for your interest! CDS is an open-source computational science platfor
 git clone https://github.com/Furox-Art/scientific-computing-system.git
 cd scientific-computing-system
 python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev,test,docs]"   # dev + test + docs tooling; ".[all]" adds the optional backends
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+# The full suite treats every skipped test as a failure (tests/conftest.py),
+# so the optional backends it exercises must all be installed: pandas, plot
+# (matplotlib), property (hypothesis) and io (h5py + netCDF4), plus the test,
+# dev and docs tooling. hatchling is the build backend: the editable install
+# and the release-toolchain tests need it, and no extra carries it.
+# This is the same set CI installs (.github/workflows/tests.yml).
+pip install -e ".[test,dev,docs,pandas,plot,property,io]" "hatchling==1.32.4"
 
 # Install pre-commit hooks (run on every commit)
-pip install pre-commit
 pre-commit install
 
 # Run tests (see the CI badge for the current count)
@@ -45,6 +50,12 @@ ruff format --check src/ tests/
 cds --help
 cds constants
 ```
+
+A lean `pip install -e ".[test]"` is **not** enough to pass the suite: missing
+optional backends turn into skipped tests, and the zero-skip quality gate in
+`tests/conftest.py` counts every skip as a failure. If you only want to run a
+subset of tests while developing, select them explicitly
+(`pytest tests/test_core.py`) instead of shrinking the environment.
 
 ## Architecture Overview
 

@@ -1,12 +1,14 @@
 # Differential Equations Tutorial
 
-`cds.diffeq` solves initial-value problems with classical schemes plus an
-adaptive RK45 integrator.
+`cds.diffeq` solves initial-value problems with classical schemes plus
+adaptive RK45 integrators for both scalar equations and systems.
 
 The fixed-step solvers take the step size as **`dt`**, not `n`, and return an
 `ODESolution` dataclass whose solution values are read from `.y` (a list, index
 `-1` for the final value) and whose grid is `.t`. `rk45` additionally accepts
-`rtol` / `atol` and chooses its own steps.
+`rtol` / `atol` and chooses its own steps; `rk45_system` does the same for
+vector states and returns an `ODESystemSolution` (`.y[i]` is the state vector
+at `.t[i]`).
 
 ## 1. Single ODE
 
@@ -44,6 +46,18 @@ def lotka(t, state):
 ts, ys = solve_system(lotka, t0=0.0, y0=[10.0, 5.0], t_end=15.0, dt=0.05)
 print(f"{len(ts)} points")  # 301 with this step
 print(f"final [prey, predator] = {[round(v, 4) for v in ys[-1]]}")
+```
+
+For an adaptive system solve, `rk45_system` applies the same Dormand-Prince
+embedded pair as the scalar `rk45`, with a per-component scaled RMS error
+norm and automatic step-size control:
+
+```python
+from cds.diffeq import rk45_system
+
+sol = rk45_system(lotka, t0=0.0, y0=[10.0, 5.0], t_end=15.0, rtol=1e-8, atol=1e-9)
+print(f"{sol.steps} adaptive steps")
+print(f"final [prey, predator] = {[round(v, 4) for v in sol.y[-1]]}")
 ```
 
 ## 3. Stiff problems: implicit solvers

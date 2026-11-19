@@ -91,9 +91,12 @@ print(difference(seasonal, lag=3, order=1))  # [0.0, 0.0, 0.0]
 
 The KPSS statistic tests the **null of stationarity** (the opposite of the
 ADF test). A small statistic means the series looks stationary; a large one
-suggests a unit root. `kpss_statistic` returns a heuristic decision and an
-approximate p-value, for formal inference consult the published asymptotic
-critical values.
+suggests a unit root. `kpss_statistic` returns a heuristic decision
+(`is_stationary`, using the published 5% critical value 0.463) and
+`normal_tail_probability` — a standard-normal upper-tail indicator that is
+**not** a valid KPSS p-value, because the KPSS null distribution is
+non-standard. For formal inference consult the published asymptotic critical
+values.
 
 ```python
 # Oscillating around a mean -> stationary.

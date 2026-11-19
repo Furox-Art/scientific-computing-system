@@ -347,7 +347,10 @@ trend, seasonal, residual = seasonal_decompose(series, period=12)
 from cds.stats import kpss_statistic, ljung_box, autocorrelation_function
 
 kpss = kpss_statistic(series)
-print(kpss.statistic, kpss.p_value)  # low p => reject stationarity
+# normal_tail_probability is a heuristic N(0,1) indicator, NOT a valid KPSS
+# p-value; for inference compare kpss.statistic to published critical values
+# (0.463 at 5% for the level model). kpss.is_stationary applies that cutoff.
+print(kpss.statistic, kpss.normal_tail_probability, kpss.is_stationary)
 
 lb = ljung_box(series, lags=10)
 print(lb.p_value)  # are values autocorrelated?
@@ -496,6 +499,11 @@ def lotka(t, state):
 ts, ys = solve_system(lotka, t0=0.0, y0=[10.0, 5.0], t_end=40.0, dt=0.05)
 print(len(ys))  # two trajectories oscillating out of phase
 ```
+
+Need step-size control for a system? `rk45_system` is the adaptive
+Dormand-Prince counterpart of the scalar `rk45` (same embedded pair,
+per-component error tolerances); it returns an `ODESystemSolution` with
+`.t`, `.y`, `.steps`.
 
 ### Stiff decay with backward Euler (explicit Euler diverges)
 

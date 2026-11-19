@@ -232,7 +232,7 @@ def recipe_ts_kpss_ljung_acf():
 
     s = [10 + 0.5 * i + 3 * math.sin(i / 2) for i in range(48)]
     kpss = kpss_statistic(s)
-    assert hasattr(kpss, "statistic") and hasattr(kpss, "p_value")
+    assert hasattr(kpss, "statistic") and hasattr(kpss, "normal_tail_probability")
     lb = ljung_box(s, lags=10)
     assert 0 <= lb.p_value <= 1
     # ACF returns r_0..r_max_lag inclusive (max_lag+1 entries).

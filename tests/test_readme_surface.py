@@ -66,6 +66,29 @@ def test_readme_subpackage_count_matches_src() -> None:
     )
 
 
+def test_readme_example_count_matches_examples_dir() -> None:
+    """The runnable-example counts must come from examples/, not from prose.
+
+    The README claimed "34 (32 .py, 2 .ipynb)" while the directory held
+    32 scripts + 3 notebooks; nothing compared the two. Derive the numbers
+    from the directory so a new notebook or script turns the build red.
+    """
+    examples = ROOT / "examples"
+    scripts = sorted(p.name for p in examples.glob("*.py"))
+    notebooks = sorted(p.name for p in examples.glob("*.ipynb"))
+    total = len(scripts) + len(notebooks)
+    match = re.search(
+        r"(\d+) runnable scripts and notebooks \((\d+) `\.py`,\s*(\d+)\s*`\.ipynb`\)",
+        _readme(),
+    )
+    assert match is not None, "README no longer states the runnable-example counts"
+    claimed = (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    assert claimed == (total, len(scripts), len(notebooks)), (
+        f"README claims {claimed} runnable examples but examples/ holds "
+        f"{total} ({len(scripts)} .py, {len(notebooks)} .ipynb)"
+    )
+
+
 def test_readme_names_the_two_top_level_public_modules() -> None:
     """A bare subpackage count hides top-level public modules; README must say so."""
     readme = _readme()
@@ -136,7 +159,7 @@ def test_readme_benchmark_claim_matches_the_committed_artifact() -> None:
     import json
 
     artifact = json.loads((ROOT / "benchmarks" / "results.json").read_text(encoding="utf-8"))
-    linear = artifact["metrics"]["Linear Algebra (Approaching C-Speed)"]
+    linear = artifact["metrics"]["Linear Algebra (Pure Python vs NumPy)"]
     status = str(linear["Speed Status"])
     match = re.search(r"CDS is ([\d.]+)x slower than NumPy", status)
     assert match is not None, f"unparsable Speed Status: {status!r}"

@@ -23,7 +23,7 @@ The dataset is generated in-process from `seed=42` (200 samples, 4 features:
 two Gaussian blobs with binary labels, plus a noisy linear regression
 target), so every run is bit-for-bit deterministic.
 
-These figures were last regenerated against scikit-learn 1.9.1 and reproduce
+These figures were last regenerated against scikit-learn 1.9.0 and reproduce
 the table above. `scripts/verify_ml_reference.py` itself needs no
 third-party dependency — the sklearn numbers are frozen constants, not
 something it recomputes.
