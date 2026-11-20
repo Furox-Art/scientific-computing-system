@@ -48,6 +48,7 @@ what the history supports; it does not claim that a tag exists.
 
 - `math_utils.svd` now runs Hestenes' one-sided Jacobi method on the columns of `A` itself instead of diagonalizing the Gram matrix `AᵀA`. The condition number is no longer squared, so small singular values keep relative accuracy: closed-form oracles pin a ~1e-12 singular value to machine relative error where the Gram approach lost it under ~1e-8 absolute noise. The `svd` / `rank` / `condition_number` API is unchanged; the docstrings now state the condition-number limit (~1/eps) explicitly.
 - `diffeq.rk45_system` adds the adaptive Dormand-Prince integrator for ODE systems: the same embedded 4th/5th-order pair as the scalar `rk45`, with a per-component scaled RMS error norm, step rejection/growth control, backward integration and endpoint snap. It returns the new `ODESystemSolution` dataclass. The scalar `rk45` and fixed-step `solve_system` are unchanged; both RK45 variants share one tableau.
+- `diffeq.rk45_system` no longer raises `OverflowError` when a component carries zero tolerance (`atol=rtol=0`) on a zero state: the embedded pair's combinations are summed with `math.fsum`, whose correct rounding makes `y5 - y4` cancel exactly on every supported Python version (3.11's plain `sum()` left ulp-level noise that the `NEAR_MIN_FLOAT` fallback scale amplified past the float range), and the scaled error is squared by multiplication, which saturates to a rejected step instead of raising out of the solver. The fail-closed contract is unchanged: a representable error estimate under zero tolerance rejects the step, while an estimate that rounds to zero still integrates.
 - `math_utils.determinant` classifies "nearly singular" columns with a scale-relative threshold per column (`NEAR_ZERO` × the column's original largest entry) instead of inheriting LU's global-scale cutoff. Well-conditioned mixed-scale matrices such as `diag(1e-20, 1e20)` now return their true determinant (1) instead of 0; the classification rule and its accuracy limits are documented.
 
 ### Statistics
@@ -62,6 +63,10 @@ what the history supports; it does not claim that a tag exists.
 - README example count corrected to 35 (32 `.py`, 3 `.ipynb`) and pinned to `examples/` by a new surface test; export-count pins updated to 507 names (343 functions, 164 classes).
 - Benchmark artifact headers now describe the data: "Approaching C-Speed", "Hardware Saturation" and "Algorithmic Intelligence" replaced with descriptive labels, the bare `CPU Cores Saturated` cpu_count row replaced by the sampling-mode row the generator actually emits, and the quantum speedup labelled as an extrapolation derived once from the displayed timings (53.3x in both the table and the conclusion). The `docs/benchmarks.md` generated block is re-rendered verbatim from `benchmarks/results.json`, a new gate compares them row for row, and regeneration now splices between the GENERATED markers instead of overwriting the hand-written analysis.
 - `docs/ml_reference.md` consistently names scikit-learn 1.9.0 (the version the frozen reference constants were computed with); a new test pins doc/script agreement.
+
+### Dependency locks
+
+- `requirements-dev.lock` bumps `soupsieve` 2.9.2 → 4.1.2 (CVE-2026-126190, CVE-2026-126191, CVE-2026-126192, CVE-2026-126193), `tornado` 6.6 → 6.6.1 (CVE-2026-126347) and `mistune` 3.3.3 → 3.3.4 (CVE-2026-97698, CVE-2026-97699) so the lock-file audit gate (`pip-audit -r requirements-dev.lock --strict`) passes again. The runtime dependency set stays zero: `requirements.lock` remains comment-only.
 
 ## [v2.2.22] - 2026-11-07
 

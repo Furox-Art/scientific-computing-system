@@ -361,8 +361,11 @@ def rk45_system(
             y_stage = [y[j] + h * sum(_DP_B[i][s] * k[s][j] for s in range(i)) for j in range(n)]
             k.append(_checked_derivative(f, t + _DP_A[i] * h, y_stage, n))
 
-        y5 = [y[j] + h * sum(_DP_C5[i] * k[i][j] for i in range(7)) for j in range(n)]
-        y4 = [y[j] + h * sum(_DP_C4[i] * k[i][j] for i in range(7)) for j in range(n)]
+        # fsum keeps the embedded pair's cancellation correctly rounded on
+        # every Python version: 3.11's plain sum() leaves ulp-level noise in
+        # y5 - y4 that a zero-tolerance scale would amplify without bound.
+        y5 = [y[j] + h * math.fsum(_DP_C5[i] * k[i][j] for i in range(7)) for j in range(n)]
+        y4 = [y[j] + h * math.fsum(_DP_C4[i] * k[i][j] for i in range(7)) for j in range(n)]
 
         # RMS error norm over components, each scaled by its own tolerance.
         err_sq = 0.0
@@ -372,7 +375,11 @@ def rk45_system(
                 # Zero tolerance on a zero component: fail closed toward
                 # step rejection instead of dividing by zero.
                 scale = NEAR_MIN_FLOAT
-            err_sq += ((y5[j] - y4[j]) / scale) ** 2
+            ratio = (y5[j] - y4[j]) / scale
+            # Multiply rather than pow: an unrepresentable squared error
+            # saturates to inf (the step is rejected) instead of raising
+            # OverflowError out of the solver.
+            err_sq += ratio * ratio
         error = math.sqrt(err_sq / n)
 
         if error <= 1.0:
