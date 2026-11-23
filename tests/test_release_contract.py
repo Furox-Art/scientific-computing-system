@@ -310,31 +310,32 @@ def _step_block(text: str, header: str) -> str:
     return "\n".join(lines[start:end])
 
 
-def test_npm_publish_checkout_keeps_history_for_the_content_guard() -> None:
-    block = _step_block(_text(NPM_WORKFLOW), "- uses: actions/checkout@")
-    assert "fetch-depth: 0" in block, (
-        "the guard walks back to the version-bump commit; a depth-1 clone has no such history"
-    )
-
-
-def test_npm_publish_refuses_content_newer_than_the_version_bump() -> None:
+def test_npm_publish_can_check_out_the_release_tag_from_main() -> None:
     text = _text(NPM_WORKFLOW)
-    name = "- name: Refuse to publish content newer than the version bump"
-    block = _step_block(text, name)
-    assert '"rev-list", "--first-parent", "HEAD"' in block
-    assert '"pack", "--dry-run", "--json"' in block
-    assert "packed files differ from" in block
-    assert "Bump the version and release the new content instead." in block
+    resolve = _step_block(text, "- name: Resolve the release tag for manual dispatch")
+    checkout = _step_block(text, "- uses: actions/checkout@")
+    assert "github.event_name == 'workflow_dispatch'" in resolve
+    assert "refs/heads/main" in resolve
+    assert "contents/package.json?ref=$GITHUB_SHA" in resolve
+    assert 'ref="refs/tags/v$version"' in resolve
+    assert "steps.manual-version.outputs.ref" in checkout
+    assert "needs.release_gate.outputs.head_sha" in checkout
+    assert "fetch-depth: 0" in checkout
 
-    assert text.index("- name: Assert the version is not already published") < text.index(name), (
-        "the guard must run after the existence gate"
-    )
-    assert text.index(name) < text.index("npm publish --provenance --access public"), (
-        "the guard must run before the OIDC publish"
-    )
-    assert text.index(name) < text.index("npm publish --access public\n"), (
-        "the guard must run before the token publish"
-    )
+
+def test_npm_publish_requires_the_published_tag_tree() -> None:
+    text = _text(NPM_WORKFLOW)
+    name = "- name: Verify the published release tag matches the source"
+    block = _step_block(text, name)
+    assert 'git rev-parse --verify "refs/tags/${tag}^{commit}"' in block
+    assert 'releases/tags/$tag' in block
+    assert ".draft == false and .published_at != null" in block
+    assert 'git diff --quiet "$released" HEAD --' in block
+    assert "git diff --quiet HEAD --" in block
+
+    assert text.index("- name: Assert the version is not already published") < text.index(name)
+    assert text.index(name) < text.index("npm publish --provenance --access public")
+    assert text.index(name) < text.index("npm publish --access public\n")
 
 
 def test_sign_release_requires_the_archive_before_skipping() -> None:
