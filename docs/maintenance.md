@@ -99,10 +99,11 @@ PyPI: owner `Furox-Art`, repository `scientific-computing-system`, workflow
 
 `.github/workflows/npm-publish.yml` is the sole npm authority. It runs when the
 `Release` workflow completes and proceeds only when the PyPI publish job
-succeeded. A manual dispatch is accepted only from `main`, a `v*` tag push only
-when the tag matches the `package.json` version, and every path requires that
-exact version to already exist on PyPI. Publishing uses OIDC trusted publishing
-with a provenance attestation; dispatch with `use_token_fallback=true` only while
+succeeded. A manual dispatch from `main` reads the version at the dispatch commit
+and checks out its release tag. A `v*` tag push must match `package.json`. Every
+path verifies the version on PyPI and checks the source against the published
+GitHub release tag. The default OIDC publish includes a provenance attestation.
+Dispatch with `use_token_fallback=true` only while
 the npm trusted publisher is unavailable, which publishes without provenance.
 The trusted publisher is registered: npmjs.com → `scientific-computing-system` →
 Settings → Trusted Publisher (owner `Furox-Art`, workflow `npm-publish.yml`,
