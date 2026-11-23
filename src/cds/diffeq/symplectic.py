@@ -26,11 +26,11 @@ References:
 
 from __future__ import annotations
 
-import math
 from collections.abc import Callable
 from dataclasses import dataclass
 
 from cds.core._numeric import LOOP_EPSILON
+from cds.diffeq.solvers import _advance_time, _integration_direction
 
 #: Right-hand side of the momentum equation: p_dot = f(t, q, p).
 HamiltonianForce = Callable[[float, list[float], list[float]], list[float]]
@@ -105,8 +105,8 @@ def _integrate(
     """
     _validate_state(q0, p0)
     _validate_span(t0, t_end, dt)
-    direction = math.copysign(1.0, t_end - t0)
     step_mag = abs(dt)
+    direction = _integration_direction(t0, t_end, step_mag)
     t = t0
     q = list(q0)
     p = list(p0)
@@ -117,10 +117,11 @@ def _integrate(
     while (t_end - t) * direction > LOOP_EPSILON:
         remaining = abs(t_end - t)
         h = direction * min(step_mag, remaining)
-        q, p = step(t, q, p, h)
+        t_next = _advance_time(t, h)
         # Snap the final step onto the endpoint so ``ts[-1] == t_end`` holds
         # exactly instead of accumulating floating-point drift.
-        t = t_end if remaining <= step_mag else t + h
+        q, p = step(t, q, p, h)
+        t = t_end if remaining <= step_mag else t_next
         ts.append(t)
         qs.append(list(q))
         ps.append(list(p))

@@ -15,11 +15,10 @@ References:
 
 from __future__ import annotations
 
-import math
 from collections.abc import Callable
 
 from cds.core._numeric import LOOP_EPSILON, RK45_DEFAULT_DT
-from cds.diffeq.solvers import ODESolution
+from cds.diffeq.solvers import ODESolution, _advance_time, _integration_direction
 from cds.math_utils.linalg import solve_linear
 
 SystemRHS = Callable[[float, list[float]], list[float]]
@@ -93,17 +92,12 @@ def _integrate_system(
     """Fixed-step θ-method driver shared by every public implicit solver."""
     if not y0:
         raise ValueError("y0 must be non-empty")
-    if dt <= 0:
-        raise ValueError("dt must be positive")
+    direction = _integration_direction(t0, t_end, dt)
     if tol <= 0:
         raise ValueError("tol must be positive")
     if max_iter < 1:
         raise ValueError("max_iter must be >= 1")
 
-    # Same direction rule as the explicit solvers (see euler_method): the sign
-    # of ``t_end - t0`` decides forward/backward integration; ``dt`` is a
-    # magnitude. copysign(1, 0) is +1, so t_end == t0 skips the loop cleanly.
-    direction = math.copysign(1.0, t_end - t0)
     t_vals = [t0]
     y_vals = [list(y0)]
     t = t0
@@ -111,7 +105,7 @@ def _integrate_system(
 
     while (t_end - t) * direction > LOOP_EPSILON:
         h = direction * min(dt, abs(t_end - t))
-        t_new = t + h
+        t_new = _advance_time(t, h)
         f_old = f(t, y)
 
         def residual(x: list[float], t_new: float = t_new) -> list[float]:

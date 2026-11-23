@@ -69,6 +69,21 @@ _DP_C5 = [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84, 0]
 _DP_C4 = [5179 / 57600, 0, 7571 / 16695, 393 / 640, -92097 / 339200, 187 / 2100, 1 / 40]
 
 
+def _integration_direction(t0: float, t_end: float, dt: float) -> float:
+    if not math.isfinite(t0) or not math.isfinite(t_end):
+        raise ValueError("t0 and t_end must be finite")
+    if not dt > 0:
+        raise ValueError("dt must be positive")
+    return math.copysign(1.0, t_end - t0)
+
+
+def _advance_time(t: float, step: float) -> float:
+    next_time = t + step
+    if next_time == t or not math.isfinite(next_time):
+        raise RuntimeError("Step size cannot advance time within floating-point precision.")
+    return next_time
+
+
 def euler_method(
     f: Callable[[float, float], float],
     t0: float,
@@ -93,7 +108,7 @@ def euler_method(
     # returns just the initial condition. Without this, ``t_end < t0`` made the
     # ``while t < t_end`` guard immediately False and the solver silently
     # returned the initial value instead of integrating backward.
-    direction = math.copysign(1.0, t_end - t0)
+    direction = _integration_direction(t0, t_end, dt)
     t_vals = [t0]
     y_vals = [y0]
     t, y = t0, y0
@@ -101,8 +116,9 @@ def euler_method(
 
     while (t_end - t) * direction > LOOP_EPSILON:
         h = direction * min(dt, abs(t_end - t))
+        t_next = _advance_time(t, h)
         y = y + h * f(t, y)
-        t = t + h
+        t = t_next
         t_vals.append(t)
         y_vals.append(y)
         steps += 1
@@ -139,7 +155,7 @@ def rk4(
     # See ``euler_method`` for why direction is derived from the sign of
     # ``t_end - t0`` rather than reading ``dt``'s sign: it keeps ``dt`` an
     # unambiguous magnitude and makes backward integration actually progress.
-    direction = math.copysign(1.0, t_end - t0)
+    direction = _integration_direction(t0, t_end, dt)
     t_vals = [t0]
     y_vals = [y0]
     t, y = t0, y0
@@ -147,12 +163,13 @@ def rk4(
 
     while (t_end - t) * direction > LOOP_EPSILON:
         h = direction * min(dt, abs(t_end - t))
+        t_next = _advance_time(t, h)
         k1 = f(t, y)
         k2 = f(t + h / 2, y + h * k1 / 2)
         k3 = f(t + h / 2, y + h * k2 / 2)
-        k4 = f(t + h, y + h * k3)
+        k4 = f(t_next, y + h * k3)
         y = y + (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
-        t = t + h
+        t = t_next
         t_vals.append(t)
         y_vals.append(y)
         steps += 1
@@ -178,7 +195,7 @@ def midpoint_method(
         t_end: end time (may be less than ``t0`` for backward integration)
         dt: time step (always positive; direction follows the sign of ``t_end - t0``)
     """
-    direction = math.copysign(1.0, t_end - t0)
+    direction = _integration_direction(t0, t_end, dt)
     t_vals = [t0]
     y_vals = [y0]
     t, y = t0, y0
@@ -186,10 +203,11 @@ def midpoint_method(
 
     while (t_end - t) * direction > LOOP_EPSILON:
         h = direction * min(dt, abs(t_end - t))
+        t_next = _advance_time(t, h)
         k1 = f(t, y)
         k2 = f(t + h / 2, y + h * k1 / 2)
         y = y + h * k2
-        t = t + h
+        t = t_next
         t_vals.append(t)
         y_vals.append(y)
         steps += 1
@@ -233,7 +251,7 @@ def rk45(
     # tracked as an always-positive magnitude ``h_mag`` and applied as
     # ``direction * h_mag`` so the min/max shrink/grow logic below keeps its
     # forward semantics regardless of integration direction.
-    direction = math.copysign(1.0, t_end - t0)
+    direction = _integration_direction(t0, t_end, dt)
     t, y = t0, y0
     t_vals = [t]
     y_vals = [y]
@@ -256,6 +274,7 @@ def rk45(
         else:
             h = direction * h_mag
 
+        t_next = _advance_time(t, h)
         k = [0.0] * 7
         k[0] = f(t, y)
         for i in range(1, 7):
@@ -272,7 +291,7 @@ def rk45(
 
         if error <= tolerance:
             # Step accepted
-            t += h
+            t = t_next
             y = y5
             t_vals.append(t)
             y_vals.append(y)
@@ -338,7 +357,7 @@ def rk45_system(
         raise ValueError("y0 must contain at least one component")
 
     # Direction handling mirrors rk45: h_mag is an always-positive magnitude.
-    direction = math.copysign(1.0, t_end - t0)
+    direction = _integration_direction(t0, t_end, dt)
     t, y = t0, list(y0)
     t_vals = [t]
     y_vals = [list(y)]
@@ -356,6 +375,7 @@ def rk45_system(
         else:
             h = direction * h_mag
 
+        t_next = _advance_time(t, h)
         k: list[list[float]] = [_checked_derivative(f, t, y, n)]
         for i in range(1, 7):
             y_stage = [y[j] + h * sum(_DP_B[i][s] * k[s][j] for s in range(i)) for j in range(n)]
@@ -383,7 +403,7 @@ def rk45_system(
         error = math.sqrt(err_sq / n)
 
         if error <= 1.0:
-            t += h
+            t = t_next
             y = y5
             t_vals.append(t)
             y_vals.append(list(y))
@@ -433,7 +453,7 @@ def solve_system(
     Returns:
         (t_values, y_values) where y_values[i] is the state vector at t_values[i]
     """
-    direction = math.copysign(1.0, t_end - t0)
+    direction = _integration_direction(t0, t_end, dt)
     n = len(y0)
     t_vals = [t0]
     y_vals = [list(y0)]
@@ -442,6 +462,7 @@ def solve_system(
 
     while (t_end - t) * direction > LOOP_EPSILON:
         h = direction * min(dt, abs(t_end - t))
+        t_next = _advance_time(t, h)
 
         k1 = _checked_derivative(f, t, y, n)
         y_tmp = [y[i] + h * k1[i] / 2 for i in range(n)]
@@ -449,10 +470,10 @@ def solve_system(
         y_tmp = [y[i] + h * k2[i] / 2 for i in range(n)]
         k3 = _checked_derivative(f, t + h / 2, y_tmp, n)
         y_tmp = [y[i] + h * k3[i] for i in range(n)]
-        k4 = _checked_derivative(f, t + h, y_tmp, n)
+        k4 = _checked_derivative(f, t_next, y_tmp, n)
 
         y = [y[i] + (h / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) for i in range(n)]
-        t = t + h
+        t = t_next
         t_vals.append(t)
         y_vals.append(list(y))
 
