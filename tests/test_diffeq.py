@@ -1,8 +1,63 @@
 """Tests for ODE solvers."""
 
 import math
+from collections.abc import Callable
+from typing import Never
 
-from cds.diffeq import euler_method, midpoint_method, rk4, rk45, solve_system
+import pytest
+
+from cds.diffeq import (
+    backward_euler,
+    euler_method,
+    midpoint_method,
+    rk4,
+    rk45,
+    rk45_system,
+    solve_system,
+)
+from cds.diffeq.symplectic import symplectic_euler
+
+
+def _unexpected_derivative(*_args: object) -> Never:
+    raise AssertionError("The solver evaluated the derivative with an unusable time step")
+
+
+@pytest.mark.parametrize("solver", [euler_method, midpoint_method, rk4, rk45, backward_euler])
+@pytest.mark.parametrize("dt", [0.0, -0.1, math.nan])
+def test_rejects_unusable_step(
+    solver: Callable[..., object],
+    dt: float,
+) -> None:
+    with pytest.raises(ValueError, match="dt must be positive"):
+        solver(_unexpected_derivative, 0.0, 1.0, 1.0, dt)
+
+
+def test_rejects_nonfinite_time_endpoints() -> None:
+    with pytest.raises(ValueError, match="t0 and t_end must be finite"):
+        euler_method(_unexpected_derivative, math.nan, 1.0, 1.0, dt=0.1)
+    with pytest.raises(ValueError, match="t0 and t_end must be finite"):
+        euler_method(_unexpected_derivative, 0.0, 1.0, math.inf, dt=0.1)
+
+
+@pytest.mark.parametrize("solver", [euler_method, midpoint_method, rk4, rk45, backward_euler])
+def test_stops_when_a_positive_step_cannot_advance_time(
+    solver: Callable[..., object],
+) -> None:
+    with pytest.raises(RuntimeError, match="cannot advance time"):
+        solver(_unexpected_derivative, 1e16, 1.0, 1e16 + 4, 0.01)
+
+
+@pytest.mark.parametrize("solver", [solve_system, rk45_system])
+def test_vector_solver_stops_when_time_cannot_advance(
+    solver: Callable[..., object],
+) -> None:
+    with pytest.raises(RuntimeError, match="cannot advance time"):
+        solver(_unexpected_derivative, 1e16, [1.0], 1e16 + 4, 0.01)
+
+
+def test_symplectic_solver_stops_when_time_cannot_advance() -> None:
+    with pytest.raises(RuntimeError, match="cannot advance time"):
+        symplectic_euler(_unexpected_derivative, [1.0], [0.0], 1e16, 1e16 + 4, 0.01)
 
 
 class TestEulerMethod:
