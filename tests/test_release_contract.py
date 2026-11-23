@@ -328,7 +328,7 @@ def test_npm_publish_requires_the_published_tag_tree() -> None:
     name = "- name: Verify the published release tag matches the source"
     block = _step_block(text, name)
     assert 'git rev-parse --verify "refs/tags/${tag}^{commit}"' in block
-    assert 'releases/tags/$tag' in block
+    assert "releases/tags/$tag" in block
     assert ".draft == false and .published_at != null" in block
     assert 'git diff --quiet "$released" HEAD --' in block
     assert "git diff --quiet HEAD --" in block
