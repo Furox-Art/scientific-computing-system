@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="assets/logo.svg" alt="scientific-computing-system" width="640">
-</p>
-
 <h1 align="center">scientific-computing-system</h1>
 
 <p align="center"><b>A pure-Python computational science platform for numerical methods, modeling, validation, uncertainty, scientific workflows, dimensional analysis, and reproducible research.</b></p>
