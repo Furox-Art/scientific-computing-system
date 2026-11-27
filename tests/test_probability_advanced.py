@@ -29,6 +29,17 @@ def test_chi2_ppf_matches_known_critical_value() -> None:
     assert chi2_ppf(0.95, 10) == pytest.approx(18.307038053275146, abs=1e-5)
 
 
+def test_chi2_ppf_quantiles_below_one() -> None:
+    # chi2(2) == Exp(rate=1/2), so the exact quantile is -2 * ln(1 - p).
+    for p in (0.01, 0.05, 0.1, 0.2, 0.35):
+        expected = -2.0 * math.log(1.0 - p)
+        assert chi2_ppf(p, 2) == pytest.approx(expected, abs=1e-9)
+    # chi2(1) median and 5th percentile both lie below 0.5.
+    assert chi2_ppf(0.5, 1) == pytest.approx(0.454936423119572, abs=1e-9)
+    assert chi2_ppf(0.05, 1) == pytest.approx(0.003932140000019522, abs=1e-9)
+    assert chi2_cdf(chi2_ppf(0.05, 3), 3) == pytest.approx(0.05, abs=1e-9)
+
+
 def test_chi2_cdf_round_trip() -> None:
     assert chi2_cdf(3.841458820694124, 1) == pytest.approx(0.95, abs=1e-6)
     assert chi2_cdf(0.0, 5) == 0.0
