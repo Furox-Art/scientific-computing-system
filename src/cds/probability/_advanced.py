@@ -66,10 +66,11 @@ def chi2_ppf(p: float, df: float) -> float:
         raise ValueError("p must be in (0, 1)")
     if df <= 0:
         raise ValueError("df must be positive")
+    lo = 0.0
     hi = 1.0
     while chi2_cdf(hi, df) < p:
+        lo = hi
         hi *= 2.0
-    lo = hi * 0.5
     # Halving shrinks the bracket below _BISECT_TOL within ~60 iterations,
     # so all _BISECT_ITERS rounds never run out — exhaustion arc unreachable.
     for _ in range(_BISECT_ITERS):  # pragma: no branch
