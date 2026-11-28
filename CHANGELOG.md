@@ -19,7 +19,7 @@ a git tag in this repository or on `origin` (checked with `git ls-remote --tags`
 Any retroactive `v2.2.6` or `v2.2.7` tag should point at those commits. This note records
 what the history supports; it does not claim that a tag exists.
 
-## [Unreleased]
+## [v2.2.25] - 2026-11-27
 
 ### Release policy keeps the signed source snapshot
 
