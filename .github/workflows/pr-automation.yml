@@ -1,7 +1,9 @@
 name: PR Automation
 
 on:
-  pull_request:
+  # pull_request_target (not pull_request) so fork PRs get a write token and
+  # the labeler can apply labels. This workflow never checks out PR code.
+  pull_request_target:
     types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
     inputs:
@@ -18,7 +20,7 @@ permissions: {}
 
 jobs:
   labeler:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -36,7 +38,7 @@ jobs:
       contents: read
       pull-requests: write
     if: |
-      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'needs-review')) ||
+      (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'needs-review')) ||
       github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
